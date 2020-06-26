@@ -2,6 +2,7 @@
 set -ex
 cd "$(dirname "$0")"
 
-../ci/rshelp/rs-lint
-../ci/rshelp/rs-test
+cargo fmt -- --check
+cargo clippy --all-targets --all-features --locked --offline -- -D warnings
+cargo test --offline --locked --all-targets
 cargo test --offline --locked --manifest-path cli/Cargo.toml
