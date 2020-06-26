@@ -1,10 +1,12 @@
 [package]
 name = "reinfer-cli"
 version = "0.2.3"
-edition = "2018"
+description = "Command line interface for the reinfer platform."
+homepage = "https://github.com/reinfer/cli"
 readme = "README.md"
 authors = ["reinfer Ltd. <eng@reinfer.io>"]
-description = "Command line interface for the reinfer platform."
+license = "Apache-2.0"
+edition = "2018"
 
 [[bin]]
 name = "re"
