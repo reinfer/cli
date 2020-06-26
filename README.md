@@ -19,7 +19,7 @@ The [api](/api) directory contains a Rust client library for reinfer which can b
 
 ### Demo
 
-![](/client/readme-demo.gif)
+![](/readme-demo.gif)
 
 ## Installation
 
