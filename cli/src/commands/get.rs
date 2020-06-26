@@ -1,0 +1,705 @@
+use chrono::{DateTime, Utc};
+use colored::Colorize;
+use failchain::ResultExt;
+use log::info;
+use prettytable::{cell, format, row, Table};
+use reinfer_client::{
+    AnnotatedComment, Bucket, BucketIdentifier, Client, CommentsIterTimerange, Dataset,
+    DatasetFullName, DatasetIdentifier, Source, SourceIdentifier, Trigger, TriggerFullName, User,
+};
+use std::{
+    fs::File,
+    io::{self, BufWriter, Write},
+    iter,
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+};
+use structopt::StructOpt;
+
+use super::OutputFormat;
+use crate::{
+    errors::{ErrorKind, Result},
+    progress::{Options as ProgressOptions, Progress},
+    utils::print_resources_as_json,
+};
+
+#[derive(Debug, StructOpt)]
+pub enum GetArgs {
+    #[structopt(name = "datasets")]
+    /// List available datasets
+    Datasets {
+        #[structopt(short = "o", long = "output", default_value = "table")]
+        /// Output format. One of: json, table
+        output: OutputFormat,
+
+        #[structopt(name = "dataset")]
+        /// If specified, only list this dataset (name or id)
+        dataset: Option<DatasetIdentifier>,
+    },
+
+    #[structopt(name = "sources")]
+    /// List available sources
+    Sources {
+        #[structopt(short = "o", long = "output", default_value = "table")]
+        /// Output format. One of: json, table
+        output: OutputFormat,
+
+        #[structopt(name = "source")]
+        /// If specified, only list this source (name or id)
+        source: Option<SourceIdentifier>,
+    },
+
+    #[structopt(name = "comments")]
+    /// Download all comments in a source
+    Comments {
+        #[structopt(name = "source")]
+        /// Source name or id
+        source: SourceIdentifier,
+
+        #[structopt(short = "d", long = "dataset")]
+        /// Dataset name or id
+        dataset: Option<DatasetIdentifier>,
+
+        #[structopt(long = "progress")]
+        /// Whether to display a progress bar.
+        show_progress: Option<bool>,
+
+        #[structopt(long = "predictions")]
+        /// Save predicted labels and entities for each comment.
+        include_predictions: Option<bool>,
+
+        #[structopt(long = "reviewed-only")]
+        /// Download reviewed comments only.
+        reviewed_only: Option<bool>,
+
+        #[structopt(long = "from-timestamp")]
+        /// Starting timestamp for comments to retrieve (inclusive).
+        from_timestamp: Option<DateTime<Utc>>,
+
+        #[structopt(long = "to-timestamp")]
+        /// Ending timestamp for comments to retrieve (inclusive).
+        to_timestamp: Option<DateTime<Utc>>,
+
+        #[structopt(short = "f", long = "file", parse(from_os_str))]
+        /// Path where to write comments as JSON. If not specified, stdout will be used.
+        path: Option<PathBuf>,
+    },
+
+    #[structopt(name = "buckets")]
+    /// List available buckets
+    Buckets {
+        #[structopt(short = "o", long = "output", default_value = "table")]
+        /// Output format. One of: json, table
+        output: OutputFormat,
+
+        #[structopt(name = "bucket")]
+        /// If specified, only list this bucket (name or id)
+        bucket: Option<BucketIdentifier>,
+    },
+
+    #[structopt(name = "triggers")]
+    /// List available triggers for a dataset
+    Triggers {
+        #[structopt(short = "d", long = "dataset")]
+        /// The dataset name or id
+        dataset: DatasetIdentifier,
+
+        #[structopt(short = "o", long = "output", default_value = "table")]
+        /// Output format. One of: json, table
+        output: OutputFormat,
+    },
+
+    #[structopt(name = "trigger-comments")]
+    /// Fetch comments from a trigger
+    TriggerComments {
+        #[structopt(short = "t", long = "trigger")]
+        /// The full trigger name `<owner>/<dataset>/<trigger>`.
+        trigger: TriggerFullName,
+
+        #[structopt(short = "s", long = "size", default_value = "16")]
+        /// The max number of comments to return per batch.
+        size: u32,
+
+        #[structopt(short = "l", long = "listen")]
+        /// If set, the command will run forever polling every N seconds and advancing the trigger.
+        listen: Option<f64>,
+
+        #[structopt(long = "individual-advance")]
+        /// If set, the command will acknowledge each comment in turn, rather than full batches.
+        individual_advance: bool,
+    },
+
+    #[structopt(name = "users")]
+    /// List available users
+    Users {
+        #[structopt(short = "o", long = "output", default_value = "table")]
+        /// Output format. One of: json, table
+        output: OutputFormat,
+    },
+
+    #[structopt(name = "current-user")]
+    /// Get the user associated with the API token in use
+    CurrentUser {
+        #[structopt(short = "o", long = "output", default_value = "table")]
+        /// Output format. One of: json, table
+        output: OutputFormat,
+    },
+}
+
+pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
+    match get_args {
+        GetArgs::Datasets { output, dataset } => {
+            let datasets = if let Some(dataset) = dataset {
+                vec![client.get_dataset(dataset.clone()).chain_err(|| {
+                    ErrorKind::Client("Operation to list datasets has failed.".into())
+                })?]
+            } else {
+                let mut datasets = client.get_datasets().chain_err(|| {
+                    ErrorKind::Client("Operation to list datasets has failed.".into())
+                })?;
+                datasets.sort_unstable_by(|lhs, rhs| {
+                    (&lhs.owner.0, &lhs.name.0).cmp(&(&rhs.owner.0, &rhs.name.0))
+                });
+                datasets
+            };
+
+            match output {
+                OutputFormat::Table => print_datasets_table(&datasets),
+                OutputFormat::Json => {
+                    print_resources_as_json(datasets.iter(), io::stdout().lock())?
+                }
+            }
+        }
+        GetArgs::Sources { output, source } => {
+            let sources = if let Some(source) = source {
+                vec![client.get_source(source.clone()).chain_err(|| {
+                    ErrorKind::Client("Operation to list sources has failed.".into())
+                })?]
+            } else {
+                let mut sources = client.get_sources().chain_err(|| {
+                    ErrorKind::Client("Operation to list sources has failed.".into())
+                })?;
+                sources.sort_unstable_by(|lhs, rhs| {
+                    (&lhs.owner.0, &lhs.name.0).cmp(&(&rhs.owner.0, &rhs.name.0))
+                });
+                sources
+            };
+
+            match output {
+                OutputFormat::Table => print_sources_table(&sources),
+                OutputFormat::Json => print_resources_as_json(sources.iter(), io::stdout().lock())?,
+            }
+        }
+        GetArgs::Comments {
+            source,
+            dataset,
+            show_progress,
+            include_predictions,
+            reviewed_only,
+            from_timestamp,
+            to_timestamp,
+            path,
+        } => {
+            let by_timerange = from_timestamp.is_some() || to_timestamp.is_some();
+            if dataset.is_some() && by_timerange {
+                return Err(ErrorKind::Config(
+                    "The `dataset` and `from/to-timestamp` options are mutually exclusive."
+                        .to_owned(),
+                )
+                .into());
+            }
+            let file = match path {
+                Some(path) => Some(
+                    File::create(path)
+                        .chain_err(|| {
+                            ErrorKind::Config(format!(
+                                "Could not open file for writing `{}`",
+                                path.display()
+                            ))
+                        })
+                        .map(BufWriter::new)?,
+                ),
+                None => None,
+            };
+
+            let download_options = CommentDownloadOptions {
+                dataset_identifier: dataset.clone(),
+                include_predictions: include_predictions.unwrap_or(false),
+                reviewed_only: reviewed_only.unwrap_or(false),
+                timerange: CommentsIterTimerange {
+                    from: *from_timestamp,
+                    to: *to_timestamp,
+                },
+                show_progress: show_progress.unwrap_or(true),
+            };
+
+            if let Some(file) = file {
+                download_comments(&client, source.clone(), file, download_options)?;
+            } else {
+                download_comments(
+                    &client,
+                    source.clone(),
+                    io::stdout().lock(),
+                    download_options,
+                )?;
+            }
+        }
+        GetArgs::Buckets { output, bucket } => {
+            let buckets = if let Some(bucket) = bucket {
+                vec![client.get_bucket(bucket.clone()).chain_err(|| {
+                    ErrorKind::Client("Operation to list buckets has failed.".into())
+                })?]
+            } else {
+                let mut buckets = client.get_buckets().chain_err(|| {
+                    ErrorKind::Client("Operation to list buckets has failed.".into())
+                })?;
+                buckets.sort_unstable_by(|lhs, rhs| {
+                    (&lhs.owner.0, &lhs.name.0).cmp(&(&rhs.owner.0, &rhs.name.0))
+                });
+                buckets
+            };
+
+            match output {
+                OutputFormat::Table => print_buckets_table(&buckets),
+                OutputFormat::Json => print_resources_as_json(buckets.iter(), io::stdout().lock())?,
+            }
+        }
+        GetArgs::Triggers { dataset, output } => {
+            let dataset_name = client
+                .get_dataset(dataset.clone())
+                .chain_err(|| ErrorKind::Client("Operation to get dataset has failed.".into()))?
+                .full_name();
+            let mut triggers = client
+                .get_triggers(&dataset_name)
+                .chain_err(|| ErrorKind::Client("Operation to list triggers has failed.".into()))?;
+            triggers.sort_unstable_by(|lhs, rhs| lhs.name.0.cmp(&rhs.name.0));
+
+            match output {
+                OutputFormat::Table => print_triggers_table(&triggers),
+                OutputFormat::Json => {
+                    print_resources_as_json(triggers.iter(), io::stdout().lock())?
+                }
+            }
+        }
+        GetArgs::TriggerComments {
+            trigger,
+            size,
+            listen,
+            individual_advance,
+        } => match listen {
+            Some(delay) => loop {
+                let batch = client
+                    .fetch_trigger_comments(trigger, *size)
+                    .chain_err(|| {
+                        ErrorKind::Client("Operation to fetch trigger comments failed.".into())
+                    })?;
+                if batch.results.is_empty() {
+                    if batch.filtered == 0 {
+                        std::thread::sleep(std::time::Duration::from_secs_f64(*delay));
+                    } else {
+                        client
+                            .advance_trigger(trigger, batch.sequence_id)
+                            .chain_err(|| {
+                                ErrorKind::Client(
+                                    "Operation to advance trigger for batch failed.".into(),
+                                )
+                            })?;
+                    }
+                    continue;
+                }
+                let needs_final_advance = !individual_advance
+                    || batch.sequence_id != batch.results.last().unwrap().sequence_id;
+                for result in batch.results {
+                    print_resources_as_json(Some(&result), io::stdout().lock())?;
+
+                    if *individual_advance {
+                        client
+                            .advance_trigger(trigger, result.sequence_id)
+                            .chain_err(|| {
+                                ErrorKind::Client(
+                                    "Operation to advance trigger for comment failed.".into(),
+                                )
+                            })?;
+                    }
+                }
+                if needs_final_advance {
+                    client
+                        .advance_trigger(trigger, batch.sequence_id)
+                        .chain_err(|| {
+                            ErrorKind::Client(
+                                "Operation to advance trigger for batch failed.".into(),
+                            )
+                        })?;
+                }
+            },
+            None => {
+                let batch = client
+                    .fetch_trigger_comments(trigger, *size)
+                    .chain_err(|| {
+                        ErrorKind::Client("Operation to fetch trigger comments failed.".into())
+                    })?;
+                print_resources_as_json(Some(&batch), io::stdout().lock())?;
+            }
+        },
+        GetArgs::Users { output } => {
+            let users = client
+                .get_users()
+                .chain_err(|| ErrorKind::Client("Operation to list users has failed.".into()))?;
+            match output {
+                OutputFormat::Table => print_users_table(&users),
+                OutputFormat::Json => print_resources_as_json(users.iter(), io::stdout().lock())?,
+            }
+        }
+        GetArgs::CurrentUser { output } => {
+            let user = client.get_current_user().chain_err(|| {
+                ErrorKind::Client("Operation to get the current user has failed.".into())
+            })?;
+            match output {
+                OutputFormat::Table => print_users_table(&[user]),
+                OutputFormat::Json => {
+                    print_resources_as_json(iter::once(&user), io::stdout().lock())?
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[derive(Default)]
+struct CommentDownloadOptions {
+    dataset_identifier: Option<DatasetIdentifier>,
+    include_predictions: bool,
+    reviewed_only: bool,
+    timerange: CommentsIterTimerange,
+    show_progress: bool,
+}
+
+fn download_comments(
+    client: &Client,
+    source_identifier: SourceIdentifier,
+    mut writer: impl Write,
+    options: CommentDownloadOptions,
+) -> Result<()> {
+    let source = client
+        .get_source(source_identifier)
+        .chain_err(|| ErrorKind::Client("Operation to get source has failed.".into()))?;
+    let statistics = Arc::new(Statistics::new());
+    let make_progress = |dataset_name: Option<&DatasetFullName>| -> Result<Progress> {
+        Ok(get_comments_progress_bar(
+            if let Some(dataset_name) = dataset_name {
+                client
+                    .get_statistics(dataset_name)
+                    .chain_err(|| {
+                        ErrorKind::Client("Operation to get comment count has failed..".into())
+                    })?
+                    .num_comments as u64
+            } else {
+                0
+            },
+            &statistics,
+            dataset_name.is_some(),
+        ))
+    };
+
+    if let Some(dataset_identifier) = options.dataset_identifier {
+        let dataset = client
+            .get_dataset(dataset_identifier)
+            .chain_err(|| ErrorKind::Client("Operation to get dataset has failed.".into()))?;
+        let dataset_name = dataset.full_name();
+        let _progress = if options.show_progress {
+            Some(make_progress(Some(&dataset_name))?)
+        } else {
+            None
+        };
+
+        if options.reviewed_only {
+            get_reviewed_comments_in_bulk(
+                client,
+                dataset_name,
+                source,
+                &statistics,
+                options.include_predictions,
+                writer,
+            )?;
+        } else {
+            get_comments_from_uids(
+                client,
+                dataset_name,
+                source,
+                &statistics,
+                options.include_predictions,
+                writer,
+            )?;
+        }
+    } else {
+        let _progress = if options.show_progress {
+            Some(make_progress(None)?)
+        } else {
+            None
+        };
+        client
+            .get_comments_iter(&source.full_name(), None, options.timerange)
+            .try_for_each(|page| {
+                let page = page.chain_err(|| {
+                    ErrorKind::Client("Operation to get comments has failed.".into())
+                })?;
+                statistics.add_comments(page.len());
+                print_resources_as_json(
+                    page.into_iter().map(|comment| AnnotatedComment {
+                        comment,
+                        labelling: None,
+                        entities: None,
+                    }),
+                    &mut writer,
+                )
+            })?;
+    }
+    info!(
+        "Successfully downloaded {} comments [{} annotated].",
+        statistics.num_downloaded(),
+        statistics.num_annotated(),
+    );
+    Ok(())
+}
+
+fn get_comments_from_uids(
+    client: &Client,
+    dataset_name: DatasetFullName,
+    source: Source,
+    statistics: &Arc<Statistics>,
+    include_predictions: bool,
+    mut writer: impl Write,
+) -> Result<()> {
+    client
+        .get_comments_iter(&source.full_name(), None, Default::default())
+        .try_for_each(|page| {
+            let page = page
+                .chain_err(|| ErrorKind::Client("Operation to get comments has failed.".into()))?;
+            if page.is_empty() {
+                return Ok(());
+            }
+
+            statistics.add_comments(page.len());
+            let annotations =
+                client.get_labellings(&dataset_name, page.iter().map(|comment| &comment.uid));
+            let comments = page
+                .into_iter()
+                .zip(
+                    annotations
+                        .chain_err(|| {
+                            ErrorKind::Client("Operation to get comments has failed.".into())
+                        })?
+                        .into_iter(),
+                )
+                .map(|(comment, mut annotated)| {
+                    if !include_predictions {
+                        annotated = annotated.without_predictions();
+                    }
+                    annotated.comment = comment;
+                    if annotated.is_reviewed() {
+                        statistics.add_annotated(1);
+                    }
+                    annotated
+                });
+            print_resources_as_json(comments, &mut writer)
+        })?;
+    Ok(())
+}
+
+fn get_reviewed_comments_in_bulk(
+    client: &Client,
+    dataset_name: DatasetFullName,
+    source: Source,
+    statistics: &Arc<Statistics>,
+    include_predictions: bool,
+    mut writer: impl Write,
+) -> Result<()> {
+    client
+        .get_labellings_iter(&dataset_name, &source.id, include_predictions, None)
+        .try_for_each(|page| {
+            let page = page.chain_err(|| {
+                ErrorKind::Client("Operation to get labellings has failed.".into())
+            })?;
+            statistics.add_comments(page.len());
+            statistics.add_annotated(page.len());
+            let comments = page.into_iter().map(|comment| {
+                if !include_predictions {
+                    comment.without_predictions()
+                } else {
+                    comment
+                }
+            });
+            print_resources_as_json(comments, &mut writer)
+        })?;
+    Ok(())
+}
+
+fn print_datasets_table(datasets: &[Dataset]) {
+    let mut table = new_table();
+    table.set_titles(row![bFg => "Name", "ID", "Updated (UTC)", "Title"]);
+    for dataset in datasets.iter() {
+        let full_name = format!(
+            "{}{}{}",
+            dataset.owner.0.dimmed(),
+            "/".dimmed(),
+            dataset.name.0
+        );
+        table.add_row(row![
+            full_name,
+            dataset.id.0,
+            dataset.updated_at.format("%Y-%m-%d %H:%M:%S"),
+            dataset.title
+        ]);
+    }
+    table.printstd();
+}
+
+fn print_sources_table(sources: &[Source]) {
+    let mut table = new_table();
+    table.set_titles(row![bFg => "Name", "ID", "Updated (UTC)", "Title"]);
+    for source in sources.iter() {
+        let full_name = format!(
+            "{}{}{}",
+            source.owner.0.dimmed(),
+            "/".dimmed(),
+            source.name.0
+        );
+        table.add_row(row![
+            full_name,
+            source.id.0,
+            source.updated_at.format("%Y-%m-%d %H:%M:%S"),
+            source.title
+        ]);
+    }
+    table.printstd();
+}
+
+fn print_buckets_table(buckets: &[Bucket]) {
+    let mut table = new_table();
+    table.set_titles(row![bFg => "Name", "ID", "Created (UTC)", "Updated (UTC)"]);
+    for bucket in buckets.iter() {
+        let full_name = format!(
+            "{}{}{}",
+            bucket.owner.0.dimmed(),
+            "/".dimmed(),
+            bucket.name.0
+        );
+        table.add_row(row![
+            full_name,
+            bucket.id.0,
+            bucket.created_at.format("%Y-%m-%d %H:%M:%S"),
+            bucket.updated_at.format("%Y-%m-%d %H:%M:%S"),
+        ]);
+    }
+    table.printstd();
+}
+
+fn print_triggers_table(triggers: &[Trigger]) {
+    let mut table = new_table();
+    table.set_titles(row![bFg => "Name", "ID", "Updated (UTC)", "Title"]);
+    for trigger in triggers.iter() {
+        table.add_row(row![
+            trigger.name.0,
+            trigger.id.0,
+            trigger.updated_at.format("%Y-%m-%d %H:%M:%S"),
+            trigger.title
+        ]);
+    }
+    table.printstd();
+}
+
+fn print_users_table(users: &[User]) {
+    let mut table = new_table();
+    table.set_titles(row![bFg => "Name", "Email", "ID", "Created (UTC)"]);
+    for user in users.iter() {
+        table.add_row(row![
+            user.username.0,
+            user.email.0,
+            user.id.0,
+            user.created_at.format("%Y-%m-%d %H:%M:%S"),
+        ]);
+    }
+    table.printstd();
+}
+
+fn new_table() -> Table {
+    let mut table = Table::new();
+    let format = format::FormatBuilder::new()
+        .column_separator(' ')
+        .borders(' ')
+        .separators(&[], format::LineSeparator::new('-', '+', '+', '+'))
+        .padding(0, 1)
+        .build();
+    table.set_format(format);
+    table
+}
+
+#[derive(Debug)]
+pub struct Statistics {
+    downloaded: AtomicUsize,
+    annotated: AtomicUsize,
+}
+
+impl Statistics {
+    fn new() -> Self {
+        Self {
+            downloaded: AtomicUsize::new(0),
+            annotated: AtomicUsize::new(0),
+        }
+    }
+
+    #[inline]
+    fn add_comments(&self, num_downloaded: usize) {
+        self.downloaded.fetch_add(num_downloaded, Ordering::SeqCst);
+    }
+
+    #[inline]
+    fn add_annotated(&self, num_downloaded: usize) {
+        self.annotated.fetch_add(num_downloaded, Ordering::SeqCst);
+    }
+
+    #[inline]
+    fn num_downloaded(&self) -> usize {
+        self.downloaded.load(Ordering::SeqCst)
+    }
+
+    #[inline]
+    fn num_annotated(&self) -> usize {
+        self.annotated.load(Ordering::SeqCst)
+    }
+}
+
+fn get_comments_progress_bar(
+    total_bytes: u64,
+    statistics: &Arc<Statistics>,
+    show_annotated: bool,
+) -> Progress {
+    Progress::new(
+        move |statistics| {
+            let num_downloaded = statistics.num_downloaded();
+            let num_annotated = statistics.num_annotated();
+            (
+                num_downloaded as u64,
+                format!(
+                    "{} {}{}",
+                    num_downloaded.to_string().bold(),
+                    "comments".dimmed(),
+                    if show_annotated {
+                        format!(" [{} {}]", num_annotated, "annotated".dimmed())
+                    } else {
+                        "".into()
+                    }
+                ),
+            )
+        },
+        &statistics,
+        total_bytes,
+        ProgressOptions {
+            bytes_units: false,
+            ..Default::default()
+        },
+    )
+}

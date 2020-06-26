@@ -1,0 +1,25 @@
+#!/bin/bash
+set -ex
+
+cd "$(dirname "$0")"
+
+CLI_VERSION="$(toml get Cargo.toml package.version | sed s/\"//g)"
+export CLI_VERSION
+
+
+echo "Building version $CLI_VERSION (x86_64-unknown-linux-musl)"
+
+cargo build --release --target x86_64-unknown-linux-musl
+cargo deb  --target x86_64-unknown-linux-musl
+# Upload executable
+gsutil cp ../target/x86_64-unknown-linux-musl/release/re "gs://reinfer-public/cli/bin/x86_64-unknown-linux-musl/${CLI_VERSION}/re"
+
+
+echo "Building version $CLI_VERSION (x86_64-unknown-linux)"
+
+cargo build --release
+cargo deb
+# Upload executable
+gsutil cp ../target/release/re "gs://reinfer-public/cli/bin/x86_64-unknown-linux/${CLI_VERSION}/re"
+# Upload deb package
+gsutil cp "../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb" gs://reinfer-public/cli/debian/

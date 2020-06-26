@@ -1,0 +1,123 @@
+use colored::{ColoredString, Colorize};
+use env_logger::{fmt::Formatter as LogFormatter, Builder as LogBuilder};
+use failchain::ResultExt;
+use lazy_static::lazy_static;
+use log::{Level as LogLevel, LevelFilter as LogLevelFilter, Record as LogRecord};
+use reqwest::Url;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::{
+    env,
+    io::{self, Write},
+    ops::Deref,
+};
+
+use crate::errors::{ErrorKind, Result};
+
+pub fn init_env_logger(verbose: bool) {
+    let format = |formatter: &mut LogFormatter, record: &LogRecord| {
+        let level = match record.level() {
+            LogLevel::Debug => LOG_PREFIX_DEBUG.deref(),
+            LogLevel::Info => LOG_PREFIX_INFO.deref(),
+            LogLevel::Warn => LOG_PREFIX_WARN.deref(),
+            LogLevel::Error => LOG_PREFIX_ERROR.deref(),
+            LogLevel::Trace => LOG_PREFIX_TRACE.deref(),
+        };
+        writeln!(formatter, "{} {}", level, record.args())
+    };
+
+    let mut builder = LogBuilder::new();
+    builder.format(format).filter(
+        None,
+        if verbose {
+            LogLevelFilter::Debug
+        } else {
+            LogLevelFilter::Info
+        },
+    );
+
+    if env::var("RUST_LOG").is_ok() {
+        builder.parse_filters(&env::var("RUST_LOG").unwrap());
+    }
+
+    builder.init();
+}
+
+pub fn read_from_stdin(message: &str, default: Option<&str>) -> Result<String> {
+    let mut input = String::new();
+    write!(
+        io::stderr(),
+        "{} {}{}: ",
+        LOG_PREFIX_INPUT.deref(),
+        message,
+        if let Some(value) = default {
+            format!(" [{}]", value)
+        } else {
+            "".into()
+        },
+    )
+    .and_then(|_| io::stderr().flush())
+    .and_then(|_| io::stdin().read_line(&mut input))
+    .chain_err(|| ErrorKind::Config("Failed to read from stdin.".into()))?;
+    input = input.trim().into();
+    Ok(match (input.is_empty(), default) {
+        (true, Some(default)) => default.into(),
+        _ => input,
+    })
+}
+
+pub fn read_token_from_stdin() -> Result<Option<String>> {
+    let mut input = String::new();
+    write!(
+        io::stderr(),
+        "{} Enter API token [none]: ",
+        LOG_PREFIX_INPUT.deref()
+    )
+    .and_then(|_| io::stderr().flush())
+    .and_then(|_| io::stdin().read_line(&mut input))
+    .chain_err(|| ErrorKind::Config("Failed to read API token from stdin.".into()))?;
+    input = input.trim().into();
+    Ok(if !input.is_empty() { Some(input) } else { None })
+}
+
+pub fn print_resources_as_json<Resource>(
+    resources: impl IntoIterator<Item = Resource>,
+    mut writer: impl Write,
+) -> Result<()>
+where
+    Resource: Serialize,
+{
+    for resource in resources {
+        serde_json::to_writer(&mut writer, &resource)
+            .chain_err(|| ErrorKind::Config("Could not serialise resource.".into()))
+            .and_then(|_| {
+                writeln!(writer).chain_err(|| {
+                    ErrorKind::Config("Failed to write JSON resource to stdout.".into())
+                })
+            })?;
+    }
+    Ok(())
+}
+
+lazy_static! {
+    pub static ref LOG_PREFIX_DEBUG: ColoredString = "D".normal();
+    pub static ref LOG_PREFIX_INFO: ColoredString = "I".green();
+    pub static ref LOG_PREFIX_WARN: ColoredString = "W".yellow().bold();
+    pub static ref LOG_PREFIX_ERROR: ColoredString = "E".red().bold();
+    pub static ref LOG_PREFIX_TRACE: ColoredString = "T".normal();
+    pub static ref LOG_PREFIX_INPUT: ColoredString = "*".blue().bold();
+}
+
+pub fn serialize_url<S>(value: &Url, serializer: S) -> std::result::Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(value.as_str())
+}
+
+pub fn deserialize_url<'de, D>(deserializer: D) -> std::result::Result<Url, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let url_string: String = Deserialize::deserialize(deserializer)?;
+    Url::parse(&url_string).map_err(|error| serde::de::Error::custom(error.to_string()))
+}

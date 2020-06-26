@@ -1,0 +1,29 @@
+[package]
+name = "reinfer-cli"
+version = "0.2.3"
+edition = "2018"
+readme = "README.md"
+authors = ["reinfer Ltd. <eng@reinfer.io>"]
+description = "Command line interface for the reinfer platform."
+
+[[bin]]
+name = "re"
+path = "src/main.rs"
+
+[dependencies]
+chrono = "0.4.11"
+colored = "1.9.3"
+dirs = "3.0.0"
+env_logger = "0.7.1"
+failchain = "0.1015.2"
+failure = "0.1.6"
+indicatif = "0.15.0"
+lazy_static = "1.4.0"
+log = { version = "0.4.8", default-features = false, features = ["release_max_level_info"] }
+maplit = "1.0.2"
+prettytable-rs = "0.8.0"
+reinfer-client = { path = "../api" }
+reqwest = { version = "0.10.6", default-features = false }
+serde = { version = "1.0.114", features = ["derive"] }
+serde_json = "1.0.55"
+structopt = { version = "0.3.15", default-features = false }

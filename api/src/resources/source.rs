@@ -1,0 +1,128 @@
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use std::{
+    fmt::{Display, Formatter, Result as FmtResult},
+    str::FromStr,
+};
+
+use crate::{
+    errors::{Error, ErrorKind, Result},
+    resources::bucket::Id as BucketId,
+    resources::user::Username,
+};
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Source {
+    pub id: Id,
+    pub owner: Username,
+    pub name: Name,
+    pub title: String,
+    pub description: String,
+    pub language: String,
+    pub should_translate: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl Source {
+    pub fn full_name(&self) -> FullName {
+        FullName(format!("{}/{}", self.owner.0, self.name.0))
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Name(pub String);
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct FullName(pub String);
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Id(pub String);
+
+// TODO(mcobzarenco)[3963]: Make `Identifier` into a trait (ensure it still implements
+// `FromStr` so we can take T: Identifier as a clap command line argument).
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum Identifier {
+    Id(Id),
+    FullName(FullName),
+}
+
+impl From<Id> for Identifier {
+    fn from(id: Id) -> Self {
+        Identifier::Id(id)
+    }
+}
+
+impl From<FullName> for Identifier {
+    fn from(full_name: FullName) -> Self {
+        Identifier::FullName(full_name)
+    }
+}
+
+impl FromStr for Identifier {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Self> {
+        if string.chars().all(|c| c.is_digit(16)) {
+            Ok(Identifier::Id(Id(string.into())))
+        } else if string.split('/').count() == 2 {
+            Ok(Identifier::FullName(FullName(string.into())))
+        } else {
+            Err(ErrorKind::BadSourceIdentifier {
+                identifier: string.into(),
+            }
+            .into())
+        }
+    }
+}
+
+impl Display for Identifier {
+    fn fmt(&self, formatter: &mut Formatter) -> FmtResult {
+        write!(
+            formatter,
+            "{}",
+            match *self {
+                Identifier::Id(ref id) => &id.0,
+                Identifier::FullName(ref full_name) => &full_name.0,
+            }
+        )
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct NewSource<'request> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<&'request str>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<&'request str>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub language: Option<&'request str>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub should_translate: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bucket_id: Option<BucketId>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct CreateRequest<'request> {
+    pub source: NewSource<'request>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct CreateResponse {
+    pub source: Source,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct GetAvailableResponse {
+    pub sources: Vec<Source>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct GetResponse {
+    pub source: Source,
+}

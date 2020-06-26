@@ -1,0 +1,7 @@
+#!/bin/sh
+set -ex
+cd "$(dirname "$0")"
+
+../ci/rshelp/rs-lint
+../ci/rshelp/rs-test
+cargo test --offline --locked --manifest-path cli/Cargo.toml
