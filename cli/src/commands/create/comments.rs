@@ -165,7 +165,7 @@ fn upload_comments_from_reader(
                     ))
                 })?;
 
-            if dataset_name.is_some() && new_comment.is_reviewed() {
+            if dataset_name.is_some() && new_comment.has_annotations() {
                 with_annotations.push((
                     CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0)),
                     new_comment.clone(),
