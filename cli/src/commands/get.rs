@@ -499,7 +499,7 @@ fn get_comments_from_uids(
                         annotated = annotated.without_predictions();
                     }
                     annotated.comment = comment;
-                    if annotated.is_reviewed() {
+                    if annotated.has_annotations() {
                         statistics.add_annotated(1);
                     }
                     annotated
