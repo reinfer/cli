@@ -311,7 +311,7 @@ pub struct AnnotatedComment {
 }
 
 impl AnnotatedComment {
-    pub fn is_reviewed(&self) -> bool {
+    pub fn has_annotations(&self) -> bool {
         let has_labels = self
             .labelling
             .as_ref()
@@ -356,7 +356,7 @@ pub struct NewAnnotatedComment {
 }
 
 impl NewAnnotatedComment {
-    pub fn is_reviewed(&self) -> bool {
+    pub fn has_annotations(&self) -> bool {
         let has_labels = self
             .labelling
             .as_ref()
