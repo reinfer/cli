@@ -1,6 +1,32 @@
-# reinfer/cli
+<p align="center">
+    <a href="https://reinfer.io">
+    <img alt="reinfer-cli" src="https://user-images.githubusercontent.com/797170/86259580-19d33180-bbb4-11ea-9909-3c31251345f1.png" width="128">
+  </a>
+</p>
 
-`re` is the command line interface for [reinfer](https://reinfer.io). It simplifies managing reinfer resources, such as sources and datasets, as well as importing or exporting communications data. Additionally, `re` maintains multiple contexts, making it easy to switch between multiple authentication tokens for different users (and endpoints for multiple clusters if needed).
+<p align="center">
+  Command line interface for Re:infer
+</p>
+
+<p align="center">
+  <a href="https://github.com/reinfer/cli/actions?query=workflow%3ABuild">
+    <img alt="Build Status" src="https://github.com/reinfer/cli/workflows/Build/badge.svg">
+  </a>
+
+  <a href="https://crates.io/crates/reinfer-cli">
+    <img alt="Crates.io" src="https://img.shields.io/crates/v/reinfer-cli.svg">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://reinfer.io/docs">
+    API Documentation
+  </a> | <a href="https://reinfer.io">
+    Website
+  </a>
+</p>
+
+`re` is the official command line interface for [Re:infer](https://reinfer.io). It simplifies managing resources, such as sources and datasets, as well as importing or exporting communications data. Additionally, `re` maintains multiple contexts, making it easy to switch between multiple authentication tokens for different users (and endpoints for multiple clusters if needed).
 
 #### API Library
 
@@ -23,16 +49,15 @@ The [api](/api) directory contains a Rust client library for reinfer which can b
 
 ## Installation
 
-### Debian / Ubuntu
-
-You can download a `.deb` package [here](https://reinfer.io/public/cli/debian/reinfer-cli_0.2.1_amd64.deb).
-
 ### Binary
 
-You can download binaries for your platform below:
+Statically linked binaries with no dependencies are provided for selected platforms:
 
-- [x86_64-unknown-linux-musl](https://reinfer.io/public/cli/bin/x86_64-unknown-linux-musl/0.2.1/re) (statically linked)
-- [x86_64-unknown-linux](https://reinfer.io/public/cli/bin/x86_64-unknown-linux/0.2.1/re) (dynamically linked)
+- [x86_64-unknown-linux-musl](https://reinfer.io/public/cli/bin/x86_64-unknown-linux-musl/0.3.0/re)
+
+### Debian / Ubuntu
+
+You can download a `.deb` package [here](https://reinfer.io/public/cli/debian/reinfer-cli_0.3.0_amd64.deb).
 
 ### From Source
 
@@ -43,8 +68,7 @@ To build from source, you need a recent version of the [Rust toolchain](https://
 To install using `cargo install` run the following.
 
 ```
-cd cli
-cargo install --force --path . reinfer-cli
+cargo install reinfer-cli
 ```
 
 Ensure you have the cargo bin directory in your path (typically `~/.cargo/bin`).
@@ -65,7 +89,7 @@ sudo mv ../target/release/re /usr/local/bin/
 
 ## Getting Started
 
-Check the installation and see a full listing of the available commands by running `re`.
+Check the installation and see a full listing of the available commands by running `re` with no arguments.
 
 ### Authentication
 
@@ -140,20 +164,13 @@ The token and endpoint for the current context will be used for all subsequent c
 
 WIP
 
-## Roadmap and known issues
+# License
 
-- [x] Ability to upload comments to a source
-- [x] Ability to upload comments to a source and jointly upload associated
-      labellings/entities to a dataset (similar to the `tools/put_comments`)
-- [ ] Get CI to build `deb` package and binary automatically
-- [ ] `inspect` command for resources with a detailed view
-- [ ] Configurable columns for table view for `re get`
-- [ ] Ability to create users
-- [ ] Update operations for sources, datasets and users
-- [ ] Specialise errors for common failures (such as missing sources, datasets etc.)
-- [ ] Global `--no-color` argument for headless usage
-- [ ] CRUD operations for labellers
+This project is licensed under Apache License, Version 2.0 ([LICENSE](LICENSE) or http://www.apache.org/licenses/LICENSE-2.0).
 
-### Updating binary and Debian package
+### Contribution
 
-Creating binaries and Debian packages should eventually be done automatically by CI. For now, there's a small script `publish-binaries` that does it.
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the `reinfer-cli` or `reinfer-client` crate, as defined in the
+Apache-2.0 license, shall be licensed as above, without any additional terms or
+conditions.
