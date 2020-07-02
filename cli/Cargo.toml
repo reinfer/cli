@@ -13,7 +13,7 @@ name = "re"
 path = "src/main.rs"
 
 [dependencies]
-chrono = "0.4.11"
+chrono = "0.4.12"
 colored = "1.9.3"
 dirs = "3.0.0"
 env_logger = "0.7.1"
