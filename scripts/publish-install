@@ -3,4 +3,6 @@
 set -ex
 
 rustup target add x86_64-unknown-linux-musl
-sudo apt-get install python-toml
+sudo apt-get install          \
+  musl-tools                  \
+  python-toml
