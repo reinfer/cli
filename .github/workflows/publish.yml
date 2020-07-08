@@ -23,6 +23,8 @@ jobs:
         run: ./scripts/build
       - name: Run tests
         run: ./scripts/check
+      - name: Install publish dependencies
+        run: ./scripts/publish-install
       - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
         with:
           version: "299.0.0"

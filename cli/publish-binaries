@@ -3,7 +3,8 @@ set -ex
 
 cd "$(dirname "$0")"
 
-CLI_VERSION="$(toml get Cargo.toml package.version | sed s/\"//g)"
+# requires toml package (apt-get install python-toml)
+CLI_VERSION="$(python -c 'import toml; fh = open("Cargo.toml"); data = toml.load(fh); print(data["package"]["version"])')"
 export CLI_VERSION
 
 
