@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -ex
+
+cd "$(dirname "$0")/.."
+ROOT="$PWD"
+
+cd "$ROOT/api"
+cargo publish
+
+cd "$ROOT/cli"
+cargo publish

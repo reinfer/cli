@@ -1,10 +1,8 @@
-name: Build
+name: Publish
 
 on:
   push:
-    branches: [master]
-  pull_request:
-    branches: [master]
+    tags: v*
 
 env:
   CARGO_TERM_COLOR: always
@@ -25,3 +23,13 @@ jobs:
         run: ./scripts/build
       - name: Run tests
         run: ./scripts/check
+      - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          version: "299.0.0"
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+      - name: Publish Binaries
+        run: ./cli/publish-binaries
+      - name: Publish Crates
+        run: |
+          cargo login ${{ secrets.CRATES_IO_TOKEN }}
+          ./scripts/publish
