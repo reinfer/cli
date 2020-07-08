@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -ex
+
+rustup install component x86_64-unknown-linux-musl
+sudo apt-get install python-toml
