@@ -15,7 +15,7 @@ use structopt::{clap::Shell as ClapShell, StructOpt};
 
 use crate::{
     args::{Args, Command, Shell},
-    commands::{config as config_command, create, delete, get},
+    commands::{config as config_command, create, delete, get, task},
     config::ReinferConfig,
     errors::{Error, ErrorKind, Result},
 };
@@ -44,6 +44,11 @@ fn run(args: Args) -> Result<()> {
         Command::Create { ref create_args } => {
             create::run(create_args, client_from_args(&args, &config)?)
         }
+        Command::Task { ref task_args } => task::run(
+            task_args,
+            client_from_args(&args, &config)?,
+            args.experimental,
+        ),
     }
 }
 

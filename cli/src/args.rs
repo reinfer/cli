@@ -3,7 +3,9 @@ use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 
 use crate::{
-    commands::{config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs},
+    commands::{
+        config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs, task::TaskArgs,
+    },
     errors::{Error, ErrorKind, Result},
 };
 
@@ -43,6 +45,10 @@ pub struct Args {
 
     #[structopt(subcommand)]
     pub command: Command,
+
+    /// Enable experimental features. These may break without warning at any time.
+    #[structopt(long = "experimental")]
+    pub experimental: bool,
 }
 
 #[derive(Debug, StructOpt)]
@@ -77,6 +83,13 @@ pub enum Command {
     Get {
         #[structopt(subcommand)]
         get_args: GetArgs,
+    },
+
+    #[structopt(name = "task")]
+    /// Run complex tasks that involve multiple resources.
+    Task {
+        #[structopt(subcommand)]
+        task_args: TaskArgs,
     },
 }
 
