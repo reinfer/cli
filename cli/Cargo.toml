@@ -21,7 +21,7 @@ failchain = "0.1015.2"
 failure = "0.1.6"
 indicatif = "0.15.0"
 lazy_static = "1.4.0"
-log = { version = "0.4.8", default-features = false, features = ["release_max_level_info"] }
+log = { version = "0.4.11", default-features = false, features = ["release_max_level_info"] }
 maplit = "1.0.2"
 prettytable-rs = "0.8.0"
 reqwest = { version = "0.10.6", default-features = false }
