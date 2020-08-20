@@ -12,6 +12,9 @@ pub enum ErrorKind {
     #[fail(display = "{}", 0)]
     Config(String),
 
+    #[fail(display = "Input error: {}", 0)]
+    Input(String),
+
     #[fail(display = "Unknown shell `{}`", 0)]
     UnknownShell(String),
 

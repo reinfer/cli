@@ -80,6 +80,14 @@ pub struct CommentsIterPage {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub(crate) struct PutCommentsRequest<'request> {
+    pub comments: &'request [NewComment],
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PutCommentsResponse;
+
+#[derive(Debug, Clone, Serialize)]
 pub(crate) struct SyncCommentsRequest<'request> {
     pub comments: &'request [NewComment],
 }

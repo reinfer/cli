@@ -21,8 +21,8 @@ use crate::resources::{
         GetAvailableResponse as GetAvailableBucketsResponse, GetResponse as GetBucketResponse,
     },
     comment::{
-        GetAnnotationsResponse, GetLabellingsAfter, GetRecentRequest, RecentCommentsPage,
-        SyncCommentsRequest, UpdateAnnotationsRequest,
+        GetAnnotationsResponse, GetLabellingsAfter, GetRecentRequest, PutCommentsRequest,
+        PutCommentsResponse, RecentCommentsPage, SyncCommentsRequest, UpdateAnnotationsRequest,
     },
     dataset::{
         CreateRequest as CreateDatasetRequest, CreateResponse as CreateDatasetResponse,
@@ -218,7 +218,7 @@ impl Client {
             after,
         };
         Ok(self.get_query::<_, _, _, SimpleApiError>(
-            self.endpoints.get_comments(source_name)?,
+            self.endpoints.comments(source_name)?,
             &query_params,
         )?)
     }
@@ -231,6 +231,17 @@ impl Client {
         timerange: CommentsIterTimerange,
     ) -> CommentsIter<'a> {
         CommentsIter::new(self, source_name, page_size, timerange)
+    }
+
+    pub fn put_comments(
+        &self,
+        source_name: &SourceFullName,
+        comments: &[NewComment],
+    ) -> Result<PutCommentsResponse> {
+        Ok(self.put::<_, _, _, SimpleApiError>(
+            self.endpoints.comments(source_name)?,
+            PutCommentsRequest { comments },
+        )?)
     }
 
     pub fn sync_comments(
@@ -881,7 +892,7 @@ impl Endpoints {
             })
     }
 
-    fn get_comments(&self, source_name: &SourceFullName) -> Result<Url> {
+    fn comments(&self, source_name: &SourceFullName) -> Result<Url> {
         self.base
             .join(&format!("/api/_private/sources/{}/comments", source_name.0))
             .chain_err(|| ErrorKind::Unknown {
