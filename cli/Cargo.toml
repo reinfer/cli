@@ -7,10 +7,14 @@ readme = "README.md"
 authors = ["reinfer Ltd. <eng@reinfer.io>"]
 license = "Apache-2.0"
 edition = "2018"
+autotests = false
 
 [[bin]]
 name = "re"
 path = "src/main.rs"
+
+[[test]]
+name = "tests"
 
 [dependencies]
 chrono = "0.4.11"
@@ -30,3 +34,6 @@ serde_json = "1.0.55"
 structopt = { version = "0.3.15", default-features = false }
 
 reinfer-client = { version = "0.4.0", path = "../api" }
+
+[dev-dependencies]
+uuid = { version = "0.8.1", features = ["v4"] }
