@@ -1,4 +1,4 @@
-# next
+# v0.4.0
 
 ## Added
 - `create comments`: Add check for duplicate comment IDs before attempting upload of a comment file. Use `--allow-duplicates` to skip this check.
