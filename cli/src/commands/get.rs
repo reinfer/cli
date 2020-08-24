@@ -63,9 +63,9 @@ pub enum GetArgs {
         /// Dataset name or id
         dataset: Option<DatasetIdentifier>,
 
-        #[structopt(long = "progress")]
-        /// Whether to display a progress bar.
-        show_progress: Option<bool>,
+        #[structopt(long)]
+        /// Don't display a progress bar (only applicable when --file is used).
+        no_progress: bool,
 
         #[structopt(long = "predictions")]
         /// Save predicted labels and entities for each comment.
@@ -196,7 +196,7 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
         GetArgs::Comments {
             source,
             dataset,
-            show_progress,
+            no_progress,
             include_predictions,
             reviewed_only,
             from_timestamp,
@@ -233,7 +233,7 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
                     from: *from_timestamp,
                     to: *to_timestamp,
                 },
-                show_progress: show_progress.unwrap_or(true),
+                show_progress: !no_progress,
             };
 
             if let Some(file) = file {

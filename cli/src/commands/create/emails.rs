@@ -32,9 +32,9 @@ pub struct CreateEmailsArgs {
     /// Number of emails to batch in a single request.
     batch_size: usize,
 
-    #[structopt(long = "progress")]
-    /// Whether to display a progress bar. Only applicable when a file is used.
-    progress: Option<bool>,
+    #[structopt(long)]
+    /// Don't display a progress bar (only applicable when --file is used).
+    no_progress: bool,
 }
 
 pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
@@ -60,10 +60,10 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
                 ErrorKind::Config(format!("Could not open file `{}`", emails_path.display()))
             })?);
             let statistics = Arc::new(Statistics::new());
-            let progress = if args.progress.unwrap_or(true) {
-                Some(progress_bar(file_metadata.len(), &statistics))
-            } else {
+            let progress = if args.no_progress {
                 None
+            } else {
+                Some(progress_bar(file_metadata.len(), &statistics))
             };
             upload_emails_from_reader(&client, &bucket, file, args.batch_size, &statistics)?;
             if let Some(mut progress) = progress {
