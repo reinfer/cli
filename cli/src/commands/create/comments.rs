@@ -297,6 +297,7 @@ fn upload_batch(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn upload_comments_from_reader(
     client: &Client,
     source: &Source,
@@ -519,7 +520,7 @@ mod tests {
     use super::{check_no_duplicate_ids, read_comments_iter, Statistics};
     use std::io::{BufReader, Cursor};
 
-    const SAMPLE_DUPLICATES: &'static str = include_str!("../../../tests/samples/duplicates.jsonl");
+    const SAMPLE_DUPLICATES: &str = include_str!("../../../tests/samples/duplicates.jsonl");
 
     #[test]
     fn test_read_comments_iter() {
