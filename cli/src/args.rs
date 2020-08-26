@@ -86,7 +86,7 @@ pub enum Command {
     },
 
     #[structopt(name = "task")]
-    /// Run complex tasks that involve multiple resources.
+    /// Run complex oneoff tasks that involve multiple resources.
     Task {
         #[structopt(subcommand)]
         task_args: TaskArgs,

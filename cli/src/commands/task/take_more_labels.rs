@@ -68,6 +68,7 @@ pub fn run(args: &TakeMoreLabelsArgs, client: &Client, experimental: bool) -> Re
     make_progress()?;
 
     for source_id in target_dataset.source_ids.iter() {
+        // Get target comments and their annotations
         for target_comment_batch in
             client.get_labellings_iter(&target_dataset.full_name(), source_id, false, None)
         {
@@ -76,9 +77,12 @@ pub fn run(args: &TakeMoreLabelsArgs, client: &Client, experimental: bool) -> Re
             })?;
             statistics.add_target_comments(target_comment_batch.len());
 
+            // If we care about the target comment, return a lookup of the comment id and existing
+            // target labels
             let mut target_labellings_to_update =
-                get_labellings_with_assigned_label(target_comment_batch, &only_for_target_label);
+                make_labellings_lookup(target_comment_batch, &only_for_target_label);
 
+            // If we don't care about any comments in this batch, get next one
             if target_labellings_to_update.is_empty() {
                 continue;
             }
@@ -93,6 +97,7 @@ pub fn run(args: &TakeMoreLabelsArgs, client: &Client, experimental: bool) -> Re
                     ErrorKind::Client("Getting batch of source labellings failed.".into())
                 })?;
 
+            // For each set of source annotations we need to merge in
             for source_annotated_comment in source_annotated_comments.into_iter() {
                 let AnnotatedComment {
                     comment: Comment { uid, .. },
@@ -103,6 +108,7 @@ pub fn run(args: &TakeMoreLabelsArgs, client: &Client, experimental: bool) -> Re
                 if source_assigned.is_empty() {
                     continue;
                 }
+                // Get the matching dismissed annotations we already have
                 let Labelling {
                     assigned: target_assigned,
                     dismissed,
@@ -122,6 +128,7 @@ pub fn run(args: &TakeMoreLabelsArgs, client: &Client, experimental: bool) -> Re
                     dismissed,
                 };
 
+                // Push the new merged annotations up to the API
                 client
                     .update_labelling(
                         &target_dataset.full_name(),
@@ -140,7 +147,7 @@ pub fn run(args: &TakeMoreLabelsArgs, client: &Client, experimental: bool) -> Re
 }
 
 /// Collect target comment ids and labellings, which contain the given assigend label.
-fn get_labellings_with_assigned_label(
+fn make_labellings_lookup(
     annotated_comments: Vec<AnnotatedComment>,
     assigned_label_name: &LabelName,
 ) -> HashMap<Uid, Labelling> {
@@ -176,17 +183,17 @@ fn merge_assigned_labels(
 ) -> Vec<Label> {
     let mut assigned = target_assigned;
 
-    // We should push all new labels under this parent label, and we have to add it
-    // if we send any child labels.
+    // We should push all new labels under this parent label
+    // So add the parent, label always (we can dedupe later)
     assigned.push(Label {
         name: transferred_label_parent.clone(),
-        // We just arbitrarily set Positive here, as it will also make sense for sentimentless.
+        // We just arbitrarily set Positive here, as we're operating on a sentimentless dataset
         sentiment: Sentiment::Positive,
     });
 
     // For faster checking, delimit our label name so we can use `starts_with`
     let label_prefix_check = format!("{} >", &transferred_label_parent.0);
-    assigned.extend(source_assigned.into_iter().map(|mut label| {
+    let renamed_source_labels = source_assigned.into_iter().map(|mut label| {
         if &label.name == transferred_label_parent || label.name.0.starts_with(&label_prefix_check)
         {
             // If our label begins with or is the new nesting parent, don't nest
@@ -197,7 +204,8 @@ fn merge_assigned_labels(
             label.name = LabelName(format!("{} > {}", transferred_label_parent.0, label.name.0));
             label
         }
-    }));
+    });
+    assigned.extend(renamed_source_labels);
 
     // Deduplicate our assigned labels
     assigned.sort();
