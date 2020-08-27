@@ -43,13 +43,7 @@ pub struct TakeMoreLabelsArgs {
     transferred_label_parent: LabelName,
 }
 
-pub fn run(args: &TakeMoreLabelsArgs, client: &Client, experimental: bool) -> Result<()> {
-    if !experimental {
-        return Err(ErrorKind::Config(
-            "Experimental features must be enabled for this task.".to_owned(),
-        )
-        .into());
-    };
+pub fn run(args: &TakeMoreLabelsArgs, client: &Client) -> Result<()> {
     let TakeMoreLabelsArgs {
         source_dataset,
         target_dataset,

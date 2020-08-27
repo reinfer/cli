@@ -30,3 +30,12 @@ serde_json = "1.0.55"
 structopt = { version = "0.3.15", default-features = false }
 
 reinfer-client = { version = "0.4.0", path = "../api" }
+
+[features]
+default = []
+
+# Enable experimental features that may break at any time.
+experimental = ["alpha"]
+
+# Enable the alpha subcommand.
+alpha = []
