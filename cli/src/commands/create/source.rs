@@ -9,7 +9,7 @@ use crate::errors::{ErrorKind, Result};
 pub struct CreateSourceArgs {
     #[structopt(name = "source-name")]
     /// Full name of the new source <owner>/<name>
-    name: String,
+    name: SourceFullName,
 
     #[structopt(long = "title")]
     /// Set the title of the new source
@@ -60,7 +60,7 @@ pub fn create(client: &Client, args: &CreateSourceArgs) -> Result<()> {
 
     let source = client
         .create_source(
-            &SourceFullName(name.clone()),
+            &name,
             NewSource {
                 title: title.as_ref().map(|title| title.as_str()),
                 description: description.as_ref().map(|description| description.as_str()),

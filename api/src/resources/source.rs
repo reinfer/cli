@@ -36,6 +36,21 @@ pub struct Name(pub String);
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FullName(pub String);
 
+impl FromStr for FullName {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Self> {
+        if string.split('/').count() == 2 {
+            Ok(FullName(string.into()))
+        } else {
+            Err(ErrorKind::BadSourceIdentifier {
+                identifier: string.into(),
+            }
+            .into())
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Id(pub String);
 
@@ -65,13 +80,8 @@ impl FromStr for Identifier {
     fn from_str(string: &str) -> Result<Self> {
         if string.chars().all(|c| c.is_digit(16)) {
             Ok(Identifier::Id(Id(string.into())))
-        } else if string.split('/').count() == 2 {
-            Ok(Identifier::FullName(FullName(string.into())))
         } else {
-            Err(ErrorKind::BadSourceIdentifier {
-                identifier: string.into(),
-            }
-            .into())
+            FullName::from_str(string).map(Identifier::FullName)
         }
     }
 }

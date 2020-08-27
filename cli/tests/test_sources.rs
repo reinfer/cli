@@ -114,3 +114,20 @@ fn test_create_source_custom() {
     assert_eq!(source_info.language, "de");
     assert_eq!(source_info.should_translate, true);
 }
+
+#[test]
+fn test_create_source_requires_owner() {
+    let cli = TestCli::get();
+
+    let output = cli
+        .command()
+        .args(&["create", "source", "source-without-owner"])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&output.stderr).trim(),
+        "error: Invalid value for '<source-name>': Expected <owner>/<name> or a source id, got: source-without-owner"
+    );
+}
