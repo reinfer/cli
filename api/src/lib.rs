@@ -1,18 +1,20 @@
 #![deny(clippy::all)]
 pub mod errors;
 pub mod resources;
+pub mod retry;
 
 use chrono::{DateTime, Utc};
 use failchain::ResultExt;
 use lazy_static::lazy_static;
 use log::debug;
 use reqwest::{
-    blocking::Client as HttpClient,
+    blocking::{Client as HttpClient, Response as HttpResponse},
     header::{HeaderMap, HeaderName, HeaderValue},
-    IntoUrl, Url,
+    IntoUrl, Result as ReqwestResult, Url,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::cell::Cell;
 use std::fmt::Display;
 
 use crate::resources::{
@@ -45,6 +47,8 @@ use crate::resources::{
     },
     ApiError, EmptySuccess, Response, SimpleApiError,
 };
+
+use crate::retry::{Retrier, RetryConfig};
 
 pub use crate::{
     errors::{Error, ErrorKind, Result},
@@ -87,6 +91,9 @@ pub struct Config {
     pub endpoint: Url,
     pub token: Token,
     pub accept_invalid_certificates: bool,
+    /// Retry settings to use, if any. This will apply to all requests except for POST requests
+    /// which are not idempotent (as they cannot be naively retried).
+    pub retry_config: Option<RetryConfig>,
 }
 
 impl Default for Config {
@@ -95,6 +102,7 @@ impl Default for Config {
             endpoint: DEFAULT_ENDPOINT.clone(),
             token: Token("".to_owned()),
             accept_invalid_certificates: false,
+            retry_config: None,
         }
     }
 }
@@ -104,6 +112,7 @@ pub struct Client {
     endpoints: Endpoints,
     http_client: HttpClient,
     headers: HeaderMap,
+    retrier: Option<Retrier>,
 }
 
 #[derive(Serialize)]
@@ -135,10 +144,12 @@ impl Client {
         let http_client = build_http_client(&config)?;
         let headers = build_headers(&config)?;
         let endpoints = Endpoints::new(config.endpoint)?;
+        let retrier = config.retry_config.map(Retrier::new);
         Ok(Client {
             endpoints,
             http_client,
             headers,
+            retrier,
         })
     }
 
@@ -252,6 +263,7 @@ impl Client {
         Ok(self.post::<_, _, _, SimpleApiError>(
             self.endpoints.sync_comments(source_name)?,
             SyncCommentsRequest { comments },
+            Retry::Yes,
         )?)
     }
 
@@ -371,6 +383,7 @@ impl Client {
                 labelling,
                 entities,
             },
+            Retry::No,
         )?)
     }
 
@@ -394,6 +407,7 @@ impl Client {
                 filter,
                 continuation,
             },
+            Retry::No,
         )?)
     }
 
@@ -423,6 +437,7 @@ impl Client {
             .post::<_, _, GetStatisticsResponse, SimpleApiError>(
                 self.endpoints.statistics(dataset_name)?,
                 json!({}),
+                Retry::No,
             )?
             .statistics)
     }
@@ -486,6 +501,7 @@ impl Client {
         self.post::<_, _, _, SimpleApiError>(
             self.endpoints.trigger_fetch(trigger_name)?,
             TriggerFetchRequest { size },
+            Retry::No,
         )
     }
 
@@ -497,6 +513,7 @@ impl Client {
         self.post::<_, _, serde::de::IgnoredAny, SimpleApiError>(
             self.endpoints.trigger_advance(trigger_name)?,
             TriggerAdvanceRequest { sequence_id },
+            Retry::No,
         )?;
         Ok(())
     }
@@ -511,22 +528,25 @@ impl Client {
             TriggerResetRequest {
                 to_comment_created_at,
             },
+            Retry::No,
         )?;
         Ok(())
     }
 
     fn get<LocationT, SuccessT, ErrorT>(&self, url: LocationT) -> Result<SuccessT>
     where
-        LocationT: IntoUrl + Display,
+        LocationT: IntoUrl + Display + Clone,
         for<'de> SuccessT: Deserialize<'de>,
         for<'de> ErrorT: Deserialize<'de> + ApiError,
     {
         debug!("Attempting GET `{}`", url);
         let http_response = self
-            .http_client
-            .get(url)
-            .headers(self.headers.clone())
-            .send()
+            .with_retries(|| {
+                self.http_client
+                    .get(url.clone())
+                    .headers(self.headers.clone())
+                    .send()
+            })
             .chain_err(|| ErrorKind::Unknown {
                 message: "GET operation failed.".to_owned(),
             })?;
@@ -543,18 +563,20 @@ impl Client {
         query: &QueryT,
     ) -> Result<SuccessT>
     where
-        LocationT: IntoUrl + Display,
+        LocationT: IntoUrl + Display + Clone,
         QueryT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
         for<'de> ErrorT: Deserialize<'de> + ApiError,
     {
         debug!("Attempting GET `{}`", url);
         let http_response = self
-            .http_client
-            .get(url)
-            .headers(self.headers.clone())
-            .query(query)
-            .send()
+            .with_retries(|| {
+                self.http_client
+                    .get(url.clone())
+                    .headers(self.headers.clone())
+                    .query(query)
+                    .send()
+            })
             .chain_err(|| ErrorKind::Unknown {
                 message: "GET operation failed.".to_owned(),
             })?;
@@ -567,15 +589,19 @@ impl Client {
 
     fn delete<LocationT, ErrorT>(&self, url: LocationT) -> Result<()>
     where
-        LocationT: IntoUrl + Display,
+        LocationT: IntoUrl + Display + Clone,
         for<'de> ErrorT: Deserialize<'de> + ApiError,
     {
         debug!("Attempting DELETE `{}`", url);
+        let attempts = Cell::new(0);
         let http_response = self
-            .http_client
-            .delete(url)
-            .headers(self.headers.clone())
-            .send()
+            .with_retries(|| {
+                attempts.set(attempts.get() + 1);
+                self.http_client
+                    .delete(url.clone())
+                    .headers(self.headers.clone())
+                    .send()
+            })
             .chain_err(|| ErrorKind::Unknown {
                 message: "DELETE operation failed.".to_owned(),
             })?;
@@ -584,30 +610,48 @@ impl Client {
             .json::<Response<EmptySuccess, ErrorT>>()
             .chain_err(|| ErrorKind::BadJsonResponse)?
             .into_result(status)
-            .map(|_| ())
+            .map_or_else(
+                // Ignore 404 not found if the request had to be re-tried - assume the target
+                // object was deleted on a previous incomplete request.
+                |error| {
+                    if attempts.get() > 1 && status == reqwest::StatusCode::NOT_FOUND {
+                        Ok(())
+                    } else {
+                        Err(error)
+                    }
+                },
+                |_| Ok(()),
+            )
     }
 
     fn post<LocationT, RequestT, SuccessT, ErrorT>(
         &self,
         url: LocationT,
         request: RequestT,
+        retry: Retry,
     ) -> Result<SuccessT>
     where
-        LocationT: IntoUrl + Display,
+        LocationT: IntoUrl + Display + Clone,
         RequestT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
         for<'de> ErrorT: Deserialize<'de> + ApiError,
     {
         debug!("Attempting POST `{}`", url);
-        let http_response = self
-            .http_client
-            .post(url)
-            .headers(self.headers.clone())
-            .json(&request)
-            .send()
-            .chain_err(|| ErrorKind::Unknown {
-                message: "POST operation failed.".to_owned(),
-            })?;
+        let do_request = || {
+            self.http_client
+                .post(url.clone())
+                .headers(self.headers.clone())
+                .json(&request)
+                .send()
+        };
+        let result = match retry {
+            Retry::Yes => self.with_retries(do_request),
+            Retry::No => do_request(),
+        };
+
+        let http_response = result.chain_err(|| ErrorKind::Unknown {
+            message: "POST operation failed.".to_owned(),
+        })?;
         let status = http_response.status();
         http_response
             .json::<Response<SuccessT, ErrorT>>()
@@ -621,18 +665,20 @@ impl Client {
         request: RequestT,
     ) -> Result<SuccessT>
     where
-        LocationT: IntoUrl + Display,
+        LocationT: IntoUrl + Display + Clone,
         RequestT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
         for<'de> ErrorT: Deserialize<'de> + ApiError,
     {
         debug!("Attempting PUT `{}`", url);
         let http_response = self
-            .http_client
-            .put(url)
-            .headers(self.headers.clone())
-            .json(&request)
-            .send()
+            .with_retries(|| {
+                self.http_client
+                    .put(url.clone())
+                    .headers(self.headers.clone())
+                    .json(&request)
+                    .send()
+            })
             .chain_err(|| ErrorKind::Unknown {
                 message: "PUT operation failed.".to_owned(),
             })?;
@@ -642,6 +688,21 @@ impl Client {
             .chain_err(|| ErrorKind::BadJsonResponse)?
             .into_result(status)
     }
+
+    fn with_retries(
+        &self,
+        send_request: impl Fn() -> ReqwestResult<HttpResponse>,
+    ) -> ReqwestResult<HttpResponse> {
+        match &self.retrier {
+            Some(retrier) => retrier.with_retries(send_request),
+            None => send_request(),
+        }
+    }
+}
+
+enum Retry {
+    Yes,
+    No,
 }
 
 pub enum ContinuationKind {
