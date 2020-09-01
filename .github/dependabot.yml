@@ -1,0 +1,11 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: "/api"
+    schedule:
+      interval: "monthly"
+
+  - package-ecosystem: cargo
+    directory: "/cli"
+    schedule:
+      interval: "monthly"

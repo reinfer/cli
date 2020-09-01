@@ -18,7 +18,7 @@ name = "tests"
 
 [dependencies]
 chrono = "0.4.11"
-colored = "1.9.3"
+colored = "2.0"
 dirs = "3.0.0"
 env_logger = "0.7.1"
 failchain = "0.1015.2"

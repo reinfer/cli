@@ -2,6 +2,7 @@
 
 ## Changed
 - `create source`: Improve error message when specifying an invalid source name.
+- Bump all dependencies to latest versions.
 
 # v0.4.0
 
