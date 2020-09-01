@@ -297,6 +297,7 @@ fn upload_batch(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn upload_comments_from_reader(
     client: &Client,
     source: &Source,
