@@ -9,7 +9,10 @@ mod utils;
 use failchain::{ensure, ResultExt};
 use failure::{AsFail, Fail};
 use log::{error, warn};
-use reinfer_client::{Client, Config as ClientConfig, Token, DEFAULT_ENDPOINT};
+use reinfer_client::{
+    retry::{RetryConfig, RetryStrategy},
+    Client, Config as ClientConfig, Token, DEFAULT_ENDPOINT,
+};
 use std::{env, fs, io, path::PathBuf, process};
 use structopt::{clap::Shell as ClapShell, StructOpt};
 
@@ -90,10 +93,20 @@ fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
         ));
     }
 
+    // Retry everything but the very first request.
+    // Retry wait schedule is [5s, 10s, 20s, fail]. (Plus the time for each attempt to timeout.)
+    let retry_config = RetryConfig {
+        strategy: RetryStrategy::Automatic,
+        max_retry_count: 3,
+        base_wait: std::time::Duration::from_secs_f64(5.0),
+        backoff_factor: 2.0,
+    };
+
     Client::new(ClientConfig {
         endpoint,
         token,
         accept_invalid_certificates,
+        retry_config: Some(retry_config),
     })
     .chain_err(|| ErrorKind::Client("Failed to initialise the HTTP client.".into()))
 }
