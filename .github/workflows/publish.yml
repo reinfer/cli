@@ -23,6 +23,9 @@ jobs:
         run: ./scripts/build
       - name: Run tests
         run: ./scripts/check
+        env:
+          REINFER_CLI_TEST_ORG: ${{ secrets.REINFER_CLI_TEST_ORG }}
+          REINFER_CLI_TEST_TOKEN: ${{ secrets.REINFER_CLI_TEST_TOKEN }}
       - name: Install publish dependencies
         run: ./scripts/publish-install
       - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
