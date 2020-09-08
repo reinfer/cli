@@ -1,4 +1,4 @@
-# next
+# v0.4.1
 
 ## Changed
 - `create source`: Improve error message when specifying an invalid source name.
