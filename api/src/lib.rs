@@ -339,7 +339,7 @@ impl Client {
         Ok(self
             .get_query::<_, _, GetAnnotationsResponse, SimpleApiError>(
                 self.endpoints.get_labellings(dataset_name)?,
-                &[("ids", comment_uids_comma_separated_list(comment_uids))],
+                &comment_uid_list_query(comment_uids),
             )?
             .results)
     }
@@ -1081,19 +1081,13 @@ fn build_headers(config: &Config) -> Result<HeaderMap> {
     Ok(headers)
 }
 
-fn comment_uids_comma_separated_list<'a>(
-    mut comment_uids: impl Iterator<Item = &'a CommentUid>,
-) -> String {
-    // Build `query_uids == ",".join(comment_uids)`
-    let mut query_uids = String::new();
-    if let Some(first_uid) = comment_uids.next() {
-        query_uids.push_str(&first_uid.0);
-        for comment_uid in comment_uids {
-            query_uids.push_str(",");
-            query_uids.push_str(&comment_uid.0);
-        }
-    }
-    query_uids
+fn comment_uid_list_query<'a>(
+    comment_uids: impl Iterator<Item = &'a CommentUid>,
+) -> Vec<(&'static str, &'a str)> {
+    // Return a list of pairs ("id", "a"), ("id", "b"), ...
+    // The http client will turn this into a query string of
+    // the form "id=a&id=b&..."
+    comment_uids.map(|uid| ("id", uid.0.as_str())).collect()
 }
 
 lazy_static! {
