@@ -225,6 +225,7 @@ fn check_no_duplicate_ids(comments: impl BufRead) -> Result<()> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn upload_batch(
     client: &Client,
     source: &Source,
@@ -233,6 +234,7 @@ fn upload_batch(
     comments_to_put: &[NewComment],
     comments_to_sync: &[NewComment],
     annotations: &[(CommentUid, Option<NewLabelling>, Option<NewEntities>)],
+    audio_paths: &[(CommentId, PathBuf)],
 ) -> Result<()> {
     let mut uploaded = 0;
     let mut new = 0;
@@ -281,6 +283,19 @@ fn upload_batch(
         }
     }
 
+    // Upload audio
+    for (comment_id, audio_path) in audio_paths.iter() {
+        client
+            .put_comment_audio(&source.id, comment_id, audio_path)
+            .with_context(|| {
+                format!(
+                    "Could not upload audio file at `{}` for comment id `{}",
+                    audio_path.display(),
+                    comment_id.0,
+                )
+            })?;
+    }
+
     Ok(())
 }
 
@@ -300,6 +315,7 @@ fn upload_comments_from_reader(
     let mut comments_to_put = Vec::with_capacity(batch_size);
     let mut comments_to_sync = Vec::new();
     let mut annotations = Vec::new();
+    let mut audio_paths = Vec::new();
 
     // if --overwrite, everything will go to comments_to_sync, so put the default capacity there.
     if overwrite {
@@ -322,6 +338,10 @@ fn upload_comments_from_reader(
             ));
         }
 
+        if let Some(audio_path) = new_comment.audio_path {
+            audio_paths.push((new_comment.comment.id.clone(), audio_path));
+        }
+
         if should_sync_comment(&new_comment.comment.id) {
             comments_to_sync.push(new_comment.comment);
         } else {
@@ -337,10 +357,12 @@ fn upload_comments_from_reader(
                 &comments_to_put,
                 &comments_to_sync,
                 &annotations,
+                &audio_paths,
             )?;
             comments_to_put.clear();
             comments_to_sync.clear();
             annotations.clear();
+            audio_paths.clear();
         }
     }
 
@@ -353,6 +375,7 @@ fn upload_comments_from_reader(
             &comments_to_put,
             &comments_to_sync,
             &annotations,
+            &audio_paths,
         )?;
     }
 
