@@ -1,4 +1,4 @@
-use crate::errors::Error;
+use crate::errors::{Error, Result};
 use chrono::{DateTime, Utc};
 use serde::{
     de::{Deserializer, Error as SerdeError, MapAccess, Visitor},
@@ -16,6 +16,14 @@ use std::{
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Id(pub String);
+
+impl FromStr for Id {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Self> {
+        Ok(Self(string.to_owned()))
+    }
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Uid(pub String);
@@ -237,7 +245,7 @@ const STRING_PROPERTY_PREFIX: &str = "string:";
 const NUMBER_PROPERTY_PREFIX: &str = "number:";
 
 impl Serialize for PropertyMap {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> StdResult<S::Ok, S::Error> {
         let mut state = serializer.serialize_map(Some(self.len()))?;
         if self.0.is_empty() {
             return state.end();
@@ -267,7 +275,7 @@ impl Serialize for PropertyMap {
 
 impl<'de> Deserialize<'de> for PropertyMap {
     #[inline]
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         deserializer.deserialize_any(PropertyMapVisitor)
     }
 }
@@ -281,7 +289,7 @@ impl<'de> Visitor<'de> for PropertyMapVisitor {
     }
 
     #[inline]
-    fn visit_unit<E>(self) -> Result<PropertyMap, E> {
+    fn visit_unit<E>(self) -> StdResult<PropertyMap, E> {
         Ok(PropertyMap::new())
     }
 
@@ -498,7 +506,7 @@ pub struct EntityKind(pub String);
 impl FromStr for EntityKind {
     type Err = Error;
 
-    fn from_str(string: &str) -> Result<Self, Error> {
+    fn from_str(string: &str) -> Result<Self> {
         Ok(EntityKind(string.to_owned()))
     }
 }
@@ -614,17 +622,18 @@ mod tests {
 
     #[test]
     fn property_map_illegal_prefix_deserialize() {
-        let result: Result<PropertyMap, _> =
+        let result: StdResult<PropertyMap, _> =
             serde_json::from_str(r#"{"illegal:something":"18-25"}"#);
         assert!(result.is_err());
     }
 
     #[test]
     fn property_map_illegal_value_for_prefix_deserialize() {
-        let result: Result<PropertyMap, _> = serde_json::from_str(r#"{"string:something":18.0}"#);
+        let result: StdResult<PropertyMap, _> =
+            serde_json::from_str(r#"{"string:something":18.0}"#);
         assert!(result.is_err());
 
-        let result: Result<PropertyMap, _> = serde_json::from_str(r#"{"number:something":"x"}"#);
+        let result: StdResult<PropertyMap, _> = serde_json::from_str(r#"{"number:something":"x"}"#);
         assert!(result.is_err());
     }
 

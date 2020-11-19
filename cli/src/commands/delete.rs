@@ -1,6 +1,6 @@
 use failchain::ResultExt;
 use log::info;
-use reinfer_client::{BucketIdentifier, Client, DatasetIdentifier, SourceIdentifier};
+use reinfer_client::{BucketIdentifier, Client, CommentId, DatasetIdentifier, SourceIdentifier};
 use structopt::StructOpt;
 
 use crate::errors::{ErrorKind, Result};
@@ -13,6 +13,18 @@ pub enum DeleteArgs {
         #[structopt(name = "source")]
         /// Name or id of the source to delete
         source: SourceIdentifier,
+    },
+
+    #[structopt(name = "comments")]
+    /// Delete comments by id in a source.
+    Comments {
+        #[structopt(short = "s", long = "source")]
+        /// Name or id of the source to delete comments from
+        source: SourceIdentifier,
+
+        #[structopt(name = "comment id")]
+        /// Ids of the comments to delete
+        comments: Vec<CommentId>,
     },
 
     #[structopt(name = "bucket")]
@@ -39,6 +51,14 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
                 ErrorKind::Unknown("Operation to delete source has failed.".into())
             })?;
             info!("Deleted source.");
+        }
+        DeleteArgs::Comments { source, comments } => {
+            client
+                .delete_comments(source.clone(), comments)
+                .chain_err(|| {
+                    ErrorKind::Unknown("Operation to delete comments has failed.".into())
+                })?;
+            info!("Deleted comments.");
         }
         DeleteArgs::Dataset { dataset } => {
             client.delete_dataset(dataset.clone()).chain_err(|| {
