@@ -1,5 +1,4 @@
 use lazy_static::lazy_static;
-use reinfer_client::User;
 use std::{
     env,
     ffi::OsStr,
@@ -28,21 +27,9 @@ impl TestCli {
         &TEST_CLI
     }
 
-    pub fn organisation() -> &'static str {
-        lazy_static! {
-            static ref ORGANISATION: String = {
-                if let Ok(org) = env::var("REINFER_CLI_TEST_ORG") {
-                    org
-                } else {
-                    // For convenience default to username being the same as the organisation
-                    let user_output = TestCli::get().run(&["get", "current-user", "--output=json"]);
-                    let user: User = serde_json::from_str(user_output.trim()).unwrap();
-                    user.username.0
-                }
-            };
-        };
-
-        &ORGANISATION
+    pub fn organisation() -> String {
+        env::var("REINFER_CLI_TEST_ORG")
+            .expect("REINFER_CLI_TEST_ORG must be set for integration tests")
     }
 
     pub fn command(&self) -> Command {
