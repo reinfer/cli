@@ -192,13 +192,29 @@ impl Client {
             .source)
     }
 
-    /// Delete a new source.
-    pub fn delete_source(&self, source: impl Into<SourceIdentifier> + Clone) -> Result<()> {
-        let source_id = match source.clone().into() {
+    /// Delete a source.
+    pub fn delete_source(&self, source: impl Into<SourceIdentifier>) -> Result<()> {
+        let source_id = match source.into() {
             SourceIdentifier::Id(source_id) => source_id,
-            SourceIdentifier::FullName(_) => self.get_source(source)?.id,
+            source @ SourceIdentifier::FullName(_) => self.get_source(source)?.id,
         };
         self.delete::<_, SimpleApiError>(self.endpoints.source_by_id(&source_id)?)
+    }
+
+    /// Delete comments by id in a source.
+    pub fn delete_comments(
+        &self,
+        source: impl Into<SourceIdentifier>,
+        comments: &[CommentId],
+    ) -> Result<()> {
+        let source_full_name = match source.into() {
+            source @ SourceIdentifier::Id(_) => self.get_source(source)?.full_name(),
+            SourceIdentifier::FullName(source_full_name) => source_full_name,
+        };
+        self.delete_query::<_, _, SimpleApiError>(
+            self.endpoints.comments_v1(&source_full_name)?,
+            Some(&id_list_query(comments.iter().map(|uid| &uid.0))),
+        )
     }
 
     /// Get a page of comments from a source.
@@ -230,7 +246,7 @@ impl Client {
         };
         Ok(self.get_query::<_, _, _, SimpleApiError>(
             self.endpoints.comments(source_name)?,
-            &query_params,
+            Some(&query_params),
         )?)
     }
 
@@ -321,11 +337,11 @@ impl Client {
 
     pub fn delete_dataset<IdentifierT>(&self, dataset: IdentifierT) -> Result<()>
     where
-        IdentifierT: Into<DatasetIdentifier> + Clone,
+        IdentifierT: Into<DatasetIdentifier>,
     {
-        let dataset_id = match dataset.clone().into() {
+        let dataset_id = match dataset.into() {
             DatasetIdentifier::Id(dataset_id) => dataset_id,
-            DatasetIdentifier::FullName(_) => self.get_dataset(dataset)?.id,
+            dataset @ DatasetIdentifier::FullName(_) => self.get_dataset(dataset)?.id,
         };
         self.delete::<_, SimpleApiError>(self.endpoints.dataset_by_id(&dataset_id)?)
     }
@@ -339,7 +355,7 @@ impl Client {
         Ok(self
             .get_query::<_, _, GetAnnotationsResponse, SimpleApiError>(
                 self.endpoints.get_labellings(dataset_name)?,
-                &comment_uid_list_query(comment_uids),
+                Some(&id_list_query(comment_uids.into_iter().map(|id| &id.0))),
             )?
             .results)
     }
@@ -364,7 +380,7 @@ impl Client {
         Ok(
             self.get_query::<_, _, GetAnnotationsResponse, SimpleApiError>(
                 self.endpoints.get_labellings(dataset_name)?,
-                &query_parameters,
+                Some(&query_parameters),
             )?,
         )
     }
@@ -484,11 +500,11 @@ impl Client {
 
     pub fn delete_bucket<IdentifierT>(&self, bucket: IdentifierT) -> Result<()>
     where
-        IdentifierT: Into<BucketIdentifier> + Clone,
+        IdentifierT: Into<BucketIdentifier>,
     {
-        let bucket_id = match bucket.clone().into() {
+        let bucket_id = match bucket.into() {
             BucketIdentifier::Id(bucket_id) => bucket_id,
-            BucketIdentifier::FullName(_) => self.get_bucket(bucket)?.id,
+            bucket @ BucketIdentifier::FullName(_) => self.get_bucket(bucket)?.id,
         };
         self.delete::<_, SimpleApiError>(self.endpoints.bucket_by_id(&bucket_id)?)
     }
@@ -539,28 +555,13 @@ impl Client {
         for<'de> SuccessT: Deserialize<'de>,
         for<'de> ErrorT: Deserialize<'de> + ApiError,
     {
-        debug!("Attempting GET `{}`", url);
-        let http_response = self
-            .with_retries(|| {
-                self.http_client
-                    .get(url.clone())
-                    .headers(self.headers.clone())
-                    .send()
-            })
-            .chain_err(|| ErrorKind::Unknown {
-                message: "GET operation failed.".to_owned(),
-            })?;
-        let status = http_response.status();
-        http_response
-            .json::<Response<SuccessT, ErrorT>>()
-            .chain_err(|| ErrorKind::BadJsonResponse)?
-            .into_result(status)
+        self.get_query::<LocationT, (), SuccessT, ErrorT>(url, None)
     }
 
     fn get_query<LocationT, QueryT, SuccessT, ErrorT>(
         &self,
         url: LocationT,
-        query: &QueryT,
+        query: Option<&QueryT>,
     ) -> Result<SuccessT>
     where
         LocationT: IntoUrl + Display + Clone,
@@ -571,11 +572,14 @@ impl Client {
         debug!("Attempting GET `{}`", url);
         let http_response = self
             .with_retries(|| {
-                self.http_client
+                let mut request = self
+                    .http_client
                     .get(url.clone())
-                    .headers(self.headers.clone())
-                    .query(query)
-                    .send()
+                    .headers(self.headers.clone());
+                if let Some(query) = query {
+                    request = request.query(query);
+                }
+                request.send()
             })
             .chain_err(|| ErrorKind::Unknown {
                 message: "GET operation failed.".to_owned(),
@@ -592,15 +596,34 @@ impl Client {
         LocationT: IntoUrl + Display + Clone,
         for<'de> ErrorT: Deserialize<'de> + ApiError,
     {
+        self.delete_query::<LocationT, (), ErrorT>(url, None)
+    }
+
+    fn delete_query<LocationT, QueryT, ErrorT>(
+        &self,
+        url: LocationT,
+        query: Option<&QueryT>,
+    ) -> Result<()>
+    where
+        LocationT: IntoUrl + Display + Clone,
+        QueryT: Serialize,
+        for<'de> ErrorT: Deserialize<'de> + ApiError,
+    {
         debug!("Attempting DELETE `{}`", url);
+
         let attempts = Cell::new(0);
         let http_response = self
             .with_retries(|| {
                 attempts.set(attempts.get() + 1);
-                self.http_client
+
+                let mut request = self
+                    .http_client
                     .delete(url.clone())
-                    .headers(self.headers.clone())
-                    .send()
+                    .headers(self.headers.clone());
+                if let Some(query) = query {
+                    request = request.query(query);
+                }
+                request.send()
             })
             .chain_err(|| ErrorKind::Unknown {
                 message: "DELETE operation failed.".to_owned(),
@@ -964,6 +987,17 @@ impl Endpoints {
             })
     }
 
+    fn comments_v1(&self, source_name: &SourceFullName) -> Result<Url> {
+        self.base
+            .join(&format!("/api/v1/sources/{}/comments", source_name.0))
+            .chain_err(|| ErrorKind::Unknown {
+                message: format!(
+                    "Could not build get comments v1 URL for source `{}`.",
+                    source_name.0,
+                ),
+            })
+    }
+
     fn sync_comments(&self, source_name: &SourceFullName) -> Result<Url> {
         self.base
             .join(&format!("/api/v1/sources/{}/sync", source_name.0))
@@ -1081,17 +1115,40 @@ fn build_headers(config: &Config) -> Result<HeaderMap> {
     Ok(headers)
 }
 
-fn comment_uid_list_query<'a>(
-    comment_uids: impl Iterator<Item = &'a CommentUid>,
-) -> Vec<(&'static str, &'a str)> {
+fn id_list_query<'a>(ids: impl Iterator<Item = &'a String>) -> Vec<(&'static str, &'a str)> {
     // Return a list of pairs ("id", "a"), ("id", "b"), ...
     // The http client will turn this into a query string of
     // the form "id=a&id=b&..."
-    comment_uids.map(|uid| ("id", uid.0.as_str())).collect()
+    ids.map(|id| ("id", id.as_str())).collect()
 }
 
 lazy_static! {
     static ref AUTH_HEADER_NAME: HeaderName = HeaderName::from_static("authorization");
     pub static ref DEFAULT_ENDPOINT: Url =
         Url::parse("https://reinfer.io").expect("Default URL is well-formed");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_id_list_query() {
+        assert_eq!(id_list_query(Vec::new().iter()), Vec::new());
+        assert_eq!(
+            id_list_query(vec!["foo".to_owned()].iter()),
+            vec![("id", "foo")]
+        );
+        assert_eq!(
+            id_list_query(
+                vec![
+                    "Stream".to_owned(),
+                    "River".to_owned(),
+                    "Waterfall".to_owned()
+                ]
+                .iter()
+            ),
+            vec![("id", "Stream"), ("id", "River"), ("id", "Waterfall"),]
+        );
+    }
 }
