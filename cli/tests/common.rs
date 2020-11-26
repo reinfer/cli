@@ -50,6 +50,10 @@ impl TestCli {
         self.output(self.command().args(args))
     }
 
+    pub fn run_and_error(&self, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> String {
+        self.output_error(self.command().args(args))
+    }
+
     pub fn run_with_stdin(
         &self,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
@@ -87,5 +91,18 @@ impl TestCli {
         }
 
         String::from_utf8(output.stdout).unwrap()
+    }
+
+    pub fn output_error(&self, command: &mut Command) -> String {
+        let output = command.output().unwrap();
+
+        if output.status.success() {
+            panic!(
+                "succeeded running command (expected failure):\n{}",
+                String::from_utf8_lossy(&output.stdout)
+            );
+        }
+
+        String::from_utf8(output.stderr).unwrap()
     }
 }

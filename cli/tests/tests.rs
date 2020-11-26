@@ -1,5 +1,6 @@
 mod common;
 
+mod test_buckets;
 mod test_comments;
 mod test_sources;
 

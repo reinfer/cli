@@ -4,6 +4,11 @@
 
 - `delete comments`: For deleting multiple comments by comment id from a source.
 
+## Changed
+
+- `create bucket`: Accept an optional `--transform-tag` value for the new bucket.
+- `get buckets`: Display transform tag for retrieved data.
+
 # v0.4.1
 
 ## Changed

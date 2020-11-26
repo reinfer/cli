@@ -579,7 +579,7 @@ fn print_sources_table(sources: &[Source]) {
 
 fn print_buckets_table(buckets: &[Bucket]) {
     let mut table = new_table();
-    table.set_titles(row![bFg => "Name", "ID", "Created (UTC)", "Updated (UTC)"]);
+    table.set_titles(row![bFg => "Name", "ID", "Created (UTC)", "Updated (UTC)", "Transform Tag"]);
     for bucket in buckets.iter() {
         let full_name = format!(
             "{}{}{}",
@@ -592,6 +592,10 @@ fn print_buckets_table(buckets: &[Bucket]) {
             bucket.id.0,
             bucket.created_at.format("%Y-%m-%d %H:%M:%S"),
             bucket.updated_at.format("%Y-%m-%d %H:%M:%S"),
+            match &bucket.transform_tag {
+                Some(transform_tag) => transform_tag.0.as_str().into(),
+                None => "missing".dimmed(),
+            }
         ]);
     }
     table.printstd();

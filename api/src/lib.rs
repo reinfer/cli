@@ -55,7 +55,7 @@ pub use crate::{
     resources::{
         bucket::{
             Bucket, BucketType, FullName as BucketFullName, Id as BucketId,
-            Identifier as BucketIdentifier, Name as BucketName, NewBucket,
+            Identifier as BucketIdentifier, Name as BucketName, NewBucket, TransformTag,
         },
         comment::{
             AnnotatedComment, Comment, CommentFilter, CommentsIterPage, Continuation, Entity,
