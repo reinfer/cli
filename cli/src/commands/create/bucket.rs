@@ -1,6 +1,6 @@
 use failchain::ResultExt;
 use log::info;
-use reinfer_client::{BucketFullName, BucketType, Client, NewBucket};
+use reinfer_client::{BucketFullName, BucketType, Client, NewBucket, TransformTag};
 use structopt::StructOpt;
 
 use crate::errors::{ErrorKind, Result};
@@ -18,6 +18,11 @@ pub struct CreateBucketArgs {
     #[structopt(default_value, long = "type")]
     /// Set the type of the new bucket. Currently, this must be "emails".
     bucket_type: BucketType,
+
+    #[structopt(long = "transform-tag")]
+    /// Set the transform tag of the new bucket. You will be given this value
+    /// by a Re:infer engineer.
+    transform_tag: Option<TransformTag>,
 }
 
 pub fn create(client: &Client, args: &CreateBucketArgs) -> Result<()> {
@@ -25,6 +30,7 @@ pub fn create(client: &Client, args: &CreateBucketArgs) -> Result<()> {
         ref name,
         ref title,
         bucket_type,
+        ref transform_tag,
     } = *args;
 
     let bucket = client
@@ -33,6 +39,7 @@ pub fn create(client: &Client, args: &CreateBucketArgs) -> Result<()> {
             NewBucket {
                 title: title.as_ref().map(|title| title.as_str()),
                 bucket_type,
+                transform_tag: transform_tag.as_ref(),
             },
         )
         .chain_err(|| ErrorKind::Client("Operation to create a bucket has failed".into()))?;
