@@ -28,6 +28,7 @@ re create dataset org/example-dataset -s org/example-source --has-sentiment fals
 
 ## Changed
 
+- `create dataset`: Accept an optional `--model-family` and `--copy-labels-from` for the new dataset.
 - `create bucket`: Accept an optional `--transform-tag` value for the new bucket.
 - `get buckets`: Display transform tag for retrieved data.
 

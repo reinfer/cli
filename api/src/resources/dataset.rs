@@ -120,6 +120,11 @@ pub struct NewDataset<'request> {
 
     #[serde(skip_serializing_if = "EntityDefs::is_empty")]
     pub entity_defs: &'request EntityDefs,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_family: Option<&'request str>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub copy_labels_from: Option<&'request str>,
 }
 
 #[derive(Debug, Clone, Serialize)]
