@@ -9,7 +9,7 @@ use crate::errors::{ErrorKind, Result};
 pub struct CreateBucketArgs {
     #[structopt(name = "bucket-name")]
     /// Full name of the new bucket <owner>/<name>
-    name: String,
+    name: BucketFullName,
 
     #[structopt(long = "title")]
     /// Set the title of the new bucket
@@ -35,7 +35,7 @@ pub fn create(client: &Client, args: &CreateBucketArgs) -> Result<()> {
 
     let bucket = client
         .create_bucket(
-            &BucketFullName(name.clone()),
+            name,
             NewBucket {
                 title: title.as_ref().map(|title| title.as_str()),
                 bucket_type,

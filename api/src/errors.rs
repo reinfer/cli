@@ -50,6 +50,9 @@ pub enum ErrorKind {
     )]
     BadBucketIdentifier { identifier: String },
 
+    #[fail(display = "Expected <owner>/<name>, got: {}", name)]
+    BadBucketName { name: String },
+
     #[fail(display = "Expected a valid bucket type, got: {}", bucket_type)]
     BadBucketType { bucket_type: String },
 
