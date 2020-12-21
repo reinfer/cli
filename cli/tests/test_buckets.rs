@@ -42,3 +42,35 @@ fn test_bucket_with_invalid_transform_tag_fails() {
         "422 Unprocessable Entity: The value 'not-a-valid-transform-tag.0.ABCDEFGH' is not a valid transform tag.")
     );
 }
+
+#[test]
+fn test_create_without_org_fails() {
+    let cli = TestCli::get();
+
+    let output = cli.run_and_error(&["create", "bucket", "bucket-name-without-org"]);
+    assert!(output.contains("Expected <owner>/<name>, got: bucket-name-without-org"));
+}
+
+#[test]
+fn test_create_with_empty_org_fails() {
+    let cli = TestCli::get();
+
+    let output = cli.run_and_error(&["create", "bucket", "/bucket-name-with-empty-org"]);
+    assert!(output.contains("Expected <owner>/<name>, got: /bucket-name-with-empty-org"));
+}
+
+#[test]
+fn test_create_with_empty_bucket_name_fails() {
+    let cli = TestCli::get();
+
+    let output = cli.run_and_error(&["create", "bucket", "org-without-bucket-name/"]);
+    assert!(output.contains("Expected <owner>/<name>, got: org-without-bucket-name/"));
+}
+
+#[test]
+fn test_create_with_too_many_seperators_fails() {
+    let cli = TestCli::get();
+
+    let output = cli.run_and_error(&["create", "bucket", "Bucket/Name/with/too/many/seperators/"]);
+    assert!(output.contains("Expected <owner>/<name>, got: Bucket/Name/with/too/many/seperators"));
+}

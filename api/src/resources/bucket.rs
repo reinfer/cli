@@ -1,4 +1,6 @@
 use chrono::{DateTime, Utc};
+use lazy_static::lazy_static;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::str::FromStr;
@@ -7,6 +9,11 @@ use crate::{
     errors::{Error, ErrorKind, Result},
     resources::user::Username,
 };
+
+lazy_static! {
+    static ref FULL_NAME_REGEX: Regex =
+        Regex::new("^[A-Za-z0-9-_]{1,256}/[A-Za-z0-9-_]{1,256}$").unwrap();
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Bucket {
@@ -70,11 +77,10 @@ impl From<Id> for Identifier {
 
 impl FromStr for Identifier {
     type Err = Error;
-
     fn from_str(string: &str) -> Result<Self> {
         if string.chars().all(|c| c.is_digit(16)) {
             Ok(Identifier::Id(Id(string.into())))
-        } else if string.split('/').count() == 2 {
+        } else if FULL_NAME_REGEX.is_match(string) {
             Ok(Identifier::FullName(FullName(string.into())))
         } else {
             Err(ErrorKind::BadBucketIdentifier {
@@ -165,6 +171,20 @@ impl Display for BucketType {
     fn fmt(&self, formatter: &mut Formatter) -> FmtResult {
         match *self {
             Self::Emails => write!(formatter, "emails"),
+        }
+    }
+}
+
+impl FromStr for FullName {
+    type Err = Error;
+    fn from_str(string: &str) -> Result<Self> {
+        if FULL_NAME_REGEX.is_match(string) {
+            Ok(FullName(string.into()))
+        } else {
+            Err(ErrorKind::BadBucketName {
+                name: string.into(),
+            }
+            .into())
         }
     }
 }
