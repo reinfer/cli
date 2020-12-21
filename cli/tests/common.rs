@@ -35,6 +35,10 @@ impl TestCli {
     pub fn command(&self) -> Command {
         let mut command = Command::new(&self.cli_path);
 
+        if let Some(context) = env::var_os("REINFER_CLI_TEST_CONTEXT") {
+            command.arg("--context").arg(context);
+        }
+
         if let Some(endpoint) = env::var_os("REINFER_CLI_TEST_ENDPOINT") {
             command.arg("--endpoint").arg(endpoint);
         }
