@@ -1,5 +1,9 @@
 # Unreleased
 
+## Breaking
+
+- Updated error types and handling throughout. This changes the publicly visible `reinfer_client::errors` module.
+
 ## Added
 
 - `delete comments`: For deleting multiple comments by comment id from a source.
