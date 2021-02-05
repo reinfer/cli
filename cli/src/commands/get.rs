@@ -1,6 +1,11 @@
+use super::OutputFormat;
+use crate::{
+    progress::{Options as ProgressOptions, Progress},
+    utils::print_resources_as_json,
+};
+use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc};
 use colored::Colorize;
-use failchain::ResultExt;
 use log::info;
 use prettytable::{cell, format, row, Table};
 use reinfer_client::{
@@ -18,13 +23,6 @@ use std::{
     },
 };
 use structopt::StructOpt;
-
-use super::OutputFormat;
-use crate::{
-    errors::{ErrorKind, Result},
-    progress::{Options as ProgressOptions, Progress},
-    utils::print_resources_as_json,
-};
 
 #[derive(Debug, StructOpt)]
 pub enum GetArgs {
@@ -153,13 +151,13 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
     match get_args {
         GetArgs::Datasets { output, dataset } => {
             let datasets = if let Some(dataset) = dataset {
-                vec![client.get_dataset(dataset.clone()).chain_err(|| {
-                    ErrorKind::Client("Operation to list datasets has failed.".into())
-                })?]
+                vec![client
+                    .get_dataset(dataset.clone())
+                    .context("Operation to list datasets has failed.")?]
             } else {
-                let mut datasets = client.get_datasets().chain_err(|| {
-                    ErrorKind::Client("Operation to list datasets has failed.".into())
-                })?;
+                let mut datasets = client
+                    .get_datasets()
+                    .context("Operation to list datasets has failed.")?;
                 datasets.sort_unstable_by(|lhs, rhs| {
                     (&lhs.owner.0, &lhs.name.0).cmp(&(&rhs.owner.0, &rhs.name.0))
                 });
@@ -175,13 +173,13 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
         }
         GetArgs::Sources { output, source } => {
             let sources = if let Some(source) = source {
-                vec![client.get_source(source.clone()).chain_err(|| {
-                    ErrorKind::Client("Operation to list sources has failed.".into())
-                })?]
+                vec![client
+                    .get_source(source.clone())
+                    .context("Operation to list sources has failed.")?]
             } else {
-                let mut sources = client.get_sources().chain_err(|| {
-                    ErrorKind::Client("Operation to list sources has failed.".into())
-                })?;
+                let mut sources = client
+                    .get_sources()
+                    .context("Operation to list sources has failed.")?;
                 sources.sort_unstable_by(|lhs, rhs| {
                     (&lhs.owner.0, &lhs.name.0).cmp(&(&rhs.owner.0, &rhs.name.0))
                 });
@@ -205,20 +203,15 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
         } => {
             let by_timerange = from_timestamp.is_some() || to_timestamp.is_some();
             if dataset.is_some() && by_timerange {
-                return Err(ErrorKind::Config(
+                return Err(anyhow!(
                     "The `dataset` and `from/to-timestamp` options are mutually exclusive."
-                        .to_owned(),
-                )
-                .into());
+                ));
             }
             let file = match path {
                 Some(path) => Some(
                     File::create(path)
-                        .chain_err(|| {
-                            ErrorKind::Config(format!(
-                                "Could not open file for writing `{}`",
-                                path.display()
-                            ))
+                        .with_context(|| {
+                            format!("Could not open file for writing `{}`", path.display())
                         })
                         .map(BufWriter::new)?,
                 ),
@@ -249,13 +242,13 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
         }
         GetArgs::Buckets { output, bucket } => {
             let buckets = if let Some(bucket) = bucket {
-                vec![client.get_bucket(bucket.clone()).chain_err(|| {
-                    ErrorKind::Client("Operation to list buckets has failed.".into())
-                })?]
+                vec![client
+                    .get_bucket(bucket.clone())
+                    .context("Operation to list buckets has failed.")?]
             } else {
-                let mut buckets = client.get_buckets().chain_err(|| {
-                    ErrorKind::Client("Operation to list buckets has failed.".into())
-                })?;
+                let mut buckets = client
+                    .get_buckets()
+                    .context("Operation to list buckets has failed.")?;
                 buckets.sort_unstable_by(|lhs, rhs| {
                     (&lhs.owner.0, &lhs.name.0).cmp(&(&rhs.owner.0, &rhs.name.0))
                 });
@@ -270,11 +263,11 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
         GetArgs::Triggers { dataset, output } => {
             let dataset_name = client
                 .get_dataset(dataset.clone())
-                .chain_err(|| ErrorKind::Client("Operation to get dataset has failed.".into()))?
+                .context("Operation to get dataset has failed.")?
                 .full_name();
             let mut triggers = client
                 .get_triggers(&dataset_name)
-                .chain_err(|| ErrorKind::Client("Operation to list triggers has failed.".into()))?;
+                .context("Operation to list triggers has failed.")?;
             triggers.sort_unstable_by(|lhs, rhs| lhs.name.0.cmp(&rhs.name.0));
 
             match output {
@@ -293,20 +286,14 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
             Some(delay) => loop {
                 let batch = client
                     .fetch_trigger_comments(trigger, *size)
-                    .chain_err(|| {
-                        ErrorKind::Client("Operation to fetch trigger comments failed.".into())
-                    })?;
+                    .context("Operation to fetch trigger comments failed.")?;
                 if batch.results.is_empty() {
                     if batch.filtered == 0 {
                         std::thread::sleep(std::time::Duration::from_secs_f64(*delay));
                     } else {
                         client
                             .advance_trigger(trigger, batch.sequence_id)
-                            .chain_err(|| {
-                                ErrorKind::Client(
-                                    "Operation to advance trigger for batch failed.".into(),
-                                )
-                            })?;
+                            .context("Operation to advance trigger for batch failed.")?;
                     }
                     continue;
                 }
@@ -318,45 +305,35 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
                     if *individual_advance {
                         client
                             .advance_trigger(trigger, result.sequence_id)
-                            .chain_err(|| {
-                                ErrorKind::Client(
-                                    "Operation to advance trigger for comment failed.".into(),
-                                )
-                            })?;
+                            .context("Operation to advance trigger for comment failed.")?;
                     }
                 }
                 if needs_final_advance {
                     client
                         .advance_trigger(trigger, batch.sequence_id)
-                        .chain_err(|| {
-                            ErrorKind::Client(
-                                "Operation to advance trigger for batch failed.".into(),
-                            )
-                        })?;
+                        .context("Operation to advance trigger for batch failed.")?;
                 }
             },
             None => {
                 let batch = client
                     .fetch_trigger_comments(trigger, *size)
-                    .chain_err(|| {
-                        ErrorKind::Client("Operation to fetch trigger comments failed.".into())
-                    })?;
+                    .context("Operation to fetch trigger comments failed.")?;
                 print_resources_as_json(Some(&batch), io::stdout().lock())?;
             }
         },
         GetArgs::Users { output } => {
             let users = client
                 .get_users()
-                .chain_err(|| ErrorKind::Client("Operation to list users has failed.".into()))?;
+                .context("Operation to list users has failed.")?;
             match output {
                 OutputFormat::Table => print_users_table(&users),
                 OutputFormat::Json => print_resources_as_json(users.iter(), io::stdout().lock())?,
             }
         }
         GetArgs::CurrentUser { output } => {
-            let user = client.get_current_user().chain_err(|| {
-                ErrorKind::Client("Operation to get the current user has failed.".into())
-            })?;
+            let user = client
+                .get_current_user()
+                .context("Operation to get the current user has failed.")?;
             match output {
                 OutputFormat::Table => print_users_table(&[user]),
                 OutputFormat::Json => {
@@ -385,16 +362,14 @@ fn download_comments(
 ) -> Result<()> {
     let source = client
         .get_source(source_identifier)
-        .chain_err(|| ErrorKind::Client("Operation to get source has failed.".into()))?;
+        .context("Operation to get source has failed.")?;
     let statistics = Arc::new(Statistics::new());
     let make_progress = |dataset_name: Option<&DatasetFullName>| -> Result<Progress> {
         Ok(get_comments_progress_bar(
             if let Some(dataset_name) = dataset_name {
                 client
                     .get_statistics(dataset_name)
-                    .chain_err(|| {
-                        ErrorKind::Client("Operation to get comment count has failed..".into())
-                    })?
+                    .context("Operation to get comment count has failed..")?
                     .num_comments as u64
             } else {
                 0
@@ -407,7 +382,7 @@ fn download_comments(
     if let Some(dataset_identifier) = options.dataset_identifier {
         let dataset = client
             .get_dataset(dataset_identifier)
-            .chain_err(|| ErrorKind::Client("Operation to get dataset has failed.".into()))?;
+            .context("Operation to get dataset has failed.")?;
         let dataset_name = dataset.full_name();
         let _progress = if options.show_progress {
             Some(make_progress(Some(&dataset_name))?)
@@ -443,9 +418,7 @@ fn download_comments(
         client
             .get_comments_iter(&source.full_name(), None, options.timerange)
             .try_for_each(|page| {
-                let page = page.chain_err(|| {
-                    ErrorKind::Client("Operation to get comments has failed.".into())
-                })?;
+                let page = page.context("Operation to get comments has failed.")?;
                 statistics.add_comments(page.len());
                 print_resources_as_json(
                     page.into_iter().map(|comment| AnnotatedComment {
@@ -476,8 +449,7 @@ fn get_comments_from_uids(
     client
         .get_comments_iter(&source.full_name(), None, Default::default())
         .try_for_each(|page| {
-            let page = page
-                .chain_err(|| ErrorKind::Client("Operation to get comments has failed.".into()))?;
+            let page = page.context("Operation to get comments has failed.")?;
             if page.is_empty() {
                 return Ok(());
             }
@@ -489,9 +461,7 @@ fn get_comments_from_uids(
                 .into_iter()
                 .zip(
                     annotations
-                        .chain_err(|| {
-                            ErrorKind::Client("Operation to get comments has failed.".into())
-                        })?
+                        .context("Operation to get comments has failed.")?
                         .into_iter(),
                 )
                 .map(|(comment, mut annotated)| {
@@ -520,9 +490,7 @@ fn get_reviewed_comments_in_bulk(
     client
         .get_labellings_iter(&dataset_name, &source.id, include_predictions, None)
         .try_for_each(|page| {
-            let page = page.chain_err(|| {
-                ErrorKind::Client("Operation to get labellings has failed.".into())
-            })?;
+            let page = page.context("Operation to get labellings has failed.")?;
             statistics.add_comments(page.len());
             statistics.add_annotated(page.len());
             let comments = page.into_iter().map(|comment| {

@@ -1,5 +1,5 @@
+use anyhow::{Context, Result};
 use colored::Colorize;
-use failchain::ResultExt;
 use log::info;
 use reinfer_client::{Bucket, BucketIdentifier, Client, NewEmail};
 use std::{
@@ -13,10 +13,7 @@ use std::{
 };
 use structopt::StructOpt;
 
-use crate::{
-    errors::{ErrorKind, Result},
-    progress::{Options as ProgressOptions, Progress},
-};
+use crate::progress::{Options as ProgressOptions, Progress};
 
 #[derive(Debug, StructOpt)]
 pub struct CreateEmailsArgs {
@@ -40,7 +37,7 @@ pub struct CreateEmailsArgs {
 pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
     let bucket = client
         .get_bucket(args.bucket.clone())
-        .chain_err(|| ErrorKind::Client(format!("Unable to get bucket {}", args.bucket)))?;
+        .with_context(|| format!("Unable to get bucket {}", args.bucket))?;
 
     let statistics = match args.emails_path {
         Some(ref emails_path) => {
@@ -50,15 +47,16 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
                 bucket.full_name(),
                 bucket.id,
             );
-            let file_metadata = fs::metadata(&emails_path).chain_err(|| {
-                ErrorKind::Config(format!(
+            let file_metadata = fs::metadata(&emails_path).with_context(|| {
+                format!(
                     "Could not get file metadata for `{}`",
                     emails_path.display()
-                ))
+                )
             })?;
-            let file = BufReader::new(File::open(emails_path).chain_err(|| {
-                ErrorKind::Config(format!("Could not open file `{}`", emails_path.display()))
-            })?);
+            let file = BufReader::new(
+                File::open(emails_path)
+                    .with_context(|| format!("Could not open file `{}`", emails_path.display()))?,
+            );
             let statistics = Arc::new(Statistics::new());
             let progress = if args.no_progress {
                 None
@@ -111,23 +109,21 @@ fn upload_emails_from_reader(
     let mut eof = false;
     while !eof {
         line.clear();
-        let bytes_read = emails.read_line(&mut line).chain_err(|| {
-            ErrorKind::Unknown(format!(
-                "Could not read line {} from input stream",
-                line_number
-            ))
-        })?;
+        let bytes_read = emails
+            .read_line(&mut line)
+            .with_context(|| format!("Could not read line {} from input stream", line_number))?;
 
         if bytes_read == 0 {
             eof = true;
         } else {
             statistics.add_bytes_read(bytes_read);
-            let new_email = serde_json::from_str::<NewEmail>(line.trim_end()).chain_err(|| {
-                ErrorKind::Unknown(format!(
-                    "Could not parse email at line {} from input stream",
-                    line_number,
-                ))
-            })?;
+            let new_email =
+                serde_json::from_str::<NewEmail>(line.trim_end()).with_context(|| {
+                    format!(
+                        "Could not parse email at line {} from input stream",
+                        line_number,
+                    )
+                })?;
             batch.push(new_email);
         }
 
@@ -135,7 +131,7 @@ fn upload_emails_from_reader(
             // Upload emails
             client
                 .put_emails(&bucket.full_name(), &batch)
-                .chain_err(|| ErrorKind::Client("Could not upload batch of emails".into()))?;
+                .context("Could not upload batch of emails")?;
             statistics.add_emails(StatisticsUpdate {
                 uploaded: batch.len(),
             });

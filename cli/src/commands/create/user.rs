@@ -1,12 +1,10 @@
-use failchain::ResultExt;
+use anyhow::{anyhow, Context, Result};
 use log::info;
 use reinfer_client::{
     Client, Email, GlobalPermission, NewUser, Organisation, OrganisationPermission, Username,
 };
 use std::collections::hash_map::HashMap;
 use structopt::StructOpt;
-
-use crate::errors::{ErrorKind, Result};
 
 #[derive(Debug, StructOpt)]
 pub struct CreateUserArgs {
@@ -48,9 +46,9 @@ pub fn create(client: &Client, args: &CreateUserArgs) -> Result<()> {
         ),
         (None, permissions) if permissions.is_empty() => HashMap::new(),
         _ => {
-            return Err(ErrorKind::Unknown(
-                "Arguments `--organisation` and `--organisation-permissions` have to be both specified or neither.".into()
-            ).into());
+            return Err(anyhow!(
+                "Arguments `--organisation` and `--organisation-permissions` have to be both specified or neither."
+            ));
         }
     };
 
@@ -61,7 +59,7 @@ pub fn create(client: &Client, args: &CreateUserArgs) -> Result<()> {
             global_permissions,
             organisation_permissions: &organisation_permissions,
         })
-        .chain_err(|| ErrorKind::Client("Operation to create a user has failed.".into()))?;
+        .context("Operation to create a user has failed.")?;
     info!(
         "New user `{}` with email `{}` [id: {}] created successfully",
         user.username.0, user.email.0, user.id.0

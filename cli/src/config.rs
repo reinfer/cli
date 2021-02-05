@@ -1,4 +1,4 @@
-use failchain::ResultExt;
+use anyhow::{Context, Result};
 use log::debug;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -7,8 +7,6 @@ use std::{
     io::{BufReader, BufWriter},
     path::Path,
 };
-
-use crate::errors::{ErrorKind, Result};
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct ReinferConfig {
@@ -91,19 +89,11 @@ pub struct ContextConfig {
 pub fn read_reinfer_config(path: impl AsRef<Path>) -> Result<ReinferConfig> {
     debug!("Reading config file at `{}`", path.as_ref().display());
     if path.as_ref().exists() {
-        let file = File::open(&path).chain_err(|| {
-            ErrorKind::Config(format!(
-                "Could not open config file `{}`",
-                path.as_ref().display()
-            ))
-        })?;
+        let file = File::open(&path)
+            .with_context(|| format!("Could not open config file `{}`", path.as_ref().display()))?;
         let config_reader = BufReader::new(file);
-        serde_json::from_reader(config_reader).chain_err(|| {
-            ErrorKind::Config(format!(
-                "Could not parse config file `{}`",
-                path.as_ref().display()
-            ))
-        })
+        serde_json::from_reader(config_reader)
+            .with_context(|| format!("Could not parse config file `{}`", path.as_ref().display()))
     } else {
         Ok(Default::default())
     }
@@ -111,17 +101,13 @@ pub fn read_reinfer_config(path: impl AsRef<Path>) -> Result<ReinferConfig> {
 
 pub fn write_reinfer_config(path: impl AsRef<Path>, config: &ReinferConfig) -> Result<()> {
     debug!("Writing config file at `{}`", path.as_ref().display());
-    let file = File::create(&path).chain_err(|| {
-        ErrorKind::Config(format!(
-            "Could not create config file `{}`",
-            path.as_ref().display()
-        ))
-    })?;
+    let file = File::create(&path)
+        .with_context(|| format!("Could not create config file `{}`", path.as_ref().display()))?;
     let config_writer = BufWriter::new(file);
-    serde_json::to_writer_pretty(config_writer, &config).chain_err(|| {
-        ErrorKind::Config(format!(
+    serde_json::to_writer_pretty(config_writer, &config).with_context(|| {
+        format!(
             "Could not serialise configuration to `{}`",
             path.as_ref().display()
-        ))
+        )
     })
 }

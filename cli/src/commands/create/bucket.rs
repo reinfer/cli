@@ -1,9 +1,7 @@
-use failchain::ResultExt;
+use anyhow::{Context, Result};
 use log::info;
 use reinfer_client::{BucketFullName, BucketType, Client, NewBucket, TransformTag};
 use structopt::StructOpt;
-
-use crate::errors::{ErrorKind, Result};
 
 #[derive(Debug, StructOpt)]
 pub struct CreateBucketArgs {
@@ -42,7 +40,7 @@ pub fn create(client: &Client, args: &CreateBucketArgs) -> Result<()> {
                 transform_tag: transform_tag.as_ref(),
             },
         )
-        .chain_err(|| ErrorKind::Client("Operation to create a bucket has failed".into()))?;
+        .context("Operation to create a bucket has failed")?;
     info!(
         "New bucket `{}` [id: {}] created successfully",
         bucket.full_name(),

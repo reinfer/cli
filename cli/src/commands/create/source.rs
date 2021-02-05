@@ -1,9 +1,7 @@
-use failchain::ResultExt;
+use anyhow::{Context, Result};
 use log::info;
 use reinfer_client::{BucketId, BucketIdentifier, Client, NewSource, SourceFullName};
 use structopt::StructOpt;
-
-use crate::errors::{ErrorKind, Result};
 
 #[derive(Debug, StructOpt)]
 pub struct CreateSourceArgs {
@@ -51,7 +49,7 @@ pub fn create(client: &Client, args: &CreateSourceArgs) -> Result<()> {
                 BucketIdentifier::FullName(_) => {
                     client
                         .get_bucket(bucket)
-                        .chain_err(|| ErrorKind::Unknown("Fetching bucket for id.".to_owned()))?
+                        .context("Fetching bucket for id.")?
                         .id
                 }
             })
@@ -69,7 +67,7 @@ pub fn create(client: &Client, args: &CreateSourceArgs) -> Result<()> {
                 bucket_id,
             },
         )
-        .chain_err(|| ErrorKind::Client("Operation to create a source has failed".into()))?;
+        .context("Operation to create a source has failed")?;
     info!(
         "New source `{}` [id: {}] created successfully",
         source.full_name().0,

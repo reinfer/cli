@@ -3,9 +3,8 @@ pub mod create;
 pub mod delete;
 pub mod get;
 
+use anyhow::{anyhow, Error, Result};
 use std::str::FromStr;
-
-use crate::errors::{Error, ErrorKind, Result};
 
 #[derive(Copy, Clone, Debug)]
 pub enum OutputFormat {
@@ -28,7 +27,7 @@ impl FromStr for OutputFormat {
         } else if string == "json" {
             Ok(OutputFormat::Json)
         } else {
-            Err(ErrorKind::UnknownOutputFormat(string.into()).into())
+            Err(anyhow!("{}", string))
         }
     }
 }

@@ -1,6 +1,6 @@
+use anyhow::{Context, Result};
 use colored::{ColoredString, Colorize};
 use env_logger::{fmt::Formatter as LogFormatter, Builder as LogBuilder};
-use failchain::ResultExt;
 use lazy_static::lazy_static;
 use log::{Level as LogLevel, LevelFilter as LogLevelFilter, Record as LogRecord};
 use reqwest::Url;
@@ -10,8 +10,6 @@ use std::{
     io::{self, Write},
     ops::Deref,
 };
-
-use crate::errors::{ErrorKind, Result};
 
 pub fn init_env_logger(verbose: bool) {
     let format = |formatter: &mut LogFormatter, record: &LogRecord| {
@@ -57,7 +55,7 @@ pub fn read_from_stdin(message: &str, default: Option<&str>) -> Result<String> {
     )
     .and_then(|_| io::stderr().flush())
     .and_then(|_| io::stdin().read_line(&mut input))
-    .chain_err(|| ErrorKind::Config("Failed to read from stdin.".into()))?;
+    .context("Failed to read from stdin.")?;
     input = input.trim().into();
     Ok(match (input.is_empty(), default) {
         (true, Some(default)) => default.into(),
@@ -74,7 +72,7 @@ pub fn read_token_from_stdin() -> Result<Option<String>> {
     )
     .and_then(|_| io::stderr().flush())
     .and_then(|_| io::stdin().read_line(&mut input))
-    .chain_err(|| ErrorKind::Config("Failed to read API token from stdin.".into()))?;
+    .context("Failed to read API token from stdin.")?;
     input = input.trim().into();
     Ok(if !input.is_empty() { Some(input) } else { None })
 }
@@ -88,12 +86,8 @@ where
 {
     for resource in resources {
         serde_json::to_writer(&mut writer, &resource)
-            .chain_err(|| ErrorKind::Config("Could not serialise resource.".into()))
-            .and_then(|_| {
-                writeln!(writer).chain_err(|| {
-                    ErrorKind::Config("Failed to write JSON resource to stdout.".into())
-                })
-            })?;
+            .context("Could not serialise resource.")
+            .and_then(|_| writeln!(writer).context("Failed to write JSON resource to stdout."))?;
     }
     Ok(())
 }

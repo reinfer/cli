@@ -1,11 +1,8 @@
+use crate::commands::{config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs};
+use anyhow::{anyhow, Error, Result};
 use reqwest::Url;
 use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
-
-use crate::{
-    commands::{config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs},
-    errors::{Error, ErrorKind, Result},
-};
 
 /// re is the command line interface to reinfer clusters.
 #[derive(Debug, StructOpt)]
@@ -93,7 +90,7 @@ impl FromStr for Shell {
         match string {
             "bash" => Ok(Shell::Bash),
             "zsh" => Ok(Shell::Zsh),
-            _ => Err(ErrorKind::UnknownShell(string.into()).into()),
+            _ => Err(anyhow!("unknown shell: '{}'", string)),
         }
     }
 }

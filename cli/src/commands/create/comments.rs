@@ -1,5 +1,6 @@
+use crate::progress::{Options as ProgressOptions, Progress};
+use anyhow::{anyhow, ensure, Context, Result};
 use colored::Colorize;
-use failchain::{ensure, ResultExt};
 use log::{debug, info};
 use reinfer_client::{
     Client, CommentId, CommentUid, DatasetFullName, DatasetIdentifier, NewAnnotatedComment,
@@ -16,11 +17,6 @@ use std::{
     },
 };
 use structopt::StructOpt;
-
-use crate::{
-    errors::{ErrorKind, Result},
-    progress::{Options as ProgressOptions, Progress},
-};
 
 #[derive(Debug, StructOpt)]
 pub struct CreateCommentsArgs {
@@ -60,23 +56,20 @@ pub struct CreateCommentsArgs {
 pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
     let source = client
         .get_source(args.source.clone())
-        .chain_err(|| ErrorKind::Client(format!("Unable to get source {}", args.source)))?;
+        .with_context(|| format!("Unable to get source {}", args.source))?;
     let source_name = source.full_name();
 
     let dataset_name = match args.dataset.as_ref() {
         Some(dataset_ident) => Some(
             client
                 .get_dataset(dataset_ident.clone())
-                .chain_err(|| ErrorKind::Client(format!("Unable to get dataset {}", args.source)))?
+                .with_context(|| format!("Unable to get dataset {}", args.source))?
                 .full_name(),
         ),
         None => None,
     };
 
-    ensure!(
-        args.batch_size > 0,
-        ErrorKind::Config("--batch-size must be greater than 0".into())
-    );
+    ensure!(args.batch_size > 0, "--batch-size must be greater than 0");
 
     let statistics = match args.comments_path {
         Some(ref comments_path) => {
@@ -86,14 +79,15 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
                 source_name.0,
                 source.id.0,
             );
-            let mut file = BufReader::new(File::open(comments_path).chain_err(|| {
-                ErrorKind::Config(format!("Could not open file `{}`", comments_path.display()))
-            })?);
-            let file_metadata = file.get_ref().metadata().chain_err(|| {
-                ErrorKind::Config(format!(
+            let mut file =
+                BufReader::new(File::open(comments_path).with_context(|| {
+                    format!("Could not open file `{}`", comments_path.display())
+                })?);
+            let file_metadata = file.get_ref().metadata().with_context(|| {
+                format!(
                     "Could not get file metadata for `{}`",
                     comments_path.display()
-                ))
+                )
             })?;
 
             if !args.allow_duplicates {
@@ -103,10 +97,8 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
                 );
                 check_no_duplicate_ids(&mut file)?;
 
-                file.seek(SeekFrom::Start(0)).chain_err(|| {
-                    ErrorKind::Input(
-                        "Unable to seek to file start after checking for duplicate ids".into(),
-                    )
+                file.seek(SeekFrom::Start(0)).with_context(|| {
+                    "Unable to seek to file start after checking for duplicate ids"
                 })?;
             }
 
@@ -142,9 +134,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
             );
             ensure!(
                 args.allow_duplicates,
-                ErrorKind::Config(
-                    "--allow-duplicates is required when uploading from stdin".into()
-                )
+                "--allow-duplicates is required when uploading from stdin"
             );
             let statistics = Statistics::new();
             upload_comments_from_reader(
@@ -196,12 +186,9 @@ fn read_comments_iter<'a>(
         line_number += 1;
         line.clear();
 
-        let read_result = comments.read_line(&mut line).chain_err(|| {
-            ErrorKind::Input(format!(
-                "Could not read line {} from input stream",
-                line_number
-            ))
-        });
+        let read_result = comments
+            .read_line(&mut line)
+            .with_context(|| format!("Could not read line {} from input stream", line_number));
 
         match read_result {
             Ok(0) => return None,
@@ -214,11 +201,11 @@ fn read_comments_iter<'a>(
         }
 
         Some(
-            serde_json::from_str::<NewAnnotatedComment>(line.trim_end()).chain_err(|| {
-                ErrorKind::Input(format!(
+            serde_json::from_str::<NewAnnotatedComment>(line.trim_end()).with_context(|| {
+                format!(
                     "Could not parse comment at line {} from input stream",
                     line_number,
-                ))
+                )
             }),
         )
     })
@@ -231,7 +218,7 @@ fn check_no_duplicate_ids(comments: impl BufRead) -> Result<()> {
         let id = new_comment.comment.id;
 
         if !seen.insert(id.clone()) {
-            return Err(ErrorKind::Input(format!("Duplicate comments with id {}", id.0,)).into());
+            return Err(anyhow!("Duplicate comments with id {}", id.0));
         }
     }
 
@@ -256,7 +243,7 @@ fn upload_batch(
     if !comments_to_put.is_empty() {
         client
             .put_comments(&source.full_name(), &comments_to_put)
-            .chain_err(|| ErrorKind::Client("Could not put batch of comments".into()))?;
+            .context("Could not put batch of comments")?;
 
         uploaded += comments_to_put.len();
     }
@@ -264,7 +251,7 @@ fn upload_batch(
     if !comments_to_sync.is_empty() {
         let result = client
             .sync_comments(&source.full_name(), &comments_to_sync)
-            .chain_err(|| ErrorKind::Client("Could not sync batch of comments".into()))?;
+            .context("Could not sync batch of comments")?;
 
         uploaded += comments_to_sync.len();
         new += result.new;
@@ -289,7 +276,7 @@ fn upload_batch(
                     labelling.as_ref(),
                     entities.as_ref(),
                 )
-                .chain_err(|| ErrorKind::Client("Could not update labelling for comment".into()))?;
+                .context("Could not update labelling for comment")?;
             statistics.add_annotation();
         }
     }

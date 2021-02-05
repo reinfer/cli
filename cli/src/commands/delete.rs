@@ -1,9 +1,7 @@
-use failchain::ResultExt;
+use anyhow::{Context, Result};
 use log::info;
 use reinfer_client::{BucketIdentifier, Client, CommentId, DatasetIdentifier, SourceIdentifier};
 use structopt::StructOpt;
-
-use crate::errors::{ErrorKind, Result};
 
 #[derive(Debug, StructOpt)]
 pub enum DeleteArgs {
@@ -47,29 +45,27 @@ pub enum DeleteArgs {
 pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
     match delete_args {
         DeleteArgs::Source { source } => {
-            client.delete_source(source.clone()).chain_err(|| {
-                ErrorKind::Unknown("Operation to delete source has failed.".into())
-            })?;
+            client
+                .delete_source(source.clone())
+                .context("Operation to delete source has failed.")?;
             info!("Deleted source.");
         }
         DeleteArgs::Comments { source, comments } => {
             client
                 .delete_comments(source.clone(), comments)
-                .chain_err(|| {
-                    ErrorKind::Unknown("Operation to delete comments has failed.".into())
-                })?;
+                .context("Operation to delete comments has failed.")?;
             info!("Deleted comments.");
         }
         DeleteArgs::Dataset { dataset } => {
-            client.delete_dataset(dataset.clone()).chain_err(|| {
-                ErrorKind::Unknown("Operation to delete dataset has failed.".into())
-            })?;
+            client
+                .delete_dataset(dataset.clone())
+                .context("Operation to delete dataset has failed.")?;
             info!("Deleted dataset.");
         }
         DeleteArgs::Bucket { bucket } => {
-            client.delete_bucket(bucket.clone()).chain_err(|| {
-                ErrorKind::Unknown("Operation to delete bucket has failed.".into())
-            })?;
+            client
+                .delete_bucket(bucket.clone())
+                .context("Operation to delete bucket has failed.")?;
             info!("Deleted bucket.");
         }
     };
