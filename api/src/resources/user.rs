@@ -1,12 +1,11 @@
 use chrono::{DateTime, Utc};
-use failchain::ResultExt;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
 };
 
-use crate::errors::{Error, ErrorKind, Result};
+use crate::error::{Error, Result};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Id(pub String);
@@ -18,10 +17,9 @@ impl FromStr for Id {
         if string.chars().all(|c| c.is_digit(16)) {
             Ok(Id(string.into()))
         } else {
-            Err(ErrorKind::BadUserIdentifier {
+            Err(Error::BadUserIdentifier {
                 identifier: string.into(),
-            }
-            .into())
+            })
         }
     }
 }
@@ -39,10 +37,9 @@ impl FromStr for Username {
         {
             Ok(Username(string.into()))
         } else {
-            Err(ErrorKind::BadUserIdentifier {
+            Err(Error::BadUserIdentifier {
                 identifier: string.into(),
-            }
-            .into())
+            })
         }
     }
 }
@@ -71,10 +68,9 @@ impl FromStr for Organisation {
         {
             Ok(Organisation(string.into()))
         } else {
-            Err(ErrorKind::BadUserIdentifier {
+            Err(Error::BadUserIdentifier {
                 identifier: string.into(),
-            }
-            .into())
+            })
         }
     }
 }
@@ -208,8 +204,8 @@ impl FromStr for OrganisationPermission {
     type Err = Error;
 
     fn from_str(string: &str) -> Result<Self> {
-        serde_json::de::from_str(&format!("\"{}\"", string)).chain_err(|| {
-            ErrorKind::BadOrganisationPermission {
+        serde_json::de::from_str(&format!("\"{}\"", string)).map_err(|_| {
+            Error::BadOrganisationPermission {
                 permission: string.into(),
             }
         })
@@ -241,8 +237,8 @@ impl FromStr for GlobalPermission {
     type Err = Error;
 
     fn from_str(string: &str) -> Result<Self> {
-        serde_json::de::from_str(&format!("\"{}\"", string)).chain_err(|| {
-            ErrorKind::BadGlobalPermission {
+        serde_json::de::from_str(&format!("\"{}\"", string)).map_err(|_| {
+            Error::BadGlobalPermission {
                 permission: string.into(),
             }
         })
