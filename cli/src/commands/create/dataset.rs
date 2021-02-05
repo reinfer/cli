@@ -1,13 +1,28 @@
 use anyhow::{Context, Result};
+use lazy_static::lazy_static;
 use log::info;
+use regex::Regex;
 use reinfer_client::{
     resources::dataset::EntityDefs, Client, DatasetFullName, NewDataset, SourceIdentifier,
 };
 use structopt::StructOpt;
 
+lazy_static! {
+    static ref RX_FULL_NAME: Regex =
+        Regex::new("^[A-Za-z0-9-_.]{1,1024}/[A-Za-z0-9-_]{1,256}").unwrap();
+}
+
+/// Ensures the name provided conforms to the <owner>/<name> structure
+fn validate_dataset_name(s: String) -> std::result::Result<(), String> {
+    match RX_FULL_NAME.is_match(&s) {
+        true => Ok(()),
+        false => Err(s),
+    }
+}
+
 #[derive(Debug, StructOpt)]
 pub struct CreateDatasetArgs {
-    #[structopt(name = "dataset-name")]
+    #[structopt(name = "owner-name/dataset-name", validator = validate_dataset_name)]
     /// Full name of the new dataset <owner>/<name>
     name: String,
 
