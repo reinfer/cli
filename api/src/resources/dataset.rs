@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 use crate::{
-    errors::{Error, ErrorKind, Result},
+    error::{Error, Result},
     resources::{comment::EntityKind, source::Id as SourceId, user::Username},
 };
 
@@ -70,10 +70,9 @@ impl FromStr for Identifier {
         } else if string.split('/').count() == 2 {
             Ok(Identifier::FullName(FullName(string.into())))
         } else {
-            Err(ErrorKind::BadDatasetIdentifier {
+            Err(Error::BadDatasetIdentifier {
                 identifier: string.into(),
-            }
-            .into())
+            })
         }
     }
 }

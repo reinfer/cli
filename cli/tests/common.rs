@@ -71,7 +71,7 @@ impl TestCli {
             .stderr(Stdio::piped())
             .spawn()
             .unwrap();
-        process.stdin.as_mut().unwrap().write(stdin).unwrap();
+        process.stdin.as_mut().unwrap().write_all(stdin).unwrap();
         let output = process.wait_with_output().unwrap();
 
         if !output.status.success() {

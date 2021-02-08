@@ -2,25 +2,22 @@
 mod args;
 mod commands;
 mod config;
-mod errors;
 mod progress;
 mod utils;
 
-use failchain::{ensure, ResultExt};
-use failure::{AsFail, Fail};
+use anyhow::{anyhow, Context, Result};
 use log::{error, warn};
 use reinfer_client::{
     retry::{RetryConfig, RetryStrategy},
     Client, Config as ClientConfig, Token, DEFAULT_ENDPOINT,
 };
-use std::{env, fs, io, path::PathBuf, process};
+use std::{fs, io, path::PathBuf, process};
 use structopt::{clap::Shell as ClapShell, StructOpt};
 
 use crate::{
     args::{Args, Command, Shell},
     commands::{config as config_command, create, delete, get},
     config::ReinferConfig,
-    errors::{Error, ErrorKind, Result},
 };
 
 fn run(args: Args) -> Result<()> {
@@ -53,12 +50,9 @@ fn run(args: Args) -> Result<()> {
 fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
     let current_context = if let Some(context_name) = args.context.as_ref() {
         let context = config.get_context(context_name);
-        ensure!(
-            context.is_some(),
-            ErrorKind::Config,
-            "Unknown context `{}`.",
-            context_name
-        );
+        if context.is_none() {
+            return Err(anyhow!("Unknown context `{}`.", context_name));
+        };
         context
     } else {
         config.get_current_context()
@@ -108,7 +102,7 @@ fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
         accept_invalid_certificates,
         retry_config: Some(retry_config),
     })
-    .chain_err(|| ErrorKind::Client("Failed to initialise the HTTP client.".into()))
+    .context("Failed to initialise the HTTP client.")
 }
 
 fn find_configuration(args: &Args) -> Result<PathBuf> {
@@ -121,15 +115,14 @@ fn find_configuration(args: &Args) -> Result<PathBuf> {
         }
         config_path
     } else {
-        let mut config_path = dirs::config_dir().ok_or_else::<Error, _>(|| {
-            ErrorKind::Config("Could not get path to the user's config directory".into()).into()
-        })?;
+        let mut config_path =
+            dirs::config_dir().context("Could not get path to the user's config directory")?;
         config_path.push("reinfer");
-        fs::create_dir_all(&config_path).chain_err(|| {
-            ErrorKind::Config(format!(
+        fs::create_dir_all(&config_path).with_context(|| {
+            format!(
                 "Could not create config directory {}",
                 config_path.display()
-            ))
+            )
         })?;
         config_path.push("contexts.json");
         config_path
@@ -142,20 +135,16 @@ fn main() {
     utils::init_env_logger(args.verbose);
 
     if let Err(error) = run(args) {
-        error!("{}", error);
-        let mut cause = error.as_fail();
-        while let Some(new_cause) = cause.cause() {
-            cause = new_cause;
+        error!("An error occurred:");
+        for cause in error.chain().into_iter() {
             error!(" |- {}", cause);
         }
-        if env::var("RUST_BACKTRACE")
-            .map(|value| value == "1")
-            .unwrap_or(false)
+
+        #[cfg(feature = "backtrace")]
         {
-            if let Some(backtrace) = error.backtrace() {
-                error!("{:?}", backtrace);
-            }
+            error!("{}", error.backtrace());
         }
+
         process::exit(1);
     }
 }

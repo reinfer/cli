@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-use crate::errors::{Error, ErrorKind, Result};
+use crate::error::{Error, Result};
 
 use super::{
     comment::{Comment, CommentFilter, Entity, LabelName, PredictedLabel},
@@ -34,10 +34,9 @@ impl FromStr for FullName {
                 dataset: DatasetFullName(format!("{}/{}", owner, dataset)),
                 trigger: Name(trigger_name.to_owned()),
             }),
-            _ => Err(ErrorKind::BadTriggerName {
+            _ => Err(Error::BadTriggerName {
                 identifier: string.into(),
-            }
-            .into()),
+            }),
         }
     }
 }

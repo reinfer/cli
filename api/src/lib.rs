@@ -1,21 +1,21 @@
 #![deny(clippy::all)]
-pub mod errors;
+mod error;
 pub mod resources;
 pub mod retry;
 
 use chrono::{DateTime, Utc};
-use failchain::ResultExt;
 use lazy_static::lazy_static;
 use log::debug;
 use reqwest::{
     blocking::{Client as HttpClient, Response as HttpResponse},
     header::{HeaderMap, HeaderName, HeaderValue},
-    IntoUrl, Result as ReqwestResult, Url,
+    IntoUrl, Result as ReqwestResult,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::cell::Cell;
 use std::fmt::Display;
+use url::Url;
 
 use crate::resources::{
     bucket::{
@@ -51,7 +51,7 @@ use crate::resources::{
 use crate::retry::{Retrier, RetryConfig};
 
 pub use crate::{
-    errors::{Error, ErrorKind, Result},
+    error::{Error, Result},
     resources::{
         bucket::{
             Bucket, BucketType, FullName as BucketFullName, Id as BucketId,
@@ -581,13 +581,14 @@ impl Client {
                 }
                 request.send()
             })
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::ReqwestError {
+                source,
                 message: "GET operation failed.".to_owned(),
             })?;
         let status = http_response.status();
         http_response
             .json::<Response<SuccessT, ErrorT>>()
-            .chain_err(|| ErrorKind::BadJsonResponse)?
+            .map_err(Error::BadJsonResponse)?
             .into_result(status)
     }
 
@@ -625,13 +626,14 @@ impl Client {
                 }
                 request.send()
             })
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::ReqwestError {
+                source,
                 message: "DELETE operation failed.".to_owned(),
             })?;
         let status = http_response.status();
         http_response
             .json::<Response<EmptySuccess, ErrorT>>()
-            .chain_err(|| ErrorKind::BadJsonResponse)?
+            .map_err(Error::BadJsonResponse)?
             .into_result(status)
             .map_or_else(
                 // Ignore 404 not found if the request had to be re-tried - assume the target
@@ -672,13 +674,14 @@ impl Client {
             Retry::No => do_request(),
         };
 
-        let http_response = result.chain_err(|| ErrorKind::Unknown {
+        let http_response = result.map_err(|source| Error::ReqwestError {
+            source,
             message: "POST operation failed.".to_owned(),
         })?;
         let status = http_response.status();
         http_response
             .json::<Response<SuccessT, ErrorT>>()
-            .chain_err(|| ErrorKind::BadJsonResponse)?
+            .map_err(Error::BadJsonResponse)?
             .into_result(status)
     }
 
@@ -702,13 +705,14 @@ impl Client {
                     .json(&request)
                     .send()
             })
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::ReqwestError {
+                source,
                 message: "PUT operation failed.".to_owned(),
             })?;
         let status = http_response.status();
         http_response
             .json::<Response<SuccessT, ErrorT>>()
-            .chain_err(|| ErrorKind::BadJsonResponse)?
+            .map_err(Error::BadJsonResponse)?
             .into_result(status)
     }
 
@@ -863,27 +867,34 @@ impl Endpoints {
     pub fn new(base: Url) -> Result<Self> {
         let datasets = base
             .join("/api/v1/datasets")
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: "Could not build URL for dataset resources.".to_owned(),
             })?;
         let sources = base
             .join("/api/v1/sources")
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: "Could not build URL for source resources.".to_owned(),
             })?;
-        let buckets = base
-            .join("/api/_private/buckets")
-            .chain_err(|| ErrorKind::Unknown {
-                message: "Could not build URL for bucket resources.".to_owned(),
-            })?;
+        let buckets =
+            base.join("/api/_private/buckets")
+                .map_err(|source| Error::UrlParseError {
+                    source,
+                    message: "Could not build URL for bucket resources.".to_owned(),
+                })?;
         let users = base
             .join("/api/_private/users")
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: "Could not build URL for users resources.".to_owned(),
             })?;
-        let current_user = base.join("/auth/user").chain_err(|| ErrorKind::Unknown {
-            message: "Could not build URL for users resources.".to_owned(),
-        })?;
+        let current_user = base
+            .join("/auth/user")
+            .map_err(|source| Error::UrlParseError {
+                source,
+                message: "Could not build URL for users resources.".to_owned(),
+            })?;
         Ok(Endpoints {
             base,
             datasets,
@@ -897,7 +908,8 @@ impl Endpoints {
     fn triggers(&self, dataset_name: &DatasetFullName) -> Result<Url> {
         self.base
             .join(&format!("/api/v1/datasets/{}/triggers", dataset_name.0))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: "Could not build URL to get trigger resources.".to_owned(),
             })
     }
@@ -908,7 +920,8 @@ impl Endpoints {
                 "/api/v1/datasets/{}/triggers/{}/fetch",
                 trigger_name.dataset.0, trigger_name.trigger.0
             ))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: "Could not build URL to fetch trigger results.".to_owned(),
             })
     }
@@ -919,7 +932,8 @@ impl Endpoints {
                 "/api/v1/datasets/{}/triggers/{}/advance",
                 trigger_name.dataset.0, trigger_name.trigger.0
             ))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: "Could not build URL to advance triggers.".to_owned(),
             })
     }
@@ -930,7 +944,8 @@ impl Endpoints {
                 "/api/v1/datasets/{}/triggers/{}/reset",
                 trigger_name.dataset.0, trigger_name.trigger.0
             ))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: "Could not build URL to reset triggers.".to_owned(),
             })
     }
@@ -938,7 +953,8 @@ impl Endpoints {
     fn recent_comments(&self, dataset_name: &DatasetFullName) -> Result<Url> {
         self.base
             .join(&format!("/api/_private/datasets/{}/recent", dataset_name.0))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: "Could not build URL for recent comments query.".to_owned(),
             })
     }
@@ -949,7 +965,8 @@ impl Endpoints {
                 "/api/_private/datasets/{}/statistics",
                 dataset_name.0
             ))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: "Could not build URL for dataset statistics query.".to_owned(),
             })
     }
@@ -957,7 +974,8 @@ impl Endpoints {
     fn source_by_id(&self, source_id: &SourceId) -> Result<Url> {
         self.base
             .join(&format!("/api/v1/sources/id:{}", source_id.0))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: format!(
                     "Could not build URL for source resource with id `{}`.",
                     source_id.0
@@ -968,7 +986,8 @@ impl Endpoints {
     fn source_by_name(&self, source_name: &SourceFullName) -> Result<Url> {
         self.base
             .join(&format!("/api/v1/sources/{}", source_name.0))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: format!(
                     "Could not build URL for source resource with name `{}`.",
                     source_name.0
@@ -979,7 +998,8 @@ impl Endpoints {
     fn comments(&self, source_name: &SourceFullName) -> Result<Url> {
         self.base
             .join(&format!("/api/_private/sources/{}/comments", source_name.0))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: format!(
                     "Could not build get comments URL for source `{}`.",
                     source_name.0,
@@ -990,7 +1010,8 @@ impl Endpoints {
     fn comments_v1(&self, source_name: &SourceFullName) -> Result<Url> {
         self.base
             .join(&format!("/api/v1/sources/{}/comments", source_name.0))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: format!(
                     "Could not build get comments v1 URL for source `{}`.",
                     source_name.0,
@@ -1001,7 +1022,8 @@ impl Endpoints {
     fn sync_comments(&self, source_name: &SourceFullName) -> Result<Url> {
         self.base
             .join(&format!("/api/v1/sources/{}/sync", source_name.0))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: format!("Could not build sync URL for source `{}`.", source_name.0,),
             })
     }
@@ -1009,7 +1031,8 @@ impl Endpoints {
     fn put_emails(&self, bucket_name: &BucketFullName) -> Result<Url> {
         self.base
             .join(&format!("/api/_private/buckets/{}/emails", bucket_name.0))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: format!(
                     "Could not build put emails URL for bucket `{}`.",
                     bucket_name,
@@ -1020,7 +1043,8 @@ impl Endpoints {
     fn dataset_by_id(&self, dataset_id: &DatasetId) -> Result<Url> {
         self.base
             .join(&format!("/api/v1/datasets/id:{}", dataset_id.0))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: format!(
                     "Could not build URL for dataset resource with id `{}`.",
                     dataset_id.0
@@ -1031,7 +1055,8 @@ impl Endpoints {
     fn dataset_by_name(&self, dataset_name: &DatasetFullName) -> Result<Url> {
         self.base
             .join(&format!("/api/v1/datasets/{}", dataset_name.0))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: format!(
                     "Could not build URL for dataset resource with name `{}`.",
                     dataset_name.0
@@ -1045,7 +1070,8 @@ impl Endpoints {
                 "/api/_private/datasets/{}/labellings",
                 dataset_name.0
             ))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: format!(
                     "Could not build get labellings URL for dataset `{}`.",
                     dataset_name.0,
@@ -1063,7 +1089,8 @@ impl Endpoints {
                 "/api/_private/datasets/{}/labellings/{}",
                 dataset_name.0, comment_uid.0,
             ))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: format!(
                     "Could not build get labellings URL for dataset `{}`.",
                     dataset_name.0,
@@ -1074,7 +1101,8 @@ impl Endpoints {
     fn bucket_by_id(&self, bucket_id: &BucketId) -> Result<Url> {
         self.base
             .join(&format!("/api/_private/buckets/id:{}", bucket_id.0))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: format!(
                     "Could not build URL for bucket resource with id `{}`.",
                     bucket_id.0
@@ -1085,7 +1113,8 @@ impl Endpoints {
     fn bucket_by_name(&self, bucket_name: &BucketFullName) -> Result<Url> {
         self.base
             .join(&format!("/api/_private/buckets/{}", bucket_name.0))
-            .chain_err(|| ErrorKind::Unknown {
+            .map_err(|source| Error::UrlParseError {
+                source,
                 message: format!(
                     "Could not build URL for bucket resource with name `{}`.",
                     bucket_name.0
@@ -1099,15 +1128,15 @@ fn build_http_client(config: &Config) -> Result<HttpClient> {
         .gzip(true)
         .danger_accept_invalid_certs(config.accept_invalid_certificates)
         .build()
-        .chain_err(|| ErrorKind::BuildHttpClient)
+        .map_err(Error::BuildHttpClient)
 }
 
 fn build_headers(config: &Config) -> Result<HeaderMap> {
     let mut headers = HeaderMap::new();
     headers.insert(
         AUTH_HEADER_NAME.clone(),
-        HeaderValue::from_str(&format!("Bearer {}", &config.token.0)).chain_err(|| {
-            ErrorKind::BadToken {
+        HeaderValue::from_str(&format!("Bearer {}", &config.token.0)).map_err(|_| {
+            Error::BadToken {
                 token: config.token.0.clone(),
             }
         })?,

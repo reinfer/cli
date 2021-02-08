@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    errors::{Error, ErrorKind, Result},
+    error::{Error, Result},
     resources::bucket::Id as BucketId,
     resources::user::Username,
 };
@@ -43,10 +43,9 @@ impl FromStr for FullName {
         if string.split('/').count() == 2 {
             Ok(FullName(string.into()))
         } else {
-            Err(ErrorKind::BadSourceIdentifier {
+            Err(Error::BadSourceIdentifier {
                 identifier: string.into(),
-            }
-            .into())
+            })
         }
     }
 }

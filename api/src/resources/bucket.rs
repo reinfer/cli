@@ -6,7 +6,7 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::str::FromStr;
 
 use crate::{
-    errors::{Error, ErrorKind, Result},
+    error::{Error, Result},
     resources::user::Username,
 };
 
@@ -77,16 +77,16 @@ impl From<Id> for Identifier {
 
 impl FromStr for Identifier {
     type Err = Error;
+
     fn from_str(string: &str) -> Result<Self> {
         if string.chars().all(|c| c.is_digit(16)) {
             Ok(Identifier::Id(Id(string.into())))
         } else if FULL_NAME_REGEX.is_match(string) {
             Ok(Identifier::FullName(FullName(string.into())))
         } else {
-            Err(ErrorKind::BadBucketIdentifier {
+            Err(Error::BadBucketIdentifier {
                 identifier: string.into(),
-            }
-            .into())
+            })
         }
     }
 }
@@ -153,10 +153,9 @@ impl FromStr for BucketType {
     fn from_str(string: &str) -> Result<Self> {
         match string {
             "emails" => Ok(Self::Emails),
-            _ => Err(ErrorKind::BadBucketType {
+            _ => Err(Error::BadBucketType {
                 bucket_type: string.into(),
-            }
-            .into()),
+            }),
         }
     }
 }
@@ -181,10 +180,9 @@ impl FromStr for FullName {
         if FULL_NAME_REGEX.is_match(string) {
             Ok(FullName(string.into()))
         } else {
-            Err(ErrorKind::BadBucketName {
+            Err(Error::BadBucketName {
                 name: string.into(),
-            }
-            .into())
+            })
         }
     }
 }

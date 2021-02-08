@@ -1,11 +1,9 @@
-use failchain::ResultExt;
+use anyhow::{Context, Result};
 use log::info;
 use reinfer_client::{
     resources::comment::EntityKind, Client, DatasetFullName, NewDataset, SourceIdentifier,
 };
 use structopt::StructOpt;
-
-use crate::errors::{ErrorKind, Result};
 
 #[derive(Debug, StructOpt)]
 pub struct CreateDatasetArgs {
@@ -50,7 +48,7 @@ pub fn create(client: &Client, args: &CreateDatasetArgs) -> Result<()> {
             source_ids.push(
                 client
                     .get_source(source.clone())
-                    .chain_err(|| ErrorKind::Client("Operation to get source has failed".into()))?
+                    .context("Operation to get source has failed")?
                     .id,
             );
         }
@@ -68,7 +66,7 @@ pub fn create(client: &Client, args: &CreateDatasetArgs) -> Result<()> {
                 entity_kinds: &entity_kinds,
             },
         )
-        .chain_err(|| ErrorKind::Client("Operation to create a dataset has failed.".into()))?;
+        .context("Operation to create a dataset has failed.")?;
     info!(
         "New dataset `{}` [id: {}] created successfully",
         dataset.full_name().0,

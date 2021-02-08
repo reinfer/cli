@@ -34,7 +34,7 @@ fn test_comments_lifecycle() {
         "delete",
         "comments",
         &format!("--source={}", source.identifier()),
-        &annotated_comments.iter().next().unwrap().comment.id.0,
+        &annotated_comments.get(0).unwrap().comment.id.0,
     ]);
     assert!(output.is_empty());
 

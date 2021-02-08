@@ -1,4 +1,4 @@
-use crate::errors::{Error, Result};
+use crate::error::{Error, Result};
 use chrono::{DateTime, Utc};
 use serde::{
     de::{Deserializer, Error as SerdeError, MapAccess, Visitor},

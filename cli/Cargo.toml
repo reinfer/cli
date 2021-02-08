@@ -17,12 +17,11 @@ path = "src/main.rs"
 name = "tests"
 
 [dependencies]
+anyhow = "1.0.38"
 chrono = "0.4.11"
 colored = "2.0"
 dirs = "3.0.0"
 env_logger = "0.8.2"
-failchain = "0.1015.2"
-failure = "0.1.6"
 indicatif = "0.15.0"
 lazy_static = "1.4.0"
 log = { version = "0.4.8", default-features = false, features = ["release_max_level_info"] }
@@ -37,3 +36,9 @@ reinfer-client = { version = "0.4.1", path = "../api" }
 
 [dev-dependencies]
 uuid = { version = "0.8.1", features = ["v4"] }
+
+[features]
+default = []
+
+# Print backtrace on error.
+backtrace = []

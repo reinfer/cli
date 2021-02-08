@@ -8,9 +8,9 @@ use structopt::StructOpt;
 
 use crate::{
     config::{self, ContextConfig, ReinferConfig},
-    errors::Result,
     utils,
 };
+use anyhow::Result;
 
 #[derive(Debug, StructOpt)]
 pub enum ConfigArgs {
