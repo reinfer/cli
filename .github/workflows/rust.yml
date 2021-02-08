@@ -24,7 +24,7 @@ jobs:
       # Needs to be separate job because clippy currently (incorrectly) shares cache with cargo
       # (See https://github.com/rust-lang/rust-clippy/issues/4612)
       - name: Run clippy
-        run: cargo clippy
+        run: cargo clippy --all-targets --locked -- -D warnings
 
   build:
     runs-on: ubuntu-latest
