@@ -1060,6 +1060,7 @@ dependencies = [
  "lazy_static",
  "log",
  "maplit",
+ "once_cell",
  "prettytable-rs",
  "reinfer-client",
  "reqwest",

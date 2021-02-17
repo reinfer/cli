@@ -1,4 +1,5 @@
 use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use std::{
     env,
     ffi::OsStr,
@@ -6,6 +7,23 @@ use std::{
     path::PathBuf,
     process::{Command, Stdio},
 };
+
+static REINFER_CLI_TEST_ORG: Lazy<String> = Lazy::new(|| {
+    env::var("REINFER_CLI_TEST_ORG")
+        .expect("REINFER_CLI_TEST_ORG must be set for integration tests")
+});
+static REINFER_CLI_TEST_ENDPOINT: Lazy<String> = Lazy::new(|| {
+    env::var("REINFER_CLI_TEST_ENDPOINT")
+        .expect("REINFER_CLI_TEST_ENDPOINT must be set for integration tests")
+});
+static REINFER_CLI_TEST_CONTEXT: Lazy<String> = Lazy::new(|| {
+    env::var("REINFER_CLI_TEST_CONTEXT")
+        .expect("REINFER_CLI_TEST_CONTEXT must be set for integration tests")
+});
+static REINFER_CLI_TEST_TOKEN: Lazy<String> = Lazy::new(|| {
+    env::var("REINFER_CLI_TEST_TOKEN")
+        .expect("REINFER_CLI_TEST_TOKEN must be set for integration tests")
+});
 
 pub struct TestCli {
     cli_path: PathBuf,
@@ -28,24 +46,19 @@ impl TestCli {
     }
 
     pub fn organisation() -> String {
-        env::var("REINFER_CLI_TEST_ORG")
-            .expect("REINFER_CLI_TEST_ORG must be set for integration tests")
+        REINFER_CLI_TEST_ORG.clone()
     }
 
     pub fn command(&self) -> Command {
         let mut command = Command::new(&self.cli_path);
 
-        if let Some(context) = env::var_os("REINFER_CLI_TEST_CONTEXT") {
-            command.arg("--context").arg(context);
-        }
-
-        if let Some(endpoint) = env::var_os("REINFER_CLI_TEST_ENDPOINT") {
-            command.arg("--endpoint").arg(endpoint);
-        }
-
-        if let Some(token) = env::var_os("REINFER_CLI_TEST_TOKEN") {
-            command.arg("--token").arg(token);
-        }
+        command
+            .arg("--context")
+            .arg(&*REINFER_CLI_TEST_CONTEXT)
+            .arg("--endpoint")
+            .arg(&*REINFER_CLI_TEST_ENDPOINT)
+            .arg("--token")
+            .arg(&*REINFER_CLI_TEST_TOKEN);
 
         command
     }
