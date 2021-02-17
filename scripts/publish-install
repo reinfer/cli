@@ -5,5 +5,5 @@ set -ex
 rustup target add x86_64-unknown-linux-musl
 sudo apt-get install          \
   musl-tools                  \
-  python-toml
+  python3-toml
 cargo install cargo-deb
