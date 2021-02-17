@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use log::info;
 use reinfer_client::{
-    resources::comment::EntityKind, Client, DatasetFullName, NewDataset, SourceIdentifier,
+    resources::dataset::EntityDefs, Client, DatasetFullName, NewDataset, SourceIdentifier,
 };
 use structopt::StructOpt;
 
@@ -27,9 +27,9 @@ pub struct CreateDatasetArgs {
     /// Names or ids of the sources in the dataset
     sources: Vec<SourceIdentifier>,
 
-    #[structopt(short = "e", long = "entity-kinds")]
-    /// Entity kinds to enable at dataset creation (pass one flag for each kind)
-    entity_kinds: Vec<EntityKind>,
+    #[structopt(short = "e", long = "entity-defs", default_value = "[]")]
+    /// Entity defs to create at dataset creation, as json
+    entity_defs: EntityDefs,
 }
 
 pub fn create(client: &Client, args: &CreateDatasetArgs) -> Result<()> {
@@ -39,7 +39,7 @@ pub fn create(client: &Client, args: &CreateDatasetArgs) -> Result<()> {
         ref description,
         ref has_sentiment,
         ref sources,
-        ref entity_kinds,
+        ref entity_defs,
     } = *args;
 
     let source_ids = {
@@ -63,7 +63,7 @@ pub fn create(client: &Client, args: &CreateDatasetArgs) -> Result<()> {
                 title: title.as_ref().map(|title| title.as_str()),
                 description: description.as_ref().map(|description| description.as_str()),
                 has_sentiment: *has_sentiment,
-                entity_kinds: &entity_kinds,
+                entity_defs,
             },
         )
         .context("Operation to create a dataset has failed.")?;

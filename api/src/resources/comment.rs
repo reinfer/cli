@@ -470,7 +470,7 @@ fn should_skip_serializing_entities(maybe_entities: &Option<Entities>) -> bool {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct NewEntity {
-    pub kind: EntityKind,
+    pub name: EntityName,
     pub formatted_value: String,
     pub span: NewEntitySpan,
 }
@@ -485,7 +485,7 @@ pub struct NewEntitySpan {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Entity {
-    pub kind: EntityKind,
+    pub name: EntityName,
     pub formatted_value: String,
     pub span: EntitySpan,
 }
@@ -501,15 +501,7 @@ pub struct EntitySpan {
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-pub struct EntityKind(pub String);
-
-impl FromStr for EntityKind {
-    type Err = Error;
-
-    fn from_str(string: &str) -> Result<Self> {
-        Ok(EntityKind(string.to_owned()))
-    }
-}
+pub struct EntityName(pub String);
 
 #[inline]
 fn strip_prefix(string: &mut String, prefix: &str) -> bool {

@@ -4,8 +4,9 @@ use std::str::FromStr;
 
 use crate::{
     error::{Error, Result},
-    resources::{comment::EntityKind, source::Id as SourceId, user::Username},
+    resources::{comment::EntityName, source::Id as SourceId, user::Username},
 };
+use serde_json::Error as JsonError;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Dataset {
@@ -77,6 +78,33 @@ impl FromStr for Identifier {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EntityDef {
+    name: EntityName,
+    title: String,
+    inherits_from: Vec<String>,
+    trainable: bool,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct EntityDefs(Vec<EntityDef>);
+
+impl EntityDefs {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl FromStr for EntityDefs {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Self> {
+        serde_json::from_str(string).map_err(|error: JsonError| Error::BadEntityDef {
+            entity_def: string.to_owned(),
+            source: error,
+        })
+    }
+}
 #[derive(Debug, Clone, Serialize)]
 pub struct NewDataset<'request> {
     pub source_ids: &'request [SourceId],
@@ -90,8 +118,8 @@ pub struct NewDataset<'request> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub has_sentiment: Option<bool>,
 
-    #[serde(skip_serializing_if = "<[_]>::is_empty")]
-    pub entity_kinds: &'request [EntityKind],
+    #[serde(skip_serializing_if = "EntityDefs::is_empty")]
+    pub entity_defs: &'request EntityDefs,
 }
 
 #[derive(Debug, Clone, Serialize)]
