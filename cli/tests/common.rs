@@ -1,4 +1,4 @@
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use std::{
     env,
     ffi::OsStr,
@@ -7,44 +7,54 @@ use std::{
     process::{Command, Stdio},
 };
 
+static REINFER_CLI_TEST_ORG: Lazy<String> = Lazy::new(|| {
+    env::var("REINFER_CLI_TEST_ORG")
+        .expect("REINFER_CLI_TEST_ORG must be set for integration tests")
+});
+static REINFER_CLI_TEST_ENDPOINT: Lazy<Option<String>> =
+    Lazy::new(|| env::var("REINFER_CLI_TEST_ENDPOINT").ok());
+static REINFER_CLI_TEST_CONTEXT: Lazy<Option<String>> =
+    Lazy::new(|| env::var("REINFER_CLI_TEST_CONTEXT").ok());
+static REINFER_CLI_TEST_TOKEN: Lazy<Option<String>> =
+    Lazy::new(|| env::var("REINFER_CLI_TEST_TOKEN").ok());
+
+static TEST_CLI: Lazy<TestCli> = Lazy::new(|| {
+    let cli_path = std::env::current_exe()
+        .ok()
+        .and_then(|p| Some(p.parent()?.parent()?.join("re")))
+        .expect("Could not resolve CLI executable from test executable");
+
+    TestCli { cli_path }
+});
+
 pub struct TestCli {
     cli_path: PathBuf,
 }
 
 impl TestCli {
     pub fn get() -> &'static Self {
-        lazy_static! {
-            static ref TEST_CLI: TestCli = {
-                let cli_path = std::env::current_exe()
-                    .ok()
-                    .and_then(|p| Some(p.parent()?.parent()?.join("re")))
-                    .expect("Could not resolve CLI executable from test executable");
-
-                TestCli { cli_path }
-            };
-        };
-
         &TEST_CLI
     }
 
     pub fn organisation() -> String {
-        env::var("REINFER_CLI_TEST_ORG")
-            .expect("REINFER_CLI_TEST_ORG must be set for integration tests")
+        REINFER_CLI_TEST_ORG.to_owned()
     }
 
     pub fn command(&self) -> Command {
         let mut command = Command::new(&self.cli_path);
 
-        if let Some(context) = env::var_os("REINFER_CLI_TEST_CONTEXT") {
-            command.arg("--context").arg(context);
-        }
-
-        if let Some(endpoint) = env::var_os("REINFER_CLI_TEST_ENDPOINT") {
-            command.arg("--endpoint").arg(endpoint);
-        }
-
-        if let Some(token) = env::var_os("REINFER_CLI_TEST_TOKEN") {
-            command.arg("--token").arg(token);
+        match (&*REINFER_CLI_TEST_CONTEXT, &*REINFER_CLI_TEST_ENDPOINT, &*REINFER_CLI_TEST_TOKEN) {
+            (Some(context), _, _) => {
+                command.arg("--context").arg(context);
+            },
+            (_, Some(endpoint), Some(token)) => {
+                command
+                    .arg("--endpoint")
+                    .arg(endpoint)
+                    .arg("--token")
+                    .arg(token);
+            },
+            _ => panic!("Either REINFER_CLI_TEST_CONTEXT, or REINFER_CLI_TEST_ENDPOINT and REINFER_CLI_TEST_TOKEN must be set.")
         }
 
         command
