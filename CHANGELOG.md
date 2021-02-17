@@ -1,8 +1,16 @@
 # Unreleased
 
+# v0.5.1
+
 ## Breaking
 
 - Updated error types and handling throughout. This changes the publicly visible `reinfer_client::errors` module.
+
+- The `-e` flag used to pass in entity kinds at dataset creation has been re-purposed. One now needs to pass in a `json` object containing the corresponding `EntityDef` to be added to the new dataset. Example:
+
+```
+re create dataset org/example-dataset -s org/example-source --has-sentiment false -e '[{"name":"trainable_org","title":"Custom Organisation","inherits_from":["org"],"trainable":true}','{"name":"non_trainable_person","title":"Basic Person","inherits_from":["person"],"trainable":false}]'
+```
 
 ## Added
 

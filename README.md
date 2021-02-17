@@ -53,11 +53,11 @@ The [api](/api) directory contains a Rust client library for reinfer which can b
 
 Statically linked binaries with no dependencies are provided for selected platforms:
 
-- [x86_64-unknown-linux-musl](https://reinfer.io/public/cli/bin/x86_64-unknown-linux-musl/0.4.1/re)
+- [x86_64-unknown-linux-musl](https://reinfer.io/public/cli/bin/x86_64-unknown-linux-musl/0.5.1/re)
 
 ### Debian / Ubuntu
 
-You can download a `.deb` package [here](https://reinfer.io/public/cli/debian/reinfer-cli_0.4.1_amd64.deb).
+You can download a `.deb` package [here](https://reinfer.io/public/cli/debian/reinfer-cli_0.5.1_amd64.deb).
 
 ### From Source
 
