@@ -10,17 +10,17 @@ fn test_bucket_lifecycle() {
 
     // Create bucket
     let output = cli.run(&["create", "bucket", &new_bucket_name]);
-    assert!(output.is_empty());
+    assert!(output.is_empty(), output);
 
     let output = cli.run(&["get", "buckets"]);
-    assert!(output.contains(&new_bucket_name));
+    assert!(output.contains(&new_bucket_name), output);
 
     // Deleting one comment reduces the comment count in the source
     let output = cli.run(&["delete", "bucket", &new_bucket_name]);
-    assert!(output.is_empty());
+    assert!(output.is_empty(), output);
 
     let output = cli.run(&["get", "buckets"]);
-    assert!(!output.contains(&new_bucket_name));
+    assert!(!output.contains(&new_bucket_name), output);
 }
 
 #[test]
@@ -39,7 +39,7 @@ fn test_bucket_with_invalid_transform_tag_fails() {
     ]);
     assert!(
         output.contains(
-        "422 Unprocessable Entity: The value 'not-a-valid-transform-tag.0.ABCDEFGH' is not a valid transform tag.")
+        "422 Unprocessable Entity: The value 'not-a-valid-transform-tag.0.ABCDEFGH' is not a valid transform tag."), output
     );
 }
 
