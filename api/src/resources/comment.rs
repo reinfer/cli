@@ -1,4 +1,3 @@
-use crate::error::{Error, Result};
 use chrono::{DateTime, Utc};
 use serde::{
     de::{Deserializer, Error as SerdeError, MapAccess, Visitor},
@@ -6,13 +5,16 @@ use serde::{
     Deserialize, Serialize,
 };
 use serde_json::{json, Value as JsonValue};
-use std::str::FromStr;
 use std::{
     collections::HashMap,
     fmt::{Formatter, Result as FmtResult},
     ops::{Deref, DerefMut},
+    path::PathBuf,
     result::Result as StdResult,
+    str::FromStr,
 };
+
+use crate::error::{Error, Result};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Id(pub String);
@@ -369,6 +371,8 @@ pub struct NewAnnotatedComment {
     pub labelling: Option<NewLabelling>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entities: Option<NewEntities>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub audio_path: Option<PathBuf>,
 }
 
 impl NewAnnotatedComment {

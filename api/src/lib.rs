@@ -7,14 +7,13 @@ use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use log::debug;
 use reqwest::{
-    blocking::{Client as HttpClient, Response as HttpResponse},
+    blocking::{multipart::Form, Client as HttpClient, Response as HttpResponse},
     header::{HeaderMap, HeaderName, HeaderValue},
     IntoUrl, Result as ReqwestResult,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::cell::Cell;
-use std::fmt::Display;
+use std::{cell::Cell, fmt::Display, path::Path};
 use url::Url;
 
 use crate::resources::{
@@ -292,6 +291,36 @@ impl Client {
             self.endpoints.put_emails(bucket_name)?,
             PutEmailsRequest { emails },
         )?)
+    }
+
+    pub fn put_comment_audio(
+        &self,
+        source_id: &SourceId,
+        comment_id: &CommentId,
+        audio_path: impl AsRef<Path>,
+    ) -> Result<()> {
+        let form = Form::new()
+            .file("file", audio_path)
+            .map_err(|source| Error::Unknown {
+                message: "PUT comment audio operation failed".to_owned(),
+                source: source.into(),
+            })?;
+        let http_response = self
+            .http_client
+            .put(self.endpoints.comment_audio(source_id, comment_id)?)
+            .headers(self.headers.clone())
+            .multipart(form)
+            .send()
+            .map_err(|source| Error::ReqwestError {
+                message: "PUT comment audio operation failed".to_owned(),
+                source,
+            })?;
+        let status = http_response.status();
+        http_response
+            .json::<Response<EmptySuccess, SimpleApiError>>()
+            .map_err(Error::BadJsonResponse)?
+            .into_result(status)?;
+        Ok(())
     }
 
     pub fn get_datasets(&self) -> Result<Vec<Dataset>> {
@@ -1024,7 +1053,22 @@ impl Endpoints {
             .join(&format!("/api/v1/sources/{}/sync", source_name.0))
             .map_err(|source| Error::UrlParseError {
                 source,
-                message: format!("Could not build sync URL for source `{}`.", source_name.0,),
+                message: format!("Could not build sync URL for source `{}`.", source_name.0),
+            })
+    }
+
+    fn comment_audio(&self, source_id: &SourceId, comment_id: &CommentId) -> Result<Url> {
+        self.base
+            .join(&format!(
+                "/api/_private/sources/id:{}/comments/{}/audio",
+                source_id.0, comment_id.0
+            ))
+            .map_err(|source| Error::UrlParseError {
+                message: format!(
+                    "Could not build audio content URL for source id `{}` and comment id `{}`.",
+                    source_id.0, comment_id.0,
+                ),
+                source,
             })
     }
 

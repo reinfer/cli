@@ -1,0 +1,2 @@
+{"comment":{"id":"1","timestamp":"2018-10-25T00:00:00Z","messages":[{"body":{"text":"Comment 1."}}]}}
+{"audio_path": "tests/samples/phone-call-1.flac", "comment":{"id":"2","timestamp":"2018-10-25T00:00:00Z","messages":[{"body":{"text":"Comment 2"}}]}}

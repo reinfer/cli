@@ -83,5 +83,8 @@ pub enum Error {
     },
 
     #[error("An unknown error has occurred: {}", message)]
-    Unknown { message: String },
+    Unknown {
+        message: String,
+        source: Box<dyn std::error::Error + Send + Sync + 'static>,
+    },
 }

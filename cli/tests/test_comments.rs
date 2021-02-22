@@ -1,11 +1,20 @@
 use crate::{TestCli, TestSource};
 use reinfer_client::NewAnnotatedComment;
 
-const SAMPLE_BASIC: &str = include_str!("./samples/basic.jsonl");
+#[test]
+fn test_comments_lifecycle_basic() {
+    const SAMPLE_BASIC: &str = include_str!("./samples/basic.jsonl");
+    check_comments_lifecycle(SAMPLE_BASIC);
+}
 
 #[test]
-fn test_comments_lifecycle() {
-    let annotated_comments: Vec<NewAnnotatedComment> = SAMPLE_BASIC
+fn test_comments_lifecycle_audio() {
+    const SAMPLE_AUDIO: &str = include_str!("./samples/audio.jsonl");
+    check_comments_lifecycle(SAMPLE_AUDIO);
+}
+
+fn check_comments_lifecycle(comments_str: &str) {
+    let annotated_comments: Vec<NewAnnotatedComment> = comments_str
         .lines()
         .map(serde_json::from_str)
         .collect::<Result<_, _>>()
@@ -22,7 +31,7 @@ fn test_comments_lifecycle() {
             "--allow-duplicates",
             &format!("--source={}", source.identifier()),
         ],
-        SAMPLE_BASIC.as_bytes(),
+        comments_str.as_bytes(),
     );
     assert!(output.is_empty());
 
