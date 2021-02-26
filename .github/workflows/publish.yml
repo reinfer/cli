@@ -10,10 +10,14 @@ env:
 
 jobs:
   publish:
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macos-10.15]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
+        if: ${{ matrix.os != 'macos-10.15' }}
         with:
           path: |
             ~/.cargo/registry
@@ -30,13 +34,17 @@ jobs:
           REINFER_CLI_TEST_ENDPOINT: ${{ secrets.REINFER_CLI_TEST_ENDPOINT }}
       - name: Install publish dependencies
         run: ./scripts/publish-install
-      - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        env:
+          BUILD_PLATFORM: ${{ matrix.os }}
+      - uses: google-github-actions/setup-gcloud@master
         with:
-          version: "299.0.0"
           service_account_key: ${{ secrets.GCP_SA_KEY }}
       - name: Publish Binaries
         run: ./cli/publish-binaries
+        env:
+          BUILD_PLATFORM: ${{ matrix.os }}
       - name: Publish Crates
+        if: ${{ matrix.os == 'ubuntu-20.04' }}
         run: |
           cargo login ${{ secrets.CRATES_IO_TOKEN }}
           ./scripts/publish
