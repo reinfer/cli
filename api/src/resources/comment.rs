@@ -423,6 +423,14 @@ pub struct PredictedLabel {
     pub probability: f64,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ArrayPredictedLabel {
+    pub name: Vec<LabelName>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sentiment: Option<f64>,
+    pub probability: f64,
+}
+
 #[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq)]
 pub struct LabelName(pub String);
 

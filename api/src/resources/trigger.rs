@@ -5,7 +5,7 @@ use std::str::FromStr;
 use crate::error::{Error, Result};
 
 use super::{
-    comment::{Comment, CommentFilter, Entity, LabelName, PredictedLabel},
+    comment::{ArrayPredictedLabel, Comment, CommentFilter, Entity, LabelName},
     dataset::{FullName as DatasetFullName, Id as DatasetId},
 };
 
@@ -79,7 +79,7 @@ pub struct Batch {
 pub struct TriggerResult {
     pub comment: Comment,
     pub sequence_id: SequenceId,
-    pub labels: Option<Vec<PredictedLabel>>,
+    pub labels: Option<Vec<ArrayPredictedLabel>>,
     pub entities: Option<Vec<Entity>>,
 }
 
