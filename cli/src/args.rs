@@ -38,10 +38,15 @@ pub struct Args {
     /// context, if any.
     pub token: Option<String>,
 
+    #[structopt(long = "proxy")]
+    /// URL for an HTTP proxy that will be used for all requests if specified
+    pub proxy: Option<Url>,
+
     #[structopt(subcommand)]
     pub command: Command,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, StructOpt)]
 pub enum Command {
     #[structopt(name = "completion")]

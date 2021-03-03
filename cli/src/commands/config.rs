@@ -32,6 +32,10 @@ pub enum ConfigArgs {
         #[structopt(long = "accept-invalid-certificates", short = "k")]
         /// Whether to accept invalid TLS certificates
         accept_invalid_certificates: bool,
+
+        #[structopt(long = "proxy")]
+        /// URL for an HTTP proxy that will be used for all requests if specified
+        proxy: Option<Option<Url>>,
     },
 
     #[structopt(name = "current")]
@@ -71,7 +75,9 @@ pub fn run(
             let mut contexts = config.get_all_contexts().clone();
             contexts.sort_unstable_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
             let mut table = new_table();
-            table.set_titles(row![bFg => "Active", "Context", "Endpoint", "Insecure", "Token"]);
+            table.set_titles(
+                row![bFg => "Active", "Context", "Endpoint", "Insecure", "Token", "Proxy"],
+            );
             for context in contexts.iter() {
                 let active = config
                     .get_current_context()
@@ -95,7 +101,12 @@ pub fn run(
                         context.token.clone().unwrap_or_else(String::new)
                     } else {
                         "<Hidden>".into()
-                    }
+                    },
+                    context
+                        .proxy
+                        .clone()
+                        .map(|url| url.to_string())
+                        .unwrap_or_else(String::new)
                 ]);
             }
             table.printstd();
@@ -108,12 +119,14 @@ pub fn run(
             endpoint,
             token,
             accept_invalid_certificates,
+            proxy,
         } => {
             add_or_edit_context(
                 name,
                 token,
                 endpoint,
                 *accept_invalid_certificates,
+                proxy,
                 config.clone(),
                 config_path,
             )?;
@@ -161,6 +174,7 @@ fn add_or_edit_context(
     token: &Option<String>,
     endpoint: &Option<Url>,
     accept_invalid_certificates: bool,
+    proxy: &Option<Option<Url>>,
     mut config: ReinferConfig,
     config_path: impl AsRef<Path>,
 ) -> Result<()> {
@@ -228,6 +242,11 @@ fn add_or_edit_context(
         endpoint,
         token,
         accept_invalid_certificates,
+        proxy: proxy.clone().unwrap_or_else(|| {
+            existing_context
+                .as_ref()
+                .and_then(|context| context.proxy.clone())
+        }),
     };
 
     let update_existing = existing_context.is_some();

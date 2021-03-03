@@ -1,6 +1,6 @@
 [package]
 name = "reinfer-client"
-version = "0.5.1"
+version = "0.5.2"
 description = "API client for Re:infer"
 homepage = "https://github.com/reinfer/cli"
 readme = "README.md"

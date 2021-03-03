@@ -77,13 +77,10 @@ impl ReinferConfig {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ContextConfig {
     pub name: String,
-    #[serde(
-        deserialize_with = "crate::utils::deserialize_url",
-        serialize_with = "crate::utils::serialize_url"
-    )]
     pub endpoint: Url,
     pub token: Option<String>,
     pub accept_invalid_certificates: bool,
+    pub proxy: Option<Url>,
 }
 
 pub fn read_reinfer_config(path: impl AsRef<Path>) -> Result<ReinferConfig> {

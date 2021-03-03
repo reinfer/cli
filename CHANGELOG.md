@@ -1,5 +1,11 @@
 # Unreleased
 
+# v0.5.2
+
+ - Add support for using an HTTP proxy for all requests. The proxy configuration is saved as part of the context.
+   Additionally, the proxy can be overridden / specified as a one off using a global command line argument
+   `--proxy https://proxy.example` (e.g. similar to `--endpoint`).
+
 # v0.5.1
 
 ## Breaking

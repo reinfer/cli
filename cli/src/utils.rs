@@ -3,8 +3,7 @@ use colored::{ColoredString, Colorize};
 use env_logger::{fmt::Formatter as LogFormatter, Builder as LogBuilder};
 use lazy_static::lazy_static;
 use log::{Level as LogLevel, LevelFilter as LogLevelFilter, Record as LogRecord};
-use reqwest::Url;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::Serialize;
 use std::{
     env,
     io::{self, Write},
@@ -99,19 +98,4 @@ lazy_static! {
     pub static ref LOG_PREFIX_ERROR: ColoredString = "E".red().bold();
     pub static ref LOG_PREFIX_TRACE: ColoredString = "T".normal();
     pub static ref LOG_PREFIX_INPUT: ColoredString = "*".blue().bold();
-}
-
-pub fn serialize_url<S>(value: &Url, serializer: S) -> std::result::Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_str(value.as_str())
-}
-
-pub fn deserialize_url<'de, D>(deserializer: D) -> std::result::Result<Url, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let url_string: String = Deserialize::deserialize(deserializer)?;
-    Url::parse(&url_string).map_err(|error| serde::de::Error::custom(error.to_string()))
 }
