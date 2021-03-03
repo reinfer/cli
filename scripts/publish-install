@@ -2,8 +2,20 @@
 
 set -ex
 
-rustup target add x86_64-unknown-linux-musl
-sudo apt-get install          \
-  musl-tools                  \
-  python3-toml
-cargo install cargo-deb
+case $BUILD_PLATFORM in
+  "ubuntu-20.04")
+    rustup target add x86_64-unknown-linux-musl
+    sudo apt-get install          \
+      musl-tools                  \
+      python3-toml
+    cargo install cargo-deb
+    ;;
+  "macos-10.15")
+    rustup target add x86_64-apple-darwin
+    pip install toml
+    ;;
+  *)
+    >&2 echo "fatal: unknown BUILD_PLATFORM '$BUILD_PLATFORM'"
+    exit 1
+    ;;
+esac
