@@ -53,12 +53,12 @@ The [api](/api) directory contains a Rust client library for reinfer which can b
 
 Statically linked binaries with no dependencies are provided for selected platforms:
 
-- [Linux (x86_64-unknown-linux-musl)](https://reinfer.io/public/cli/bin/x86_64-unknown-linux-musl/0.5.1/re)
-- [macOS (x86_64-apple-darwin)](https://reinfer.io/public/cli/bin/x86_64-apple-darwin/0.5.1/re)
+- [Linux (x86_64-unknown-linux-musl)](https://reinfer.io/public/cli/bin/x86_64-unknown-linux-musl/0.5.2/re)
+- [macOS (x86_64-apple-darwin)](https://reinfer.io/public/cli/bin/x86_64-apple-darwin/0.5.2/re)
 
 ### Debian / Ubuntu
 
-You can download a `.deb` package [here](https://reinfer.io/public/cli/debian/reinfer-cli_0.5.1_amd64.deb).
+You can download a `.deb` package [here](https://reinfer.io/public/cli/debian/reinfer-cli_0.5.2_amd64.deb).
 
 ### From Source
 
@@ -135,8 +135,9 @@ re --endpoint http://localhost:8000 --token $REINFER_TOKEN get datasets
 Contexts help avoid having to manually specify the token and endpoint with every command. A _context_ is composed of
 
 - The authentication token (which user?)
-- The reinfer endpoint to talk to, typically `https://reinfer.io` (which cluster?)
-- A human rememberable name
+- The Re:infer cluster endpoint to talk to, typically `https://reinfer.io`
+- (Optional) An HTTP proxy to use for all requests
+- A memorable name which serves as an identifier for the "context"
 
 Commands for managing _contexts_ are under `re config` and allow one to create, update, set and delete contexts. Run `re config -h` to see all the options.
 
@@ -150,7 +151,7 @@ W Be careful, API tokens are stored in cleartext in /home/marius/.config/reinfer
 I New context `production` was created.
 ```
 
-The token and endpoint for the current context will be used for all subsequent commands (these be overwritten as a one off using the `--token` and `--endpoint` arguments).
+The current context will be used for all subsequent commands.
 
 ```
 ➜ re get datasets
@@ -160,6 +161,15 @@ The token and endpoint for the current context will be used for all subsequent c
  InvestmentBank/margin-call          b9d50fb2b38c3af5  2019-05-08 07:51:09  IB Margin Call
  InvestmentBank/margin-call-large    6d00b9f69ab059f6  2019-05-11 09:23:43  IB Margin Call Large
 ```
+
+Any of the context settings can be overwritten as a one off using global flags such as `--token`, `--endpoint` and `--proxy`.
+
+```
+➜ re --proxy http://proxy.example get datasets
+```
+
+Adding a context with a name that already exists will allow you to update any of the saved settings.
+
 
 ### Uploading Comments
 

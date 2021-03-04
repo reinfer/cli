@@ -9,7 +9,7 @@ use log::debug;
 use reqwest::{
     blocking::{multipart::Form, Client as HttpClient, Response as HttpResponse},
     header::{HeaderMap, HeaderName, HeaderValue},
-    IntoUrl, Result as ReqwestResult,
+    IntoUrl, Proxy, Result as ReqwestResult,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -90,6 +90,7 @@ pub struct Config {
     pub endpoint: Url,
     pub token: Token,
     pub accept_invalid_certificates: bool,
+    pub proxy: Option<Url>,
     /// Retry settings to use, if any. This will apply to all requests except for POST requests
     /// which are not idempotent (as they cannot be naively retried).
     pub retry_config: Option<RetryConfig>,
@@ -101,6 +102,7 @@ impl Default for Config {
             endpoint: DEFAULT_ENDPOINT.clone(),
             token: Token("".to_owned()),
             accept_invalid_certificates: false,
+            proxy: None,
             retry_config: None,
         }
     }
@@ -1168,11 +1170,13 @@ impl Endpoints {
 }
 
 fn build_http_client(config: &Config) -> Result<HttpClient> {
-    HttpClient::builder()
+    let mut builder = HttpClient::builder()
         .gzip(true)
-        .danger_accept_invalid_certs(config.accept_invalid_certificates)
-        .build()
-        .map_err(Error::BuildHttpClient)
+        .danger_accept_invalid_certs(config.accept_invalid_certificates);
+    if let Some(proxy) = config.proxy.clone() {
+        builder = builder.proxy(Proxy::all(proxy).map_err(Error::BuildHttpClient)?);
+    }
+    builder.build().map_err(Error::BuildHttpClient)
 }
 
 fn build_headers(config: &Config) -> Result<HeaderMap> {

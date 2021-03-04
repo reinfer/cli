@@ -87,6 +87,11 @@ fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
         ));
     }
 
+    let proxy = args
+        .proxy
+        .clone()
+        .or_else(|| current_context.and_then(|context| context.proxy.clone()));
+
     // Retry everything but the very first request.
     // Retry wait schedule is [5s, 10s, 20s, fail]. (Plus the time for each attempt to timeout.)
     let retry_config = RetryConfig {
@@ -100,6 +105,7 @@ fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
         endpoint,
         token,
         accept_invalid_certificates,
+        proxy,
         retry_config: Some(retry_config),
     })
     .context("Failed to initialise the HTTP client.")
