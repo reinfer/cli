@@ -12,15 +12,15 @@ edition = "2018"
 name = "reinfer_client"
 
 [dependencies]
-chrono = { version = "0.4.11", features = ["serde"] }
+chrono = { version = "0.4.19", features = ["serde"] }
 lazy_static = "1.4.0"
-log = "0.4.8"
-reqwest = { version = "0.11.0", default-features = false, features = ["blocking", "gzip", "json", "multipart", "native-tls-vendored"] }
-serde = { version = "1.0.114", features = ["derive"] }
-serde_json = "1.0.55"
-regex = "1"
-thiserror = "1.0.23"
-url = "2.2.0"
+log = "0.4.14"
+reqwest = { version = "0.11.1", default-features = false, features = ["blocking", "gzip", "json", "multipart", "native-tls-vendored"] }
+serde = { version = "1.0.123", features = ["derive"] }
+serde_json = "1.0.64"
+regex = "1.4.3"
+thiserror = "1.0.24"
+url = "2.2.1"
 
 [dev-dependencies]
 mockito = "0.29.0"

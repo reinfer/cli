@@ -131,7 +131,8 @@ pub(crate) struct GetCurrentResponse {
     pub user: User,
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum OrganisationPermission {
     #[serde(rename = "sources-add-comments")]
     CommentsAdmin,
@@ -198,6 +199,14 @@ pub enum OrganisationPermission {
 
     #[serde(rename = "appliance-config-write")]
     ApplianceConfigWrite,
+
+    #[serde(rename = "integrations-read")]
+    IntegrationsRead,
+
+    #[serde(rename = "integrations-write")]
+    IntegrationsWrite,
+
+    Unknown(Box<str>),
 }
 
 impl FromStr for OrganisationPermission {
@@ -212,7 +221,8 @@ impl FromStr for OrganisationPermission {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum GlobalPermission {
     #[serde(rename = "root")]
     Root,
@@ -231,6 +241,8 @@ pub enum GlobalPermission {
 
     #[serde(rename = "dialog")]
     LegacyDialog,
+
+    Unknown(Box<str>),
 }
 
 impl FromStr for GlobalPermission {
@@ -242,5 +254,38 @@ impl FromStr for GlobalPermission {
                 permission: string.into(),
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unknown_organisation_permission_roundtrips() {
+        let unknown_permission = OrganisationPermission::from_str("unknown").unwrap();
+        match unknown_permission {
+            OrganisationPermission::Unknown(ref error) => assert_eq!(&**error, "unknown"),
+            _ => panic!("Expected error to be parsed as Unknown(..)"),
+        }
+
+        assert_eq!(
+            &serde_json::ser::to_string(&unknown_permission).unwrap(),
+            "\"unknown\""
+        )
+    }
+
+    #[test]
+    fn unknown_global_permission_roundtrips() {
+        let unknown_permission = GlobalPermission::from_str("unknown").unwrap();
+        match unknown_permission {
+            GlobalPermission::Unknown(ref error) => assert_eq!(&**error, "unknown"),
+            _ => panic!("Expected error to be parsed as Unknown(..)"),
+        }
+
+        assert_eq!(
+            &serde_json::ser::to_string(&unknown_permission).unwrap(),
+            "\"unknown\""
+        )
     }
 }
