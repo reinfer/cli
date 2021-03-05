@@ -195,10 +195,7 @@ fn progress_bar(total_bytes: u64, statistics: &Arc<Statistics>) -> Progress {
             )
         },
         &statistics,
-        total_bytes,
-        ProgressOptions {
-            bytes_units: true,
-            ..Default::default()
-        },
+        Some(total_bytes),
+        ProgressOptions { bytes_units: true },
     )
 }

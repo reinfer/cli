@@ -120,6 +120,9 @@ pub struct Comment {
     #[serde(skip_serializing_if = "PropertyMap::is_empty", default)]
     pub user_properties: PropertyMap,
     pub created_at: DateTime<Utc>,
+
+    #[serde(default)]
+    pub has_annotations: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]

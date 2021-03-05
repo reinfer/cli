@@ -517,11 +517,8 @@ fn progress_bar(
             basic_statistics
         },
         &statistics,
-        total_bytes,
-        ProgressOptions {
-            bytes_units: true,
-            ..Default::default()
-        },
+        Some(total_bytes),
+        ProgressOptions { bytes_units: true },
     )
 }
 

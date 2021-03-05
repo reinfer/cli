@@ -668,10 +668,7 @@ fn get_comments_progress_bar(
             )
         },
         &statistics,
-        total_bytes,
-        ProgressOptions {
-            bytes_units: false,
-            ..Default::default()
-        },
+        Some(total_bytes),
+        ProgressOptions { bytes_units: false },
     )
 }

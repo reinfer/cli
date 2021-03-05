@@ -14,25 +14,11 @@ pub type ProgressMessage = (u64, String);
 
 pub struct Options {
     pub bytes_units: bool,
-    pub show_bar: bool,
-    pub show_tick: bool,
-    pub show_speed: bool,
-    pub show_percent: bool,
-    pub show_counter: bool,
-    pub show_time_left: bool,
 }
 
 impl Default for Options {
     fn default() -> Self {
-        Options {
-            bytes_units: true,
-            show_bar: true,
-            show_tick: true,
-            show_speed: true,
-            show_percent: true,
-            show_counter: true,
-            show_time_left: true,
-        }
+        Options { bytes_units: true }
     }
 }
 
@@ -45,7 +31,7 @@ impl Progress {
     pub fn new<ProgressFnT, StatisticsT>(
         progress_fn: ProgressFnT,
         statistics: &Arc<StatisticsT>,
-        target_value: u64,
+        target_value: Option<u64>,
         options: Options,
     ) -> Self
     where
@@ -84,7 +70,7 @@ impl Drop for Progress {
 fn spawn_progress_thread<Statistics, ProgressFn>(
     statistics: Arc<Statistics>,
     progress_fn: ProgressFn,
-    max_progress_value: u64,
+    max_progress_value: Option<u64>,
     options: Options,
     report_progress: Arc<AtomicBool>,
 ) -> thread::JoinHandle<()>
@@ -96,15 +82,15 @@ where
     let mut template_str = String::new();
     template_str.push_str(&format!("{} ", LOG_PREFIX_INFO.deref()));
     template_str.push_str("{spinner:.green} ");
-    template_str.push_str("[{elapsed_precise}] {prefix} {bar:32.cyan/blue}");
-    if options.bytes_units {
-        template_str.push_str(" {bytes} / {total_bytes}");
-    } else {
-        template_str.push_str(" {msg}");
-    }
-    template_str.push_str(" ({eta})");
+    template_str.push_str("[{elapsed_precise}] {prefix} ");
 
-    let progress_bar = ProgressBar::new(max_progress_value);
+    match (max_progress_value.is_some(), options.bytes_units) {
+        (true, true) => template_str.push_str("{bar:32.cyan/blue} {bytes} / {total_bytes} ({eta})"),
+        (true, false) => template_str.push_str("{bar:32.cyan/blue} {msg} ({eta})"),
+        _ => template_str.push_str("{msg}"),
+    }
+
+    let progress_bar = ProgressBar::new(max_progress_value.unwrap_or(0));
     progress_bar.set_style(
         ProgressStyle::default_bar()
             .template(&template_str)
@@ -121,7 +107,10 @@ where
             let (progress_value, message) = progress_fn(&statistics);
             progress_bar.set_position(progress_value);
             progress_bar.set_prefix(&message);
-            progress_bar.set_message(&format!("{} / {}", progress_value, max_progress_value));
+            match max_progress_value {
+                Some(value) => progress_bar.set_message(&format!("{} / {}", progress_value, value)),
+                None => progress_bar.set_message(&format!("{}", progress_value)),
+            };
         }
 
         progress_bar.finish_and_clear();
