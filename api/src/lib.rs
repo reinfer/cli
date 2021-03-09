@@ -777,7 +777,7 @@ pub struct CommentsIter<'a> {
     to_timestamp: Option<DateTime<Utc>>,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct CommentsIterTimerange {
     pub from: Option<DateTime<Utc>>,
     pub to: Option<DateTime<Utc>>,

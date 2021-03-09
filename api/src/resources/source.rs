@@ -50,7 +50,7 @@ impl FromStr for FullName {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct Id(pub String);
 
 // TODO(mcobzarenco)[3963]: Make `Identifier` into a trait (ensure it still implements
@@ -70,6 +70,12 @@ impl From<Id> for Identifier {
 impl From<FullName> for Identifier {
     fn from(full_name: FullName) -> Self {
         Identifier::FullName(full_name)
+    }
+}
+
+impl<'a> From<&'a Source> for Identifier {
+    fn from(source: &Source) -> Self {
+        Identifier::FullName(source.full_name())
     }
 }
 
