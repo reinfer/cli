@@ -1,5 +1,9 @@
 # Unreleased
 
+# v0.5.3
+
+- `delete bulk`: For deleting multiple comments by source id. When run with `--include-annotated=false`, skips annotated comments. When run with `--include-annotated=true`, deletes all comments.
+
 # v0.5.2
 
  - Add support for using an HTTP proxy for all requests. The proxy configuration is saved as part of the context.
