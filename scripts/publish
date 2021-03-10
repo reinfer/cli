@@ -10,7 +10,7 @@ cargo publish
 
 # Wait for crates.io metadata to update with the new crate we just published
 # Otherwise we get a 'no such dependency' error
-sleep 10
+sleep 30
 
 cd "$ROOT/cli"
 cargo publish
