@@ -245,10 +245,10 @@ impl Client {
             limit,
             after,
         };
-        Ok(self.get_query::<_, _, _, SimpleApiError>(
+        self.get_query::<_, _, _, SimpleApiError>(
             self.endpoints.comments(source_name)?,
             Some(&query_params),
-        )?)
+        )
     }
 
     /// Iterate through all comments in a source.
@@ -266,10 +266,10 @@ impl Client {
         source_name: &SourceFullName,
         comments: &[NewComment],
     ) -> Result<PutCommentsResponse> {
-        Ok(self.put::<_, _, _, SimpleApiError>(
+        self.put::<_, _, _, SimpleApiError>(
             self.endpoints.comments(source_name)?,
             PutCommentsRequest { comments },
-        )?)
+        )
     }
 
     pub fn sync_comments(
@@ -277,11 +277,11 @@ impl Client {
         source_name: &SourceFullName,
         comments: &[NewComment],
     ) -> Result<SyncCommentsResponse> {
-        Ok(self.post::<_, _, _, SimpleApiError>(
+        self.post::<_, _, _, SimpleApiError>(
             self.endpoints.sync_comments(source_name)?,
             SyncCommentsRequest { comments },
             Retry::Yes,
-        )?)
+        )
     }
 
     pub fn put_emails(
@@ -289,10 +289,10 @@ impl Client {
         bucket_name: &BucketFullName,
         emails: &[NewEmail],
     ) -> Result<PutEmailsResponse> {
-        Ok(self.put::<_, _, _, SimpleApiError>(
+        self.put::<_, _, _, SimpleApiError>(
             self.endpoints.put_emails(bucket_name)?,
             PutEmailsRequest { emails },
-        )?)
+        )
     }
 
     pub fn put_comment_audio(
@@ -408,11 +408,9 @@ impl Client {
         dataset_name: &DatasetFullName,
         query_parameters: GetLabellingsInBulk,
     ) -> Result<GetAnnotationsResponse> {
-        Ok(
-            self.get_query::<_, _, GetAnnotationsResponse, SimpleApiError>(
-                self.endpoints.get_labellings(dataset_name)?,
-                Some(&query_parameters),
-            )?,
+        self.get_query::<_, _, GetAnnotationsResponse, SimpleApiError>(
+            self.endpoints.get_labellings(dataset_name)?,
+            Some(&query_parameters),
         )
     }
 
@@ -424,14 +422,14 @@ impl Client {
         labelling: Option<&NewLabelling>,
         entities: Option<&NewEntities>,
     ) -> Result<AnnotatedComment> {
-        Ok(self.post::<_, _, AnnotatedComment, SimpleApiError>(
+        self.post::<_, _, AnnotatedComment, SimpleApiError>(
             self.endpoints.post_labelling(dataset_name, comment_uid)?,
             UpdateAnnotationsRequest {
                 labelling,
                 entities,
             },
             Retry::No,
-        )?)
+        )
     }
 
     pub fn get_triggers(&self, dataset_name: &DatasetFullName) -> Result<Vec<Trigger>> {
@@ -447,7 +445,7 @@ impl Client {
         limit: usize,
         continuation: Option<&Continuation>,
     ) -> Result<RecentCommentsPage> {
-        Ok(self.post::<_, _, RecentCommentsPage, SimpleApiError>(
+        self.post::<_, _, RecentCommentsPage, SimpleApiError>(
             self.endpoints.recent_comments(dataset_name)?,
             GetRecentRequest {
                 limit,
@@ -455,7 +453,7 @@ impl Client {
                 continuation,
             },
             Retry::No,
-        )?)
+        )
     }
 
     pub fn get_current_user(&self) -> Result<User> {
