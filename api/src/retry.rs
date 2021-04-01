@@ -57,7 +57,7 @@ impl Retrier {
                     log::warn!("{} - retrying after {:?}.", $src, duration);
                     sleep(duration)
                 }};
-            };
+            }
 
             match send_request() {
                 Ok(response) if response.status().is_server_error() => {
