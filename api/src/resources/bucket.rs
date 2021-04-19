@@ -117,8 +117,7 @@ pub struct NewBucket<'request> {
     pub bucket_type: BucketType,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<&'request str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub transform_tag: Option<&'request TransformTag>,
+    pub transform_tag: &'request TransformTag,
 }
 
 #[derive(Debug, Clone, Serialize)]
