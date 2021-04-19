@@ -20,7 +20,7 @@ pub struct CreateBucketArgs {
     #[structopt(long = "transform-tag")]
     /// Set the transform tag of the new bucket. You will be given this value
     /// by a Re:infer engineer.
-    transform_tag: Option<TransformTag>,
+    transform_tag: TransformTag,
 }
 
 pub fn create(client: &Client, args: &CreateBucketArgs) -> Result<()> {
@@ -37,7 +37,7 @@ pub fn create(client: &Client, args: &CreateBucketArgs) -> Result<()> {
             NewBucket {
                 title: title.as_ref().map(|title| title.as_str()),
                 bucket_type,
-                transform_tag: transform_tag.as_ref(),
+                transform_tag: &transform_tag,
             },
         )
         .context("Operation to create a bucket has failed")?;

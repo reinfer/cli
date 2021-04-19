@@ -1,14 +1,18 @@
 # Unreleased
 
+## Breaking
+
+- The `create bucket` flag `--transform-tag` is now required.
+
 # v0.5.3
 
 - `delete bulk`: For deleting multiple comments by source id. When run with `--include-annotated=false`, skips annotated comments. When run with `--include-annotated=true`, deletes all comments.
 
 # v0.5.2
 
- - Add support for using an HTTP proxy for all requests. The proxy configuration is saved as part of the context.
-   Additionally, the proxy can be overridden / specified as a one off using a global command line argument
-   `--proxy https://proxy.example` (e.g. similar to `--endpoint`).
+- Add support for using an HTTP proxy for all requests. The proxy configuration is saved as part of the context.
+  Additionally, the proxy can be overridden / specified as a one off using a global command line argument
+  `--proxy https://proxy.example` (e.g. similar to `--endpoint`).
 
 # v0.5.1
 
