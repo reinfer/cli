@@ -4,6 +4,10 @@
 
 - The `create bucket` flag `--transform-tag` is now required.
 
+## Changed
+
+- `create dataset`: Accept an optional `--model-family` and `--copy-labels-from` for the new dataset.
+
 # v0.5.3
 
 - `delete bulk`: For deleting multiple comments by source id. When run with `--include-annotated=false`, skips annotated comments. When run with `--include-annotated=true`, deletes all comments.
@@ -32,7 +36,6 @@ re create dataset org/example-dataset -s org/example-source --has-sentiment fals
 
 ## Changed
 
-- `create dataset`: Accept an optional `--model-family` and `--copy-labels-from` for the new dataset.
 - `create bucket`: Accept an optional `--transform-tag` value for the new bucket.
 - `get buckets`: Display transform tag for retrieved data.
 
