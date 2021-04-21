@@ -35,9 +35,9 @@ pub struct CreateDatasetArgs {
     /// Model family to use for the new dataset
     model_family: Option<String>,
 
-    /// Dataset ID of the dataset to copy labels from
-    #[structopt(long = "copy-labels-from")]
-    copy_labels_from: Option<String>,
+    /// Dataset ID of the dataset to copy annotations from
+    #[structopt(long = "copy-annotations-from")]
+    copy_annotations_from: Option<String>,
 }
 
 pub fn create(client: &Client, args: &CreateDatasetArgs) -> Result<()> {
@@ -49,7 +49,7 @@ pub fn create(client: &Client, args: &CreateDatasetArgs) -> Result<()> {
         ref sources,
         ref entity_defs,
         ref model_family,
-        ref copy_labels_from,
+        ref copy_annotations_from,
     } = *args;
 
     let source_ids = {
@@ -75,7 +75,7 @@ pub fn create(client: &Client, args: &CreateDatasetArgs) -> Result<()> {
                 has_sentiment: *has_sentiment,
                 entity_defs,
                 model_family: model_family.as_deref(),
-                copy_labels_from: copy_labels_from.as_deref(),
+                copy_annotations_from: copy_annotations_from.as_deref(),
             },
         )
         .context("Operation to create a dataset has failed.")?;

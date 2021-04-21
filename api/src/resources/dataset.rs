@@ -124,7 +124,7 @@ pub struct NewDataset<'request> {
     pub model_family: Option<&'request str>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub copy_labels_from: Option<&'request str>,
+    pub copy_annotations_from: Option<&'request str>,
 }
 
 #[derive(Debug, Clone, Serialize)]
