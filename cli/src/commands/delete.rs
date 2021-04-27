@@ -8,8 +8,8 @@ use std::sync::{
 use structopt::StructOpt;
 
 use reinfer_client::{
-    BucketIdentifier, Client, CommentId, CommentsIterTimerange, DatasetIdentifier, Source,
-    SourceIdentifier,
+    BucketIdentifier, Client, CommentId, CommentsIter, CommentsIterTimerange, DatasetIdentifier,
+    Source, SourceIdentifier,
 };
 
 use crate::progress::{Options as ProgressOptions, Progress};
@@ -160,8 +160,27 @@ fn delete_comments_in_period(
         } else {
             None
         };
+
+        const DELETION_BATCH_SIZE: usize = 256;
+        // Buffer to store comment IDs to delete - allow it to be slightly larger than the deletion
+        // batch size so that if there's an incomplete page it'll increase the counts.
+        let mut comments_to_delete =
+            Vec::with_capacity(DELETION_BATCH_SIZE + CommentsIter::MAX_PAGE_SIZE);
+
+        let delete_batch = |comment_ids: Vec<CommentId>| -> Result<()> {
+            client
+                .delete_comments(&source, &comment_ids)
+                .context("Operation to delete comments failed")?;
+            statistics.increment_deleted(comment_ids.len());
+            Ok(())
+        };
+
         client
-            .get_comments_iter(&source.full_name(), None, timerange)
+            .get_comments_iter(
+                &source.full_name(),
+                Some(CommentsIter::MAX_PAGE_SIZE),
+                timerange,
+            )
             .try_for_each(|page| -> Result<()> {
                 let page = page.context("Operation to get comments failed")?;
                 let num_comments = page.len();
@@ -179,17 +198,17 @@ fn delete_comments_in_period(
                 let num_skipped = num_comments - comment_ids.len();
                 statistics.increment_skipped(num_skipped);
 
-                if comment_ids.is_empty() {
-                    return Ok(());
+                comments_to_delete.extend(comment_ids);
+                if comments_to_delete.len() >= DELETION_BATCH_SIZE {
+                    let remainder = comments_to_delete.split_off(DELETION_BATCH_SIZE);
+                    delete_batch(std::mem::replace(&mut comments_to_delete, remainder))?;
                 }
-
-                client
-                    .delete_comments(&source, &comment_ids)
-                    .context("Operation to delete comments failed")?;
-                statistics.increment_deleted(comment_ids.len());
-
                 Ok(())
             })?;
+
+        if !comments_to_delete.is_empty() {
+            delete_batch(comments_to_delete)?;
+        }
     }
     log::info!(
         "Deleted {} comments (skipped {}).",

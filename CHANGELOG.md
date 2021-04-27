@@ -4,6 +4,10 @@
 
 - The `create bucket` flag `--transform-tag` is now required.
 
+## Changed
+
+- `delete bulk`: slight performance optimisations.
+
 # v0.5.3
 
 - `delete bulk`: For deleting multiple comments by source id. When run with `--include-annotated=false`, skips annotated comments. When run with `--include-annotated=true`, deletes all comments.
