@@ -161,7 +161,8 @@ fn delete_comments_in_period(
             None
         };
 
-        const DELETION_BATCH_SIZE: usize = 256;
+        // This is the maximum number of comments which the API permits deleting in a single call.
+        const DELETION_BATCH_SIZE: usize = 128;
         // Buffer to store comment IDs to delete - allow it to be slightly larger than the deletion
         // batch size so that if there's an incomplete page it'll increase the counts.
         let mut comments_to_delete =
@@ -199,14 +200,16 @@ fn delete_comments_in_period(
                 statistics.increment_skipped(num_skipped);
 
                 comments_to_delete.extend(comment_ids);
-                if comments_to_delete.len() >= DELETION_BATCH_SIZE {
+                while comments_to_delete.len() >= DELETION_BATCH_SIZE {
                     let remainder = comments_to_delete.split_off(DELETION_BATCH_SIZE);
                     delete_batch(std::mem::replace(&mut comments_to_delete, remainder))?;
                 }
                 Ok(())
             })?;
 
+        // Delete any comments left over in any potential last partial batch.
         if !comments_to_delete.is_empty() {
+            assert!(comments_to_delete.len() < DELETION_BATCH_SIZE);
             delete_batch(comments_to_delete)?;
         }
     }
