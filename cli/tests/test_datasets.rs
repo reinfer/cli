@@ -181,7 +181,31 @@ fn test_create_dataset_wrong_model_family() {
         .output()
         .unwrap();
     assert!(!output.status.success());
-    dbg!(String::from_utf8_lossy(&output.stderr));
     assert!(String::from_utf8_lossy(&output.stderr)
         .contains("API request failed with 400 Bad Request: 'non-existent-family' is not one of"))
+}
+
+#[test]
+fn test_create_dataset_copy_annotations() {
+    let cli = TestCli::get();
+    let dataset1 = TestDataset::new();
+    let dataset1_output = cli.run(&["get", "datasets", "--output=json", dataset1.identifier()]);
+    let dataset1_info: Dataset = serde_json::from_str(dataset1_output.trim()).unwrap();
+
+    let output = cli
+        .command()
+        .args(&[
+            "create",
+            "dataset",
+            &format!("--copy-annotations-from={}", dataset1_info.id.0),
+            &format!(
+                "{}/test-dataset-{}",
+                TestCli::organisation(),
+                Uuid::new_v4()
+            ),
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
 }
