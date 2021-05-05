@@ -1039,6 +1039,7 @@ dependencies = [
  "maplit",
  "once_cell",
  "prettytable-rs",
+ "regex",
  "reinfer-client",
  "reqwest",
  "serde",

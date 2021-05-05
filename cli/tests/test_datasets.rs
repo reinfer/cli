@@ -97,12 +97,9 @@ fn test_list_multiple_datasets() {
 #[test]
 fn test_create_dataset_custom() {
     let cli = TestCli::get();
-    let source = TestSource::new();
-
     let dataset = TestDataset::new_args(&[
         "--title=some title",
         "--description=some description",
-        &format!("--source={}", source.identifier()),
         "--has-sentiment=true",
     ]);
 
@@ -112,7 +109,6 @@ fn test_create_dataset_custom() {
     assert_eq!(&dataset_info.name.0, dataset.name());
     assert_eq!(dataset_info.title, "some title");
     assert_eq!(dataset_info.description, "some description");
-    assert_eq!(dataset_info.source_ids.len(), 1);
     assert_eq!(dataset_info.has_sentiment, true);
 }
 
@@ -126,6 +122,7 @@ fn test_create_dataset_with_source() {
     let dataset_info: Dataset = serde_json::from_str(output.trim()).unwrap();
     assert_eq!(&dataset_info.owner.0, dataset.owner());
     assert_eq!(&dataset_info.name.0, dataset.name());
+    assert_eq!(dataset_info.source_ids.len(), 1);
 
     let source_output = cli.run(&[
         "get",
