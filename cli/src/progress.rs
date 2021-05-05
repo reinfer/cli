@@ -106,10 +106,10 @@ where
             thread::sleep(sleep_duration);
             let (progress_value, message) = progress_fn(&statistics);
             progress_bar.set_position(progress_value);
-            progress_bar.set_prefix(&message);
+            progress_bar.set_prefix(message);
             match max_progress_value {
-                Some(value) => progress_bar.set_message(&format!("{} / {}", progress_value, value)),
-                None => progress_bar.set_message(&format!("{}", progress_value)),
+                Some(value) => progress_bar.set_message(format!("{} / {}", progress_value, value)),
+                None => progress_bar.set_message(format!("{}", progress_value)),
             };
         }
 
