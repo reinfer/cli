@@ -1,5 +1,7 @@
 # Unreleased
 
+# v0.6.0
+
 ## Breaking
 
 - The `create bucket` flag `--transform-tag` is now required.
