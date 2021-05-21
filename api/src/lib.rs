@@ -242,8 +242,8 @@ impl Client {
         let query_params = GetCommentsIterPageQuery {
             from_timestamp,
             to_timestamp,
-            limit,
             after,
+            limit,
         };
         self.get_query::<_, _, _, SimpleApiError>(
             self.endpoints.comments(source_name)?,

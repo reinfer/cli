@@ -11,8 +11,8 @@ use crate::error::{Error, Result};
 use reqwest::StatusCode;
 use serde::Deserialize;
 
-#[serde(tag = "status")]
 #[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "status")]
 pub(crate) enum Response<SuccessT, ErrorT: ApiError> {
     #[serde(rename = "ok")]
     Success(SuccessT),
@@ -36,10 +36,7 @@ pub(crate) trait ApiError {
 
 impl ApiError for SimpleApiError {
     fn message(&self) -> Option<&str> {
-        match &self.message {
-            Some(message) => Some(message.as_str()),
-            None => None,
-        }
+        self.message.as_deref()
     }
 
     fn into_error_kind(self, status_code: StatusCode) -> Error {
