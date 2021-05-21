@@ -1,5 +1,14 @@
 # Unreleased
 
+## Changed
+
+ - When uploading annotated comments, empty lists of assigned / dismissed labels
+   are serialized in the request. Previously empty lists were skipped which
+   meant it was not possible to remove labellings (N.B. the API distinguishes
+   between missing field -- labellings are unmodified -- or and empty list --
+   labellings are removed).
+
+
 # v0.6.0
 
 ## Breaking

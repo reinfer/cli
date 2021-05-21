@@ -383,7 +383,7 @@ impl NewAnnotatedComment {
         let has_labels = self
             .labelling
             .as_ref()
-            .map(|labelling| !labelling.assigned.is_empty() || !labelling.dismissed.is_empty())
+            .map(|labelling| labelling.assigned.is_some() || labelling.dismissed.is_some())
             .unwrap_or(false);
         let has_entities = self
             .entities
@@ -406,10 +406,10 @@ pub struct Labelling {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct NewLabelling {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub assigned: Vec<Label>,
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub dismissed: Vec<Label>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub assigned: Option<Vec<Label>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub dismissed: Option<Vec<Label>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
