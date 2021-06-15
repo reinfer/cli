@@ -120,6 +120,9 @@ pub struct NewSource<'request> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bucket_id: Option<BucketId>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sensitive_properties: Option<Vec<&'request str>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -139,5 +142,33 @@ pub(crate) struct GetAvailableResponse {
 
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct GetResponse {
+    pub source: Source,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UpdateSource<'request> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<&'request str>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<&'request str>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub should_translate: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bucket_id: Option<BucketId>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sensitive_properties: Option<Vec<&'request str>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct UpdateRequest<'request> {
+    pub source: UpdateSource<'request>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct UpdateResponse {
     pub source: Source,
 }

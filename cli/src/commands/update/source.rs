@@ -1,25 +1,21 @@
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::{BucketId, BucketIdentifier, Client, NewSource, SourceFullName};
+use reinfer_client::{BucketId, BucketIdentifier, Client, SourceIdentifier, UpdateSource};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-pub struct CreateSourceArgs {
-    #[structopt(name = "source-name")]
-    /// Full name of the new source <owner>/<name>
-    name: SourceFullName,
+pub struct UpdateSourceArgs {
+    #[structopt(name = "source")]
+    /// Id or full name of the source to update
+    source: SourceIdentifier,
 
     #[structopt(long = "title")]
-    /// Set the title of the new source
+    /// Set the title of the source
     title: Option<String>,
 
     #[structopt(long = "description")]
-    /// Set the description of the new source
+    /// Set the description of the source
     description: Option<String>,
-
-    #[structopt(long = "language")]
-    /// Set the language of the new source
-    language: Option<String>,
 
     #[structopt(long = "should-translate")]
     /// Enable translation for the source
@@ -30,12 +26,11 @@ pub struct CreateSourceArgs {
     bucket: Option<BucketIdentifier>,
 }
 
-pub fn create(client: &Client, args: &CreateSourceArgs) -> Result<()> {
-    let CreateSourceArgs {
-        ref name,
+pub fn update(client: &Client, args: &UpdateSourceArgs) -> Result<()> {
+    let UpdateSourceArgs {
+        ref source,
         ref title,
         ref description,
-        ref language,
         ref should_translate,
         ref bucket,
     } = *args;
@@ -56,21 +51,28 @@ pub fn create(client: &Client, args: &CreateSourceArgs) -> Result<()> {
         })
         .transpose()?;
 
+    let source_full_name = match source.to_owned() {
+        SourceIdentifier::FullName(name) => name,
+        source @ SourceIdentifier::Id(_) => client
+            .get_source(source)
+            .context("Fetching source id.")?
+            .full_name(),
+    };
+
     let source = client
-        .create_source(
-            &name,
-            NewSource {
+        .update_source(
+            &source_full_name,
+            UpdateSource {
                 title: title.as_ref().map(|title| title.as_str()),
                 description: description.as_ref().map(|description| description.as_str()),
-                language: language.as_ref().map(|language| language.as_str()),
                 should_translate: *should_translate,
                 bucket_id,
                 sensitive_properties: None,
             },
         )
-        .context("Operation to create a source has failed")?;
+        .context("Operation to update a source has failed")?;
     info!(
-        "New source `{}` [id: {}] created successfully",
+        "Source `{}` [id: {}] updated successfully",
         source.full_name().0,
         source.id.0
     );

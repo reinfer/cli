@@ -28,11 +28,13 @@ use crate::resources::{
     dataset::{
         CreateRequest as CreateDatasetRequest, CreateResponse as CreateDatasetResponse,
         GetAvailableResponse as GetAvailableDatasetsResponse, GetResponse as GetDatasetResponse,
+        UpdateRequest as UpdateDatasetRequest, UpdateResponse as UpdateDatasetResponse,
     },
     email::{PutEmailsRequest, PutEmailsResponse},
     source::{
         CreateRequest as CreateSourceRequest, CreateResponse as CreateSourceResponse,
         GetAvailableResponse as GetAvailableSourcesResponse, GetResponse as GetSourceResponse,
+        UpdateRequest as UpdateSourceRequest, UpdateResponse as UpdateSourceResponse,
     },
     statistics::GetResponse as GetStatisticsResponse,
     trigger::{
@@ -64,12 +66,12 @@ pub use crate::{
         },
         dataset::{
             Dataset, FullName as DatasetFullName, Id as DatasetId, Identifier as DatasetIdentifier,
-            Name as DatasetName, NewDataset,
+            Name as DatasetName, NewDataset, UpdateDataset,
         },
         email::{Id as EmailId, Mailbox, MimeContent, NewEmail},
         source::{
             FullName as SourceFullName, Id as SourceId, Identifier as SourceIdentifier,
-            Name as SourceName, NewSource, Source,
+            Name as SourceName, NewSource, Source, UpdateSource,
         },
         statistics::Statistics,
         trigger::{
@@ -189,6 +191,21 @@ impl Client {
             .put::<_, _, CreateSourceResponse, SimpleApiError>(
                 self.endpoints.source_by_name(&source_name)?,
                 CreateSourceRequest { source: options },
+            )?
+            .source)
+    }
+
+    /// Update a source.
+    pub fn update_source(
+        &self,
+        source_name: &SourceFullName,
+        options: UpdateSource,
+    ) -> Result<Source> {
+        Ok(self
+            .post::<_, _, UpdateSourceResponse, SimpleApiError>(
+                self.endpoints.source_by_name(&source_name)?,
+                UpdateSourceRequest { source: options },
+                Retry::Yes,
             )?
             .source)
     }
@@ -353,6 +370,7 @@ impl Client {
         })
     }
 
+    /// Create a dataset.
     pub fn create_dataset(
         &self,
         dataset_name: &DatasetFullName,
@@ -362,6 +380,21 @@ impl Client {
             .put::<_, _, CreateDatasetResponse, SimpleApiError>(
                 self.endpoints.dataset_by_name(dataset_name)?,
                 CreateDatasetRequest { dataset: options },
+            )?
+            .dataset)
+    }
+
+    /// Update a dataset.
+    pub fn update_dataset(
+        &self,
+        dataset_name: &DatasetFullName,
+        options: UpdateDataset,
+    ) -> Result<Dataset> {
+        Ok(self
+            .post::<_, _, UpdateDatasetResponse, SimpleApiError>(
+                self.endpoints.dataset_by_name(dataset_name)?,
+                UpdateDatasetRequest { dataset: options },
+                Retry::Yes,
             )?
             .dataset)
     }

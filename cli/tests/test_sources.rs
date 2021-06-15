@@ -1,4 +1,5 @@
 use crate::common::TestCli;
+use pretty_assertions::assert_eq;
 use reinfer_client::Source;
 use uuid::Uuid;
 
@@ -49,6 +50,11 @@ impl TestSource {
     pub fn name(&self) -> &str {
         &self.full_name[self.sep_index + 1..]
     }
+
+    pub fn get(&self) -> Source {
+        let output = TestCli::get().run(&["get", "sources", self.identifier(), "--output=json"]);
+        serde_json::from_str::<Source>(&output).unwrap()
+    }
 }
 
 impl Drop for TestSource {
@@ -95,7 +101,7 @@ fn test_list_multiple_sources() {
 }
 
 #[test]
-fn test_create_source_custom() {
+fn test_create_update_source_custom() {
     let cli = TestCli::get();
     let source = TestSource::new_args(&[
         "--title=some title",
@@ -104,15 +110,72 @@ fn test_create_source_custom() {
         "--should-translate=true",
     ]);
 
-    let output = cli.run(&["get", "sources", source.identifier(), "--output=json"]);
-    let source_info: Source = serde_json::from_str(&output).unwrap();
+    /// A subset of source fields that we can easily check for equality accross
+    #[derive(PartialEq, Eq, Debug)]
+    struct SourceInfo {
+        owner: String,
+        name: String,
+        title: String,
+        description: String,
+        language: String,
+        should_translate: bool,
+    }
 
-    assert_eq!(&source_info.owner.0, source.owner());
-    assert_eq!(&source_info.name.0, source.name());
-    assert_eq!(source_info.title, "some title");
-    assert_eq!(source_info.description, "some description");
-    assert_eq!(source_info.language, "de");
-    assert_eq!(source_info.should_translate, true);
+    impl From<Source> for SourceInfo {
+        fn from(source: Source) -> SourceInfo {
+            SourceInfo {
+                owner: source.owner.0,
+                name: source.name.0,
+                title: source.title,
+                description: source.description,
+                language: source.language,
+                should_translate: source.should_translate,
+            }
+        }
+    }
+
+    let get_source_info = || -> SourceInfo {
+        let output = cli.run(&["get", "sources", source.identifier(), "--output=json"]);
+        serde_json::from_str::<Source>(&output).unwrap().into()
+    };
+
+    let mut expected_source_info = SourceInfo {
+        owner: source.owner().to_owned(),
+        name: source.name().to_owned(),
+        title: "some title".to_owned(),
+        description: "some description".to_owned(),
+        language: "de".to_owned(),
+        should_translate: true,
+    };
+    assert_eq!(get_source_info(), expected_source_info);
+
+    // An empty update should be fine
+    cli.run(&["update", "source", source.identifier()]);
+    assert_eq!(get_source_info(), expected_source_info);
+
+    // Partial update
+    cli.run(&[
+        "update",
+        "source",
+        "--title=updated title",
+        source.identifier(),
+    ]);
+    expected_source_info.title = "updated title".to_owned();
+    assert_eq!(get_source_info(), expected_source_info);
+
+    // Should be able to update all fields
+    cli.run(&[
+        "update",
+        "source",
+        "--title=updated title",
+        "--description=updated description",
+        "--should-translate=false",
+        source.identifier(),
+    ]);
+    expected_source_info.title = "updated title".to_owned();
+    expected_source_info.description = "updated description".to_owned();
+    expected_source_info.should_translate = false;
+    assert_eq!(get_source_info(), expected_source_info);
 }
 
 #[test]

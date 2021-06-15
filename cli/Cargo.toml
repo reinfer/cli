@@ -38,6 +38,7 @@ url = { version = "2.2.2", features = ["serde"] }
 reinfer-client = { version = "0.6.0", path = "../api" }
 
 [dev-dependencies]
+pretty_assertions = "0.7.2"
 uuid = { version = "0.8.2", features = ["v4"] }
 
 [features]

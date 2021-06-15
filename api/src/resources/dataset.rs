@@ -36,6 +36,20 @@ pub struct Name(pub String);
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FullName(pub String);
 
+impl FromStr for FullName {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Self> {
+        if string.split('/').count() == 2 {
+            Ok(FullName(string.into()))
+        } else {
+            Err(Error::BadDatasetIdentifier {
+                identifier: string.into(),
+            })
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Id(pub String);
 
@@ -68,12 +82,8 @@ impl FromStr for Identifier {
     fn from_str(string: &str) -> Result<Self> {
         if string.chars().all(|c| c.is_digit(16)) {
             Ok(Identifier::Id(Id(string.into())))
-        } else if string.split('/').count() == 2 {
-            Ok(Identifier::FullName(FullName(string.into())))
         } else {
-            Err(Error::BadDatasetIdentifier {
-                identifier: string.into(),
-            })
+            FullName::from_str(string).map(Identifier::FullName)
         }
     }
 }
@@ -144,5 +154,27 @@ pub(crate) struct GetAvailableResponse {
 
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct GetResponse {
+    pub dataset: Dataset,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UpdateDataset<'request> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_ids: Option<&'request [SourceId]>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<&'request str>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<&'request str>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct UpdateRequest<'request> {
+    pub dataset: UpdateDataset<'request>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct UpdateResponse {
     pub dataset: Dataset,
 }
