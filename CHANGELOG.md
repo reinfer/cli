@@ -1,5 +1,11 @@
 # Unreleased
 
+# v0.7.0
+
+## Breaking
+
+- `NewDataset`'s `entity_defs` field is now an `Option` for consistency
+
 ## Changed
 
 - When uploading annotated comments, empty lists of assigned / dismissed labels
@@ -7,6 +13,8 @@
   meant it was not possible to remove labellings (N.B. the API distinguishes
   between missing field -- labellings are unmodified -- or and empty list --
   labellings are removed).
+- All `*Id` types now implement `Hash`, `PartialEq`, and `Eq`
+- `NewDataset` and `NewSource` now implement `Default`
 
 ## Added
 

@@ -73,7 +73,11 @@ pub fn create(client: &Client, args: &CreateDatasetArgs) -> Result<()> {
                 title: title.as_deref(),
                 description: description.as_deref(),
                 has_sentiment: *has_sentiment,
-                entity_defs,
+                entity_defs: if entity_defs.is_empty() {
+                    None
+                } else {
+                    Some(entity_defs)
+                },
                 model_family: model_family.as_deref(),
                 copy_annotations_from: copy_annotations_from.as_deref(),
             },

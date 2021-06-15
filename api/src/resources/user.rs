@@ -7,7 +7,7 @@ use std::{
 
 use crate::error::{Error, Result};
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Id(pub String);
 
 impl FromStr for Id {

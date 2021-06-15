@@ -50,7 +50,7 @@ impl FromStr for FullName {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Id(pub String);
 
 // TODO(mcobzarenco)[3963]: Make `Identifier` into a trait (ensure it still implements
@@ -104,7 +104,7 @@ impl Display for Identifier {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct NewSource<'request> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<&'request str>,
@@ -125,7 +125,7 @@ pub struct NewSource<'request> {
     pub sensitive_properties: Option<Vec<&'request str>>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub(crate) struct CreateRequest<'request> {
     pub source: NewSource<'request>,
 }
@@ -145,7 +145,7 @@ pub(crate) struct GetResponse {
     pub source: Source,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct UpdateSource<'request> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<&'request str>,
@@ -163,7 +163,7 @@ pub struct UpdateSource<'request> {
     pub sensitive_properties: Option<Vec<&'request str>>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub(crate) struct UpdateRequest<'request> {
     pub source: UpdateSource<'request>,
 }
