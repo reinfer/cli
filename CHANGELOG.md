@@ -2,12 +2,16 @@
 
 ## Changed
 
- - When uploading annotated comments, empty lists of assigned / dismissed labels
-   are serialized in the request. Previously empty lists were skipped which
-   meant it was not possible to remove labellings (N.B. the API distinguishes
-   between missing field -- labellings are unmodified -- or and empty list --
-   labellings are removed).
+- When uploading annotated comments, empty lists of assigned / dismissed labels
+  are serialized in the request. Previously empty lists were skipped which
+  meant it was not possible to remove labellings (N.B. the API distinguishes
+  between missing field -- labellings are unmodified -- or and empty list --
+  labellings are removed).
 
+## Added
+
+- `update source`: update an existing source
+- `update dataset`: update an existing dataset
 
 # v0.6.0
 

@@ -1,4 +1,6 @@
-use crate::commands::{config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs};
+use crate::commands::{
+    config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs, update::UpdateArgs,
+};
 use anyhow::{anyhow, Error, Result};
 use reqwest::Url;
 use std::{path::PathBuf, str::FromStr};
@@ -65,6 +67,13 @@ pub enum Command {
     Create {
         #[structopt(subcommand)]
         create_args: CreateArgs,
+    },
+
+    #[structopt(name = "update")]
+    /// Update existing resources
+    Update {
+        #[structopt(subcommand)]
+        update_args: UpdateArgs,
     },
 
     #[structopt(name = "delete")]

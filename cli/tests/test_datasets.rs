@@ -1,3 +1,4 @@
+use pretty_assertions::assert_eq;
 use reinfer_client::{Dataset, Source};
 use uuid::Uuid;
 
@@ -95,7 +96,7 @@ fn test_list_multiple_datasets() {
 }
 
 #[test]
-fn test_create_dataset_custom() {
+fn test_create_update_dataset_custom() {
     let cli = TestCli::get();
     let dataset = TestDataset::new_args(&[
         "--title=some title",
@@ -103,13 +104,80 @@ fn test_create_dataset_custom() {
         "--has-sentiment=true",
     ]);
 
-    let output = cli.run(&["get", "datasets", dataset.identifier(), "--output=json"]);
-    let dataset_info: Dataset = serde_json::from_str(&output).unwrap();
-    assert_eq!(&dataset_info.owner.0, dataset.owner());
-    assert_eq!(&dataset_info.name.0, dataset.name());
-    assert_eq!(dataset_info.title, "some title");
-    assert_eq!(dataset_info.description, "some description");
-    assert_eq!(dataset_info.has_sentiment, true);
+    /// A subset of source fields that we can easily check for equality accross
+    #[derive(PartialEq, Eq, Debug)]
+    struct DatasetInfo {
+        owner: String,
+        name: String,
+        title: String,
+        description: String,
+        has_sentiment: bool,
+        source_ids: Vec<String>,
+    }
+
+    impl From<Dataset> for DatasetInfo {
+        fn from(dataset: Dataset) -> DatasetInfo {
+            DatasetInfo {
+                owner: dataset.owner.0,
+                name: dataset.name.0,
+                title: dataset.title,
+                description: dataset.description,
+                has_sentiment: dataset.has_sentiment,
+                source_ids: dataset.source_ids.into_iter().map(|id| id.0).collect(),
+            }
+        }
+    }
+
+    let get_dataset_info = || -> DatasetInfo {
+        let output = cli.run(&["get", "datasets", dataset.identifier(), "--output=json"]);
+        serde_json::from_str::<Dataset>(&output).unwrap().into()
+    };
+
+    let mut expected_dataset_info = DatasetInfo {
+        owner: dataset.owner().to_owned(),
+        name: dataset.name().to_owned(),
+        title: "some title".to_owned(),
+        description: "some description".to_owned(),
+        has_sentiment: true,
+        source_ids: vec![],
+    };
+    assert_eq!(get_dataset_info(), expected_dataset_info);
+
+    // Partial update
+    cli.run(&[
+        "update",
+        "dataset",
+        "--title=updated title",
+        dataset.identifier(),
+    ]);
+    expected_dataset_info.title = "updated title".to_owned();
+    assert_eq!(get_dataset_info(), expected_dataset_info);
+
+    // Should be able to update all fields
+    let test_source = TestSource::new();
+    let source = test_source.get();
+    cli.run(&[
+        "update",
+        "dataset",
+        "--title=updated title",
+        "--description=updated description",
+        &format!("--source={}", source.id.0),
+        dataset.identifier(),
+    ]);
+
+    expected_dataset_info.title = "updated title".to_owned();
+    expected_dataset_info.description = "updated description".to_owned();
+    expected_dataset_info.source_ids = vec![source.id.0];
+    assert_eq!(get_dataset_info(), expected_dataset_info);
+
+    // An empty update should be fine, including leaving source ids untouched
+    cli.run(&["update", "dataset", dataset.identifier()]);
+    assert_eq!(get_dataset_info(), expected_dataset_info);
+
+    // Setting the sources flag with no ids should clear sources
+    cli.run(&["update", "dataset", dataset.identifier(), "--source"]);
+    expected_dataset_info.source_ids = vec![];
+    assert_eq!(get_dataset_info(), expected_dataset_info);
 }
 
 #[test]
