@@ -38,7 +38,7 @@ pub struct Name(pub String);
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FullName(pub String);
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Id(pub String);
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

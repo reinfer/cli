@@ -15,7 +15,7 @@ pub struct Name(pub String);
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Id(pub String);
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct SequenceId(pub String);
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

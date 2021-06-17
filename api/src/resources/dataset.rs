@@ -50,7 +50,7 @@ impl FromStr for FullName {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Id(pub String);
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -115,7 +115,7 @@ impl FromStr for EntityDefs {
         })
     }
 }
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct NewDataset<'request> {
     pub source_ids: &'request [SourceId],
 
@@ -128,8 +128,9 @@ pub struct NewDataset<'request> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub has_sentiment: Option<bool>,
 
-    #[serde(skip_serializing_if = "EntityDefs::is_empty")]
-    pub entity_defs: &'request EntityDefs,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entity_defs: Option<&'request EntityDefs>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model_family: Option<&'request str>,
 
@@ -137,7 +138,7 @@ pub struct NewDataset<'request> {
     pub copy_annotations_from: Option<&'request str>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub(crate) struct CreateRequest<'request> {
     pub dataset: NewDataset<'request>,
 }
@@ -157,7 +158,7 @@ pub(crate) struct GetResponse {
     pub dataset: Dataset,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct UpdateDataset<'request> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_ids: Option<&'request [SourceId]>,
@@ -169,7 +170,7 @@ pub struct UpdateDataset<'request> {
     pub description: Option<&'request str>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub(crate) struct UpdateRequest<'request> {
     pub dataset: UpdateDataset<'request>,
 }
