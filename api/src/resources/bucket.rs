@@ -15,7 +15,7 @@ lazy_static! {
         Regex::new("^[A-Za-z0-9-_]{1,256}/[A-Za-z0-9-_]{1,256}$").unwrap();
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Bucket {
     pub id: Id,
     pub name: Name,
@@ -32,19 +32,19 @@ impl Bucket {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Name(pub String);
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct FullName(pub String);
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Id(pub String);
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct ModelFamily(pub String);
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct TransformTag(pub String);
 
 impl FromStr for TransformTag {
@@ -57,7 +57,7 @@ impl FromStr for TransformTag {
 
 // TODO(mcobzarenco)[3963]: Make `Identifier` into a trait (ensure it still implements
 // `FromStr` so we can take T: Identifier as a clap command line argument).
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub enum Identifier {
     Id(Id),
     FullName(FullName),
@@ -112,7 +112,7 @@ impl Display for Identifier {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct NewBucket<'request> {
     pub bucket_type: BucketType,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -120,27 +120,27 @@ pub struct NewBucket<'request> {
     pub transform_tag: &'request TransformTag,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub(crate) struct CreateRequest<'request> {
     pub bucket: NewBucket<'request>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct CreateResponse {
     pub bucket: Bucket,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct GetAvailableResponse {
     pub buckets: Vec<Bucket>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct GetResponse {
     pub bucket: Bucket,
 }
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub enum BucketType {
     #[serde(rename = "emails")]
     Emails,

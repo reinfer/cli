@@ -1,5 +1,13 @@
 # Unreleased
 
+## Breaking
+
+- All API resources with floats now use `ordered_float::NotNan`
+
+## Changed
+
+- More public types implement `Serialize`, `Eq` and `Hash` for downstream use.
+
 # v0.7.0
 
 ## Breaking
