@@ -111,6 +111,11 @@ pub struct SyncCommentsResponse {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct GetCommentResponse {
+    pub comment: Comment,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Comment {
     pub id: Id,
     pub uid: Uid,
