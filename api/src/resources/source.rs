@@ -11,7 +11,7 @@ use crate::{
     resources::user::Username,
 };
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Source {
     pub id: Id,
     pub owner: Username,
@@ -30,10 +30,10 @@ impl Source {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Name(pub String);
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct FullName(pub String);
 
 impl FromStr for FullName {
@@ -55,7 +55,7 @@ pub struct Id(pub String);
 
 // TODO(mcobzarenco)[3963]: Make `Identifier` into a trait (ensure it still implements
 // `FromStr` so we can take T: Identifier as a clap command line argument).
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub enum Identifier {
     Id(Id),
     FullName(FullName),
@@ -104,7 +104,7 @@ impl Display for Identifier {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
 pub struct NewSource<'request> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<&'request str>,
@@ -125,27 +125,27 @@ pub struct NewSource<'request> {
     pub sensitive_properties: Option<Vec<&'request str>>,
 }
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
 pub(crate) struct CreateRequest<'request> {
     pub source: NewSource<'request>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct CreateResponse {
     pub source: Source,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct GetAvailableResponse {
     pub sources: Vec<Source>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct GetResponse {
     pub source: Source,
 }
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
 pub struct UpdateSource<'request> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<&'request str>,
@@ -163,12 +163,12 @@ pub struct UpdateSource<'request> {
     pub sensitive_properties: Option<Vec<&'request str>>,
 }
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
 pub(crate) struct UpdateRequest<'request> {
     pub source: UpdateSource<'request>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct UpdateResponse {
     pub source: Source,
 }

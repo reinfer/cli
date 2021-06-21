@@ -24,7 +24,7 @@ impl FromStr for Id {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Username(pub String);
 
 impl FromStr for Username {
@@ -44,7 +44,7 @@ impl FromStr for Username {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Email(pub String);
 
 impl FromStr for Email {
@@ -55,7 +55,7 @@ impl FromStr for Email {
     }
 }
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Organisation(pub String);
 
 impl FromStr for Organisation {
@@ -77,13 +77,13 @@ impl FromStr for Organisation {
 
 // TODO(mcobzarenco)[3963]: Make `Identifier` into a trait (ensure it still implements
 // `FromStr` so we can take T: Identifier as a clap command line argument).
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub enum Identifier {
     Id(Id),
     Username(Username),
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct User {
     pub id: Id,
     pub username: Username,
@@ -95,7 +95,7 @@ pub struct User {
     pub verified: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct NewUser<'r> {
     pub username: &'r Username,
     pub email: &'r Email,
@@ -103,7 +103,7 @@ pub struct NewUser<'r> {
     pub organisation_permissions: &'r HashMap<Organisation, HashSet<OrganisationPermission>>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct ModifiedPermissions<'r> {
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub organisation_permissions: &'r HashMap<Organisation, HashSet<OrganisationPermission>>,
@@ -111,27 +111,27 @@ pub struct ModifiedPermissions<'r> {
     pub global_permissions: Vec<&'r GlobalPermission>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub(crate) struct CreateRequest<'request> {
     pub user: NewUser<'request>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct CreateResponse {
     pub user: User,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct GetAvailableResponse {
     pub users: Vec<User>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct GetCurrentResponse {
     pub user: User,
 }
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(untagged)]
 pub enum OrganisationPermission {
     #[serde(rename = "sources-add-comments")]
@@ -221,7 +221,7 @@ impl FromStr for OrganisationPermission {
     }
 }
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(untagged)]
 pub enum GlobalPermission {
     #[serde(rename = "root")]

@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use ordered_float::NotNan;
 use serde::{
     de::{Deserializer, Error as SerdeError, MapAccess, Visitor},
     ser::{SerializeMap, Serializer},
@@ -109,7 +110,7 @@ pub struct SyncCommentsResponse {
     pub unchanged: usize,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Comment {
     pub id: Id,
     pub uid: Uid,
@@ -125,7 +126,7 @@ pub struct Comment {
     pub has_annotations: bool,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct NewComment {
     pub id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -136,7 +137,7 @@ pub struct NewComment {
     pub user_properties: PropertyMap,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Message {
     pub body: MessageBody,
 
@@ -165,28 +166,28 @@ pub struct Message {
     pub sent_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct MessageBody {
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub translated_from: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct MessageSubject {
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub translated_from: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct MessageSignature {
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub translated_from: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
 pub enum Sentiment {
     #[serde(rename = "positive")]
     Positive,
@@ -195,13 +196,13 @@ pub enum Sentiment {
     Negative,
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, Eq)]
 pub struct PropertyMap(HashMap<String, PropertyValue>);
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PropertyValue {
     String(String),
-    Number(f64),
+    Number(NotNan<f64>),
 }
 
 impl Deref for PropertyMap {
@@ -230,7 +231,7 @@ impl PropertyMap {
     }
 
     #[inline]
-    pub fn insert_number(&mut self, key: String, value: f64) {
+    pub fn insert_number(&mut self, key: String, value: NotNan<f64>) {
         self.0.insert(key, PropertyValue::Number(value));
     }
 
@@ -322,7 +323,7 @@ impl<'de> Visitor<'de> for PropertyMapVisitor {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct AnnotatedComment {
     pub comment: Comment,
     #[serde(skip_serializing_if = "should_skip_serializing_labelling")]
@@ -367,7 +368,7 @@ impl AnnotatedComment {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct NewAnnotatedComment {
     pub comment: NewComment,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -394,7 +395,7 @@ impl NewAnnotatedComment {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Labelling {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub assigned: Vec<Label>,
@@ -404,7 +405,7 @@ pub struct Labelling {
     pub predicted: Option<Vec<PredictedLabel>>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct NewLabelling {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub assigned: Option<Vec<Label>>,
@@ -412,24 +413,24 @@ pub struct NewLabelling {
     pub dismissed: Option<Vec<Label>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
 pub struct Label {
     pub name: LabelName,
     pub sentiment: Sentiment,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct PredictedLabel {
     pub name: LabelName,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sentiment: Option<f64>,
-    pub probability: f64,
+    pub sentiment: Option<NotNan<f64>>,
+    pub probability: NotNan<f64>,
 }
 
-#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct LabelName(pub String);
 
-#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Entities {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub assigned: Vec<Entity>,
@@ -439,7 +440,7 @@ pub struct Entities {
     pub predicted: Option<Vec<Entity>>,
 }
 
-#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct NewEntities {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub assigned: Vec<NewEntity>,
@@ -475,14 +476,14 @@ fn should_skip_serializing_entities(maybe_entities: &Option<Entities>) -> bool {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
 pub struct NewEntity {
     pub name: EntityName,
     pub formatted_value: String,
     pub span: NewEntitySpan,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize, Eq)]
 pub struct NewEntitySpan {
     content_part: String,
     message_index: usize,
@@ -490,14 +491,14 @@ pub struct NewEntitySpan {
     utf16_byte_end: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
 pub struct Entity {
     pub name: EntityName,
     pub formatted_value: String,
     pub span: EntitySpan,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize, Eq)]
 pub struct EntitySpan {
     content_part: String,
     message_index: usize,
@@ -507,7 +508,7 @@ pub struct EntitySpan {
     utf16_byte_end: usize,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct EntityName(pub String);
 
 #[inline]
@@ -534,7 +535,7 @@ mod tests {
     #[test]
     fn property_map_one_number_serialize() {
         let mut map = PropertyMap::new();
-        map.insert_number("nps".to_owned(), 7.0);
+        map.insert_number("nps".to_owned(), NotNan::new(7.0).unwrap());
         assert_eq!(
             serde_json::to_string(&map).expect(""),
             r#"{"number:nps":7.0}"#
@@ -556,7 +557,7 @@ mod tests {
         let mut map = PropertyMap::new();
         map.insert_string("age".to_owned(), "18-25".to_owned());
         map.insert_string("income".to_owned(), "$6000".to_owned());
-        map.insert_number("nps".to_owned(), 3.0);
+        map.insert_number("nps".to_owned(), NotNan::new(3.0).unwrap());
 
         let actual_map: HashMap<String, JsonValue> =
             serde_json::from_str(&serde_json::to_string(&map).expect("ser")).expect("de");
@@ -591,7 +592,7 @@ mod tests {
     fn property_map_one_number_float_deserialize() {
         let actual: PropertyMap = serde_json::from_str(r#"{"number:nps":7.0}"#).expect("");
         let mut expected = PropertyMap::new();
-        expected.insert_number("nps".to_owned(), 7.0);
+        expected.insert_number("nps".to_owned(), NotNan::new(7.0).unwrap());
         assert_eq!(actual, expected);
     }
 
@@ -599,7 +600,7 @@ mod tests {
     fn property_map_one_number_unsigned_deserialize() {
         let actual: PropertyMap = serde_json::from_str(r#"{"number:nps":7}"#).expect("");
         let mut expected = PropertyMap::new();
-        expected.insert_number("nps".to_owned(), 7.0);
+        expected.insert_number("nps".to_owned(), NotNan::new(7.0).unwrap());
         assert_eq!(actual, expected);
     }
 
@@ -607,7 +608,7 @@ mod tests {
     fn property_map_one_number_negative_deserialize() {
         let actual: PropertyMap = serde_json::from_str(r#"{"number:nps":-7}"#).expect("");
         let mut expected = PropertyMap::new();
-        expected.insert_number("nps".to_owned(), -7.0);
+        expected.insert_number("nps".to_owned(), NotNan::new(-7.0).unwrap());
         assert_eq!(actual, expected);
     }
 
@@ -641,7 +642,7 @@ mod tests {
         let mut expected = PropertyMap::new();
         expected.insert_string("age".to_owned(), "18-25".to_owned());
         expected.insert_string("income".to_owned(), "$6000".to_owned());
-        expected.insert_number("nps".to_owned(), 3.0);
+        expected.insert_number("nps".to_owned(), NotNan::new(3.0).unwrap());
 
         let actual: PropertyMap = serde_json::from_str(
             r#"{"string:age":"18-25","number:nps":3,"string:income":"$6000"}"#,

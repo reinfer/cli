@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use ordered_float::NotNan;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -9,7 +10,7 @@ use super::{
     dataset::{FullName as DatasetFullName, Id as DatasetId},
 };
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Name(pub String);
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
@@ -18,7 +19,7 @@ pub struct Id(pub String);
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct SequenceId(pub String);
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct FullName {
     pub dataset: DatasetFullName,
     pub trigger: Name,
@@ -62,7 +63,7 @@ pub struct Trigger {
 pub struct LabelFilter {
     pub label: LabelName,
     pub model_version: UserModelVersion,
-    pub threshold: f64,
+    pub threshold: NotNan<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

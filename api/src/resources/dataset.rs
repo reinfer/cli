@@ -8,7 +8,7 @@ use crate::{
 };
 use serde_json::Error as JsonError;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Dataset {
     pub id: Id,
     pub name: Name,
@@ -30,10 +30,10 @@ impl Dataset {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Name(pub String);
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct FullName(pub String);
 
 impl FromStr for FullName {
@@ -53,12 +53,12 @@ impl FromStr for FullName {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Id(pub String);
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct ModelFamily(pub String);
 
 // TODO(mcobzarenco)[3963]: Make `Identifier` into a trait (ensure it still implements
 // `FromStr` so we can take T: Identifier as a clap command line argument).
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub enum Identifier {
     Id(Id),
     FullName(FullName),
@@ -88,7 +88,7 @@ impl FromStr for Identifier {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct EntityDef {
     name: EntityName,
     title: String,
@@ -96,7 +96,7 @@ pub struct EntityDef {
     trainable: bool,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct EntityDefs(Vec<EntityDef>);
 
 impl EntityDefs {
@@ -115,7 +115,7 @@ impl FromStr for EntityDefs {
         })
     }
 }
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct NewDataset<'request> {
     pub source_ids: &'request [SourceId],
 
@@ -138,27 +138,27 @@ pub struct NewDataset<'request> {
     pub copy_annotations_from: Option<&'request str>,
 }
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub(crate) struct CreateRequest<'request> {
     pub dataset: NewDataset<'request>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct CreateResponse {
     pub dataset: Dataset,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct GetAvailableResponse {
     pub datasets: Vec<Dataset>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct GetResponse {
     pub dataset: Dataset,
 }
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct UpdateDataset<'request> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_ids: Option<&'request [SourceId]>,
@@ -170,12 +170,12 @@ pub struct UpdateDataset<'request> {
     pub description: Option<&'request str>,
 }
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub(crate) struct UpdateRequest<'request> {
     pub dataset: UpdateDataset<'request>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct UpdateResponse {
     pub dataset: Dataset,
 }
