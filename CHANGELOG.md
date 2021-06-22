@@ -8,6 +8,10 @@
 
 - More public types implement `Serialize`, `Eq` and `Hash` for downstream use.
 
+## Added
+
+- `get comment`: get a single comment by source and id
+
 # v0.7.0
 
 ## Breaking

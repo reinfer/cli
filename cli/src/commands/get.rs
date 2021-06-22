@@ -9,7 +9,7 @@ use colored::Colorize;
 use log::info;
 use prettytable::{cell, format, row, Table};
 use reinfer_client::{
-    AnnotatedComment, Bucket, BucketIdentifier, Client, CommentsIterTimerange, Dataset,
+    AnnotatedComment, Bucket, BucketIdentifier, Client, CommentId, CommentsIterTimerange, Dataset,
     DatasetFullName, DatasetIdentifier, Source, SourceIdentifier, Trigger, TriggerFullName, User,
 };
 use std::{
@@ -48,6 +48,22 @@ pub enum GetArgs {
         #[structopt(name = "source")]
         /// If specified, only list this source (name or id)
         source: Option<SourceIdentifier>,
+    },
+
+    #[structopt(name = "comment")]
+    /// Get a comments in a source
+    Comment {
+        #[structopt(long = "source")]
+        /// Source name or id
+        source: SourceIdentifier,
+
+        #[structopt(name = "comment-id")]
+        /// Comment id.
+        comment_id: CommentId,
+
+        #[structopt(short = "f", long = "file", parse(from_os_str))]
+        /// Path where to write comments as JSON. If not specified, stdout will be used.
+        path: Option<PathBuf>,
     },
 
     #[structopt(name = "comments")]
@@ -190,6 +206,37 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
                 OutputFormat::Table => print_sources_table(&sources),
                 OutputFormat::Json => print_resources_as_json(sources.iter(), io::stdout().lock())?,
             }
+        }
+        GetArgs::Comment {
+            source,
+            comment_id,
+            path,
+        } => {
+            let file: Option<Box<dyn Write>> = match path {
+                Some(path) => Some(Box::new(
+                    File::create(path)
+                        .with_context(|| {
+                            format!("Could not open file for writing `{}`", path.display())
+                        })
+                        .map(BufWriter::new)?,
+                )),
+                None => None,
+            };
+
+            let stdout = io::stdout();
+            let mut writer: Box<dyn Write> = file.unwrap_or_else(|| Box::new(stdout.lock()));
+            let source = client
+                .get_source(source.to_owned())
+                .context("Operation to get source has failed.")?;
+            let comment = client.get_comment(&source.full_name(), comment_id)?;
+            print_resources_as_json(
+                std::iter::once(AnnotatedComment {
+                    comment,
+                    labelling: None,
+                    entities: None,
+                }),
+                &mut writer,
+            )?
         }
         GetArgs::Comments {
             source,

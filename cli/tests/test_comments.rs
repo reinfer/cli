@@ -1,6 +1,7 @@
 use crate::{TestCli, TestDataset, TestSource};
 use chrono::DateTime;
-use reinfer_client::NewAnnotatedComment;
+use pretty_assertions::assert_eq;
+use reinfer_client::{AnnotatedComment, NewAnnotatedComment};
 
 #[test]
 fn test_comments_lifecycle_basic() {
@@ -38,6 +39,24 @@ fn check_comments_lifecycle(comments_str: &str) {
 
     let output = cli.run(&["get", "comments", &source.identifier().to_string()]);
     assert_eq!(output.lines().count(), annotated_comments.len());
+
+    // Test getting a comment by id to check the content matches
+    let test_comment = annotated_comments.get(0).unwrap().comment.clone();
+    let output = cli.run(&[
+        "get",
+        "comment",
+        &format!("--source={}", source.identifier()),
+        &test_comment.id.0,
+    ]);
+    let fetched_comment: AnnotatedComment =
+        serde_json::from_str(&output).expect("invalid annotated comment fetched");
+    assert_eq!(test_comment.id, fetched_comment.comment.id);
+    assert_eq!(test_comment.messages, fetched_comment.comment.messages);
+    assert_eq!(test_comment.timestamp, fetched_comment.comment.timestamp);
+    assert_eq!(
+        test_comment.user_properties,
+        fetched_comment.comment.user_properties
+    );
 
     // Deleting one comment reduces the comment count in the source
     let output = cli.run(&[

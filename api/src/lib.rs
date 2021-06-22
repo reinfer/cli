@@ -22,8 +22,9 @@ use crate::resources::{
         GetAvailableResponse as GetAvailableBucketsResponse, GetResponse as GetBucketResponse,
     },
     comment::{
-        GetAnnotationsResponse, GetLabellingsAfter, GetRecentRequest, PutCommentsRequest,
-        PutCommentsResponse, RecentCommentsPage, SyncCommentsRequest, UpdateAnnotationsRequest,
+        GetAnnotationsResponse, GetCommentResponse, GetLabellingsAfter, GetRecentRequest,
+        PutCommentsRequest, PutCommentsResponse, RecentCommentsPage, SyncCommentsRequest,
+        UpdateAnnotationsRequest,
     },
     dataset::{
         CreateRequest as CreateDatasetRequest, CreateResponse as CreateDatasetResponse,
@@ -276,6 +277,19 @@ impl Client {
         timerange: CommentsIterTimerange,
     ) -> CommentsIter<'a> {
         CommentsIter::new(self, source_name, page_size, timerange)
+    }
+
+    /// Get a single comment by id.
+    pub fn get_comment<'a>(
+        &'a self,
+        source_name: &'a SourceFullName,
+        comment_id: &'a CommentId,
+    ) -> Result<Comment> {
+        Ok(self
+            .get::<_, GetCommentResponse, SimpleApiError>(
+                self.endpoints.comment_by_id(source_name, comment_id)?,
+            )?
+            .comment)
     }
 
     pub fn put_comments(
@@ -1067,6 +1081,21 @@ impl Endpoints {
                 message: format!(
                     "Could not build get comments URL for source `{}`.",
                     source_name.0,
+                ),
+            })
+    }
+
+    fn comment_by_id(&self, source_name: &SourceFullName, comment_id: &CommentId) -> Result<Url> {
+        self.base
+            .join(&format!(
+                "/api/v1/sources/{}/comments/{}",
+                source_name.0, comment_id.0
+            ))
+            .map_err(|source| Error::UrlParseError {
+                source,
+                message: format!(
+                    "Could not build get comment by id URL for source `{}`, comment `{}`.",
+                    source_name.0, comment_id.0,
                 ),
             })
     }
