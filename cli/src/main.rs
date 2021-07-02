@@ -2,6 +2,7 @@
 mod args;
 mod commands;
 mod config;
+mod printer;
 mod progress;
 mod utils;
 
@@ -18,11 +19,13 @@ use crate::{
     args::{Args, Command, Shell},
     commands::{config as config_command, create, delete, get, update},
     config::ReinferConfig,
+    printer::Printer,
 };
 
 fn run(args: Args) -> Result<()> {
     let config_path = find_configuration(&args)?;
     let config = config::read_reinfer_config(&config_path)?;
+    let printer = Printer::new(args.output);
 
     match args.command {
         Command::Config { ref config_args } => {
@@ -37,15 +40,17 @@ fn run(args: Args) -> Result<()> {
             app.gen_completions_to("re", clap_shell, &mut io::stdout());
             Ok(())
         }
-        Command::Get { ref get_args } => get::run(get_args, client_from_args(&args, &config)?),
+        Command::Get { ref get_args } => {
+            get::run(get_args, client_from_args(&args, &config)?, &printer)
+        }
         Command::Delete { ref delete_args } => {
             delete::run(delete_args, client_from_args(&args, &config)?)
         }
         Command::Create { ref create_args } => {
-            create::run(create_args, client_from_args(&args, &config)?)
+            create::run(create_args, client_from_args(&args, &config)?, &printer)
         }
         Command::Update { ref update_args } => {
-            update::run(update_args, client_from_args(&args, &config)?)
+            update::run(update_args, client_from_args(&args, &config)?, &printer)
         }
     }
 }

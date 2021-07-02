@@ -1,3 +1,4 @@
+use crate::printer::Printer;
 use anyhow::{Context, Result};
 use log::info;
 use reinfer_client::{
@@ -40,7 +41,7 @@ pub struct CreateDatasetArgs {
     copy_annotations_from: Option<String>,
 }
 
-pub fn create(client: &Client, args: &CreateDatasetArgs) -> Result<()> {
+pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> Result<()> {
     let CreateDatasetArgs {
         ref name,
         ref title,
@@ -88,6 +89,6 @@ pub fn create(client: &Client, args: &CreateDatasetArgs) -> Result<()> {
         dataset.full_name().0,
         dataset.id.0,
     );
-
+    printer.print_resources(&[dataset])?;
     Ok(())
 }

@@ -9,6 +9,7 @@ use self::{
     bucket::CreateBucketArgs, comments::CreateCommentsArgs, dataset::CreateDatasetArgs,
     emails::CreateEmailsArgs, source::CreateSourceArgs, user::CreateUserArgs,
 };
+use crate::printer::Printer;
 use anyhow::Result;
 use reinfer_client::Client;
 use structopt::StructOpt;
@@ -40,13 +41,13 @@ pub enum CreateArgs {
     User(CreateUserArgs),
 }
 
-pub fn run(create_args: &CreateArgs, client: Client) -> Result<()> {
+pub fn run(create_args: &CreateArgs, client: Client, printer: &Printer) -> Result<()> {
     match create_args {
-        CreateArgs::Bucket(bucket_args) => bucket::create(&client, bucket_args),
-        CreateArgs::Source(source_args) => source::create(&client, source_args),
-        CreateArgs::Dataset(dataset_args) => dataset::create(&client, dataset_args),
+        CreateArgs::Bucket(bucket_args) => bucket::create(&client, bucket_args, printer),
+        CreateArgs::Source(source_args) => source::create(&client, source_args, printer),
+        CreateArgs::Dataset(dataset_args) => dataset::create(&client, dataset_args, printer),
         CreateArgs::Comments(comments_args) => comments::create(&client, comments_args),
         CreateArgs::Emails(emails_args) => emails::create(&client, emails_args),
-        CreateArgs::User(user_args) => user::create(&client, user_args),
+        CreateArgs::User(user_args) => user::create(&client, user_args, printer),
     }
 }

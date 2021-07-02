@@ -17,7 +17,7 @@ impl TestDataset {
         let sep_index = user.len();
 
         let output = cli.run(&["create", "dataset", &full_name]);
-        assert!(output.is_empty());
+        assert!(output.contains(&full_name));
 
         Self {
             full_name,
@@ -32,7 +32,7 @@ impl TestDataset {
         let sep_index = user.len();
 
         let output = cli.run(["create", "dataset", &full_name].iter().chain(args));
-        assert!(output.is_empty());
+        assert!(output.contains(&full_name));
 
         Self {
             full_name,
@@ -129,7 +129,7 @@ fn test_create_update_dataset_custom() {
     }
 
     let get_dataset_info = || -> DatasetInfo {
-        let output = cli.run(&["get", "datasets", dataset.identifier(), "--output=json"]);
+        let output = cli.run(&["--output=json", "get", "datasets", dataset.identifier()]);
         serde_json::from_str::<Dataset>(&output).unwrap().into()
     };
 
@@ -186,16 +186,16 @@ fn test_create_dataset_with_source() {
     let source = TestSource::new();
     let dataset = TestDataset::new_args(&[&format!("--source={}", source.identifier())]);
 
-    let output = cli.run(&["get", "datasets", "--output=json", dataset.identifier()]);
+    let output = cli.run(&["--output=json", "get", "datasets", dataset.identifier()]);
     let dataset_info: Dataset = serde_json::from_str(output.trim()).unwrap();
     assert_eq!(&dataset_info.owner.0, dataset.owner());
     assert_eq!(&dataset_info.name.0, dataset.name());
     assert_eq!(dataset_info.source_ids.len(), 1);
 
     let source_output = cli.run(&[
+        "--output=json",
         "get",
         "sources",
-        "--output=json",
         &dataset_info.source_ids.first().unwrap().0,
     ]);
     let source_info: Source = serde_json::from_str(source_output.trim()).unwrap();
@@ -221,7 +221,7 @@ fn test_create_dataset_model_family() {
     let cli = TestCli::get();
     let dataset = TestDataset::new_args(&["--model-family==german"]);
 
-    let output = cli.run(&["get", "datasets", "--output=json", dataset.identifier()]);
+    let output = cli.run(&["--output=json", "get", "datasets", dataset.identifier()]);
     let dataset_info: Dataset = serde_json::from_str(output.trim()).unwrap();
     assert_eq!(&dataset_info.owner.0, dataset.owner());
     assert_eq!(&dataset_info.name.0, dataset.name());
@@ -254,7 +254,7 @@ fn test_create_dataset_wrong_model_family() {
 fn test_create_dataset_copy_annotations() {
     let cli = TestCli::get();
     let dataset1 = TestDataset::new();
-    let dataset1_output = cli.run(&["get", "datasets", "--output=json", dataset1.identifier()]);
+    let dataset1_output = cli.run(&["--output=json", "get", "datasets", dataset1.identifier()]);
     let dataset1_info: Dataset = serde_json::from_str(dataset1_output.trim()).unwrap();
 
     let output = cli

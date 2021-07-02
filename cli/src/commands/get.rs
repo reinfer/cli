@@ -1,21 +1,18 @@
-use super::OutputFormat;
 use crate::{
+    printer::{print_resources_as_json, Printer},
     progress::{Options as ProgressOptions, Progress},
-    utils::print_resources_as_json,
 };
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc};
 use colored::Colorize;
 use log::info;
-use prettytable::{cell, format, row, Table};
 use reinfer_client::{
-    AnnotatedComment, Bucket, BucketIdentifier, Client, CommentId, CommentsIterTimerange, Dataset,
-    DatasetFullName, DatasetIdentifier, Source, SourceIdentifier, Trigger, TriggerFullName, User,
+    AnnotatedComment, BucketIdentifier, Client, CommentId, CommentsIterTimerange, DatasetFullName,
+    DatasetIdentifier, Source, SourceIdentifier, TriggerFullName,
 };
 use std::{
     fs::File,
     io::{self, BufWriter, Write},
-    iter,
     path::PathBuf,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -29,10 +26,6 @@ pub enum GetArgs {
     #[structopt(name = "datasets")]
     /// List available datasets
     Datasets {
-        #[structopt(short = "o", long = "output", default_value = "table")]
-        /// Output format. One of: json, table
-        output: OutputFormat,
-
         #[structopt(name = "dataset")]
         /// If specified, only list this dataset (name or id)
         dataset: Option<DatasetIdentifier>,
@@ -41,10 +34,6 @@ pub enum GetArgs {
     #[structopt(name = "sources")]
     /// List available sources
     Sources {
-        #[structopt(short = "o", long = "output", default_value = "table")]
-        /// Output format. One of: json, table
-        output: OutputFormat,
-
         #[structopt(name = "source")]
         /// If specified, only list this source (name or id)
         source: Option<SourceIdentifier>,
@@ -105,10 +94,6 @@ pub enum GetArgs {
     #[structopt(name = "buckets")]
     /// List available buckets
     Buckets {
-        #[structopt(short = "o", long = "output", default_value = "table")]
-        /// Output format. One of: json, table
-        output: OutputFormat,
-
         #[structopt(name = "bucket")]
         /// If specified, only list this bucket (name or id)
         bucket: Option<BucketIdentifier>,
@@ -120,10 +105,6 @@ pub enum GetArgs {
         #[structopt(short = "d", long = "dataset")]
         /// The dataset name or id
         dataset: DatasetIdentifier,
-
-        #[structopt(short = "o", long = "output", default_value = "table")]
-        /// Output format. One of: json, table
-        output: OutputFormat,
     },
 
     #[structopt(name = "trigger-comments")]
@@ -148,24 +129,16 @@ pub enum GetArgs {
 
     #[structopt(name = "users")]
     /// List available users
-    Users {
-        #[structopt(short = "o", long = "output", default_value = "table")]
-        /// Output format. One of: json, table
-        output: OutputFormat,
-    },
+    Users,
 
     #[structopt(name = "current-user")]
     /// Get the user associated with the API token in use
-    CurrentUser {
-        #[structopt(short = "o", long = "output", default_value = "table")]
-        /// Output format. One of: json, table
-        output: OutputFormat,
-    },
+    CurrentUser,
 }
 
-pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
+pub fn run(get_args: &GetArgs, client: Client, printer: &Printer) -> Result<()> {
     match get_args {
-        GetArgs::Datasets { output, dataset } => {
+        GetArgs::Datasets { dataset } => {
             let datasets = if let Some(dataset) = dataset {
                 vec![client
                     .get_dataset(dataset.clone())
@@ -179,15 +152,9 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
                 });
                 datasets
             };
-
-            match output {
-                OutputFormat::Table => print_datasets_table(&datasets),
-                OutputFormat::Json => {
-                    print_resources_as_json(datasets.iter(), io::stdout().lock())?
-                }
-            }
+            printer.print_resources(&datasets)?;
         }
-        GetArgs::Sources { output, source } => {
+        GetArgs::Sources { source } => {
             let sources = if let Some(source) = source {
                 vec![client
                     .get_source(source.clone())
@@ -201,11 +168,7 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
                 });
                 sources
             };
-
-            match output {
-                OutputFormat::Table => print_sources_table(&sources),
-                OutputFormat::Json => print_resources_as_json(sources.iter(), io::stdout().lock())?,
-            }
+            printer.print_resources(&sources)?;
         }
         GetArgs::Comment {
             source,
@@ -287,7 +250,7 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
                 )?;
             }
         }
-        GetArgs::Buckets { output, bucket } => {
+        GetArgs::Buckets { bucket } => {
             let buckets = if let Some(bucket) = bucket {
                 vec![client
                     .get_bucket(bucket.clone())
@@ -301,13 +264,9 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
                 });
                 buckets
             };
-
-            match output {
-                OutputFormat::Table => print_buckets_table(&buckets),
-                OutputFormat::Json => print_resources_as_json(buckets.iter(), io::stdout().lock())?,
-            }
+            printer.print_resources(&buckets)?;
         }
-        GetArgs::Triggers { dataset, output } => {
+        GetArgs::Triggers { dataset } => {
             let dataset_name = client
                 .get_dataset(dataset.clone())
                 .context("Operation to get dataset has failed.")?
@@ -316,13 +275,7 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
                 .get_triggers(&dataset_name)
                 .context("Operation to list triggers has failed.")?;
             triggers.sort_unstable_by(|lhs, rhs| lhs.name.0.cmp(&rhs.name.0));
-
-            match output {
-                OutputFormat::Table => print_triggers_table(&triggers),
-                OutputFormat::Json => {
-                    print_resources_as_json(triggers.iter(), io::stdout().lock())?
-                }
-            }
+            printer.print_resources(&triggers)?;
         }
         GetArgs::TriggerComments {
             trigger,
@@ -368,25 +321,17 @@ pub fn run(get_args: &GetArgs, client: Client) -> Result<()> {
                 print_resources_as_json(Some(&batch), io::stdout().lock())?;
             }
         },
-        GetArgs::Users { output } => {
+        GetArgs::Users {} => {
             let users = client
                 .get_users()
                 .context("Operation to list users has failed.")?;
-            match output {
-                OutputFormat::Table => print_users_table(&users),
-                OutputFormat::Json => print_resources_as_json(users.iter(), io::stdout().lock())?,
-            }
+            printer.print_resources(&users)?;
         }
-        GetArgs::CurrentUser { output } => {
+        GetArgs::CurrentUser {} => {
             let user = client
                 .get_current_user()
                 .context("Operation to get the current user has failed.")?;
-            match output {
-                OutputFormat::Table => print_users_table(&[user]),
-                OutputFormat::Json => {
-                    print_resources_as_json(iter::once(&user), io::stdout().lock())?
-                }
-            }
+            printer.print_resources(&[user])?;
         }
     }
     Ok(())
@@ -550,110 +495,6 @@ fn get_reviewed_comments_in_bulk(
             print_resources_as_json(comments, &mut writer)
         })?;
     Ok(())
-}
-
-fn print_datasets_table(datasets: &[Dataset]) {
-    let mut table = new_table();
-    table.set_titles(row![bFg => "Name", "ID", "Updated (UTC)", "Title"]);
-    for dataset in datasets.iter() {
-        let full_name = format!(
-            "{}{}{}",
-            dataset.owner.0.dimmed(),
-            "/".dimmed(),
-            dataset.name.0
-        );
-        table.add_row(row![
-            full_name,
-            dataset.id.0,
-            dataset.updated_at.format("%Y-%m-%d %H:%M:%S"),
-            dataset.title
-        ]);
-    }
-    table.printstd();
-}
-
-fn print_sources_table(sources: &[Source]) {
-    let mut table = new_table();
-    table.set_titles(row![bFg => "Name", "ID", "Updated (UTC)", "Title"]);
-    for source in sources.iter() {
-        let full_name = format!(
-            "{}{}{}",
-            source.owner.0.dimmed(),
-            "/".dimmed(),
-            source.name.0
-        );
-        table.add_row(row![
-            full_name,
-            source.id.0,
-            source.updated_at.format("%Y-%m-%d %H:%M:%S"),
-            source.title
-        ]);
-    }
-    table.printstd();
-}
-
-fn print_buckets_table(buckets: &[Bucket]) {
-    let mut table = new_table();
-    table.set_titles(row![bFg => "Name", "ID", "Created (UTC)", "Updated (UTC)", "Transform Tag"]);
-    for bucket in buckets.iter() {
-        let full_name = format!(
-            "{}{}{}",
-            bucket.owner.0.dimmed(),
-            "/".dimmed(),
-            bucket.name.0
-        );
-        table.add_row(row![
-            full_name,
-            bucket.id.0,
-            bucket.created_at.format("%Y-%m-%d %H:%M:%S"),
-            bucket.updated_at.format("%Y-%m-%d %H:%M:%S"),
-            match &bucket.transform_tag {
-                Some(transform_tag) => transform_tag.0.as_str().into(),
-                None => "missing".dimmed(),
-            }
-        ]);
-    }
-    table.printstd();
-}
-
-fn print_triggers_table(triggers: &[Trigger]) {
-    let mut table = new_table();
-    table.set_titles(row![bFg => "Name", "ID", "Updated (UTC)", "Title"]);
-    for trigger in triggers.iter() {
-        table.add_row(row![
-            trigger.name.0,
-            trigger.id.0,
-            trigger.updated_at.format("%Y-%m-%d %H:%M:%S"),
-            trigger.title
-        ]);
-    }
-    table.printstd();
-}
-
-fn print_users_table(users: &[User]) {
-    let mut table = new_table();
-    table.set_titles(row![bFg => "Name", "Email", "ID", "Created (UTC)"]);
-    for user in users.iter() {
-        table.add_row(row![
-            user.username.0,
-            user.email.0,
-            user.id.0,
-            user.created_at.format("%Y-%m-%d %H:%M:%S"),
-        ]);
-    }
-    table.printstd();
-}
-
-fn new_table() -> Table {
-    let mut table = Table::new();
-    let format = format::FormatBuilder::new()
-        .column_separator(' ')
-        .borders(' ')
-        .separators(&[], format::LineSeparator::new('-', '+', '+', '+'))
-        .padding(0, 1)
-        .build();
-    table.set_format(format);
-    table
 }
 
 #[derive(Debug)]

@@ -3,6 +3,7 @@
 ## Breaking
 
 - All API resources with floats now use `ordered_float::NotNan`
+- A new top level flag `-o/--output` has been added. This replaces all previous `-o/--output` flags in the `re get *` subcommands.
 
 ## Changed
 
@@ -11,6 +12,8 @@
 ## Added
 
 - `get comment`: get a single comment by source and id
+- Created or updated resources will be returned via stdout. The format of the output can be changed with the global `-o/--output` flag.
+  - This excludes creation of the `comments` and `emails` resources.
 
 # v0.7.0
 

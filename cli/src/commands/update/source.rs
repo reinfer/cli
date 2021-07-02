@@ -1,3 +1,4 @@
+use crate::printer::Printer;
 use anyhow::{Context, Result};
 use log::info;
 use reinfer_client::{BucketId, BucketIdentifier, Client, SourceIdentifier, UpdateSource};
@@ -26,7 +27,7 @@ pub struct UpdateSourceArgs {
     bucket: Option<BucketIdentifier>,
 }
 
-pub fn update(client: &Client, args: &UpdateSourceArgs) -> Result<()> {
+pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Result<()> {
     let UpdateSourceArgs {
         ref source,
         ref title,
@@ -76,5 +77,6 @@ pub fn update(client: &Client, args: &UpdateSourceArgs) -> Result<()> {
         source.full_name().0,
         source.id.0
     );
+    printer.print_resources(&[source])?;
     Ok(())
 }
