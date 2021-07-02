@@ -1,5 +1,9 @@
-use crate::commands::{
-    config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs, update::UpdateArgs,
+use crate::{
+    commands::{
+        config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs,
+        update::UpdateArgs,
+    },
+    printer::OutputFormat,
 };
 use anyhow::{anyhow, Error, Result};
 use reqwest::Url;
@@ -43,6 +47,12 @@ pub struct Args {
     #[structopt(long = "proxy")]
     /// URL for an HTTP proxy that will be used for all requests if specified
     pub proxy: Option<Url>,
+
+    #[structopt(short = "o", long = "output", default_value = "table")]
+    /// Output format. One of: json, table
+    ///
+    /// Output is provided in table format on stdout by default.
+    pub output: OutputFormat,
 
     #[structopt(subcommand)]
     pub command: Command,

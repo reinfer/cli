@@ -1,3 +1,4 @@
+use crate::printer::Printer;
 use anyhow::{Context, Result};
 use log::info;
 use reinfer_client::{BucketFullName, BucketType, Client, NewBucket, TransformTag};
@@ -23,7 +24,7 @@ pub struct CreateBucketArgs {
     transform_tag: TransformTag,
 }
 
-pub fn create(client: &Client, args: &CreateBucketArgs) -> Result<()> {
+pub fn create(client: &Client, args: &CreateBucketArgs, printer: &Printer) -> Result<()> {
     let CreateBucketArgs {
         ref name,
         ref title,
@@ -46,5 +47,6 @@ pub fn create(client: &Client, args: &CreateBucketArgs) -> Result<()> {
         bucket.full_name(),
         bucket.id
     );
+    printer.print_resources(&[bucket])?;
     Ok(())
 }

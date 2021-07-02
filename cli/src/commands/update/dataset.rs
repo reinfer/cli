@@ -1,3 +1,4 @@
+use crate::printer::Printer;
 use anyhow::{Context, Result};
 use log::info;
 use reinfer_client::{Client, DatasetIdentifier, SourceId, SourceIdentifier, UpdateDataset};
@@ -23,7 +24,7 @@ pub struct UpdateDatasetArgs {
     sources: Option<Vec<SourceIdentifier>>,
 }
 
-pub fn update(client: &Client, args: &UpdateDatasetArgs) -> Result<()> {
+pub fn update(client: &Client, args: &UpdateDatasetArgs, printer: &Printer) -> Result<()> {
     let UpdateDatasetArgs {
         ref dataset,
         ref title,
@@ -65,6 +66,6 @@ pub fn update(client: &Client, args: &UpdateDatasetArgs) -> Result<()> {
         dataset.full_name().0,
         dataset.id.0,
     );
-
+    printer.print_resources(&[dataset])?;
     Ok(())
 }

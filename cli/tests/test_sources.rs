@@ -16,7 +16,7 @@ impl TestSource {
         let sep_index = user.len();
 
         let output = cli.run(&["create", "source", &full_name]);
-        assert!(output.is_empty());
+        assert!(output.contains(&full_name));
 
         Self {
             full_name,
@@ -31,7 +31,7 @@ impl TestSource {
         let sep_index = user.len();
 
         let output = cli.run(["create", "source", &full_name].iter().chain(args));
-        assert!(output.is_empty());
+        assert!(output.contains(&full_name));
 
         Self {
             full_name,
@@ -52,7 +52,7 @@ impl TestSource {
     }
 
     pub fn get(&self) -> Source {
-        let output = TestCli::get().run(&["get", "sources", self.identifier(), "--output=json"]);
+        let output = TestCli::get().run(&["--output=json", "get", "sources", self.identifier()]);
         serde_json::from_str::<Source>(&output).unwrap()
     }
 }
@@ -135,7 +135,7 @@ fn test_create_update_source_custom() {
     }
 
     let get_source_info = || -> SourceInfo {
-        let output = cli.run(&["get", "sources", source.identifier(), "--output=json"]);
+        let output = cli.run(&["--output=json", "get", "sources", source.identifier()]);
         serde_json::from_str::<Source>(&output).unwrap().into()
     };
 

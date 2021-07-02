@@ -16,7 +16,7 @@ fn test_bucket_lifecycle() {
         "--transform-tag",
         "generic_simple.0.QR5PW4VZ",
     ]);
-    assert!(output.is_empty(), "{}", output);
+    assert!(output.contains(&new_bucket_name), "{}", output);
 
     let output = cli.run(&["get", "buckets"]);
     assert!(output.contains(&new_bucket_name), "{}", output);

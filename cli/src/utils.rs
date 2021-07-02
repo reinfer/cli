@@ -3,7 +3,6 @@ use colored::{ColoredString, Colorize};
 use env_logger::{fmt::Formatter as LogFormatter, Builder as LogBuilder};
 use lazy_static::lazy_static;
 use log::{Level as LogLevel, LevelFilter as LogLevelFilter, Record as LogRecord};
-use serde::Serialize;
 use std::{
     env,
     io::{self, Write},
@@ -74,21 +73,6 @@ pub fn read_token_from_stdin() -> Result<Option<String>> {
     .context("Failed to read API token from stdin.")?;
     input = input.trim().into();
     Ok(if !input.is_empty() { Some(input) } else { None })
-}
-
-pub fn print_resources_as_json<Resource>(
-    resources: impl IntoIterator<Item = Resource>,
-    mut writer: impl Write,
-) -> Result<()>
-where
-    Resource: Serialize,
-{
-    for resource in resources {
-        serde_json::to_writer(&mut writer, &resource)
-            .context("Could not serialise resource.")
-            .and_then(|_| writeln!(writer).context("Failed to write JSON resource to stdout."))?;
-    }
-    Ok(())
 }
 
 lazy_static! {

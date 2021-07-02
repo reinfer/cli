@@ -1,3 +1,4 @@
+use crate::printer::Printer;
 use anyhow::{anyhow, Context, Result};
 use log::info;
 use reinfer_client::{
@@ -29,7 +30,7 @@ pub struct CreateUserArgs {
     organisation_permissions_list: Vec<OrganisationPermission>,
 }
 
-pub fn create(client: &Client, args: &CreateUserArgs) -> Result<()> {
+pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Result<()> {
     let CreateUserArgs {
         ref username,
         ref email,
@@ -64,6 +65,6 @@ pub fn create(client: &Client, args: &CreateUserArgs) -> Result<()> {
         "New user `{}` with email `{}` [id: {}] created successfully",
         user.username.0, user.email.0, user.id.0
     );
-
+    printer.print_resources(&[user])?;
     Ok(())
 }
