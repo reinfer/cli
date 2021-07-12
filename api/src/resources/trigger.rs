@@ -6,8 +6,9 @@ use std::str::FromStr;
 use crate::error::{Error, Result};
 
 use super::{
-    comment::{Comment, CommentFilter, Entity, LabelName, PredictedLabel},
+    comment::{Comment, CommentFilter, Entity, PredictedLabel},
     dataset::{FullName as DatasetFullName, Id as DatasetId},
+    label_def::Name as LabelName,
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]

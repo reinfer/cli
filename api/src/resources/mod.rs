@@ -2,6 +2,8 @@ pub mod bucket;
 pub mod comment;
 pub mod dataset;
 pub mod email;
+pub mod entity_def;
+pub mod label_def;
 pub mod source;
 pub mod statistics;
 pub mod trigger;

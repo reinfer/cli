@@ -43,17 +43,6 @@ pub enum Error {
     #[error("Expected a valid bucket type, got: {}", bucket_type)]
     BadBucketType { bucket_type: String },
 
-    #[error(
-        "Expected valid json for entity def. Got: '{}', which failed because: '{}'",
-        entity_def,
-        source
-    )]
-    BadEntityDef {
-        entity_def: String,
-        #[source]
-        source: ::serde_json::Error,
-    },
-
     #[error("Could not parse JSON response.")]
     BadJsonResponse(#[source] reqwest::Error),
 

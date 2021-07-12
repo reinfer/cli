@@ -61,15 +61,20 @@ pub use crate::{
         },
         comment::{
             AnnotatedComment, Comment, CommentFilter, CommentsIterPage, Continuation, Entity,
-            Id as CommentId, Label, LabelName, Message, MessageBody, MessageSignature,
-            MessageSubject, NewAnnotatedComment, NewComment, NewEntities, NewLabelling,
-            PropertyMap, PropertyValue, Sentiment, SyncCommentsResponse, Uid as CommentUid,
+            Id as CommentId, Label, Message, MessageBody, MessageSignature, MessageSubject,
+            NewAnnotatedComment, NewComment, NewEntities, NewLabelling, PropertyMap, PropertyValue,
+            Sentiment, SyncCommentsResponse, Uid as CommentUid,
         },
         dataset::{
             Dataset, FullName as DatasetFullName, Id as DatasetId, Identifier as DatasetIdentifier,
             Name as DatasetName, NewDataset, UpdateDataset,
         },
         email::{Id as EmailId, Mailbox, MimeContent, NewEmail},
+        entity_def::{EntityDef, Id as EntityDefId, Name as EntityName, NewEntityDef},
+        label_def::{
+            LabelDef, LabelDefPretrained, Name as LabelName, NewLabelDef, NewLabelDefPretrained,
+            PretrainedId as LabelDefPretrainedId,
+        },
         source::{
             FullName as SourceFullName, Id as SourceId, Identifier as SourceIdentifier,
             Name as SourceName, NewSource, Source, UpdateSource,
