@@ -15,7 +15,11 @@ use std::{
     str::FromStr,
 };
 
-use crate::error::{Error, Result};
+use crate::{
+    error::{Error, Result},
+    resources::entity_def::Name as EntityName,
+    resources::label_def::Name as LabelName,
+};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Id(pub String);
@@ -433,9 +437,6 @@ pub struct PredictedLabel {
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct LabelName(pub String);
-
-#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Entities {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub assigned: Vec<Entity>,
@@ -512,9 +513,6 @@ pub struct EntitySpan {
     utf16_byte_start: usize,
     utf16_byte_end: usize,
 }
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-pub struct EntityName(pub String);
 
 #[inline]
 fn strip_prefix(string: &mut String, prefix: &str) -> bool {
