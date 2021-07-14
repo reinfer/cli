@@ -4,9 +4,13 @@ use std::str::FromStr;
 
 use crate::{
     error::{Error, Result},
-    resources::{comment::EntityName, source::Id as SourceId, user::Username},
+    resources::{
+        entity_def::{EntityDef, NewEntityDef},
+        label_def::{LabelDef, NewLabelDef},
+        source::Id as SourceId,
+        user::Username,
+    },
 };
-use serde_json::Error as JsonError;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Dataset {
@@ -22,6 +26,8 @@ pub struct Dataset {
     pub model_family: ModelFamily,
     pub source_ids: Vec<SourceId>,
     pub has_sentiment: bool,
+    pub entity_defs: Vec<EntityDef>,
+    pub label_defs: Vec<LabelDef>,
 }
 
 impl Dataset {
@@ -88,33 +94,6 @@ impl FromStr for Identifier {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-pub struct EntityDef {
-    name: EntityName,
-    title: String,
-    inherits_from: Vec<String>,
-    trainable: bool,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct EntityDefs(Vec<EntityDef>);
-
-impl EntityDefs {
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
-
-impl FromStr for EntityDefs {
-    type Err = Error;
-
-    fn from_str(string: &str) -> Result<Self> {
-        serde_json::from_str(string).map_err(|error: JsonError| Error::BadEntityDef {
-            entity_def: string.to_owned(),
-            source: error,
-        })
-    }
-}
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct NewDataset<'request> {
     pub source_ids: &'request [SourceId],
@@ -129,7 +108,10 @@ pub struct NewDataset<'request> {
     pub has_sentiment: Option<bool>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub entity_defs: Option<&'request EntityDefs>,
+    pub entity_defs: Option<&'request [NewEntityDef]>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label_defs: Option<&'request [NewLabelDef]>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model_family: Option<&'request str>,

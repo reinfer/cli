@@ -1,9 +1,11 @@
 use crate::printer::Printer;
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use log::info;
 use reinfer_client::{
-    resources::dataset::EntityDefs, Client, DatasetFullName, NewDataset, SourceIdentifier,
+    Client, DatasetFullName, NewDataset, NewEntityDef, NewLabelDef, SourceIdentifier,
 };
+use serde::Deserialize;
+use std::str::FromStr;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -30,7 +32,11 @@ pub struct CreateDatasetArgs {
 
     #[structopt(short = "e", long = "entity-defs", default_value = "[]")]
     /// Entity defs to create at dataset creation, as json
-    entity_defs: EntityDefs,
+    entity_defs: VecExt<NewEntityDef>,
+
+    #[structopt(long = "label-defs", default_value = "[]")]
+    /// Label defs to create at dataset creation, as json
+    label_defs: VecExt<NewLabelDef>,
 
     #[structopt(long = "model-family")]
     /// Model family to use for the new dataset
@@ -49,6 +55,7 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
         ref has_sentiment,
         ref sources,
         ref entity_defs,
+        ref label_defs,
         ref model_family,
         ref copy_annotations_from,
     } = *args;
@@ -66,6 +73,9 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
         source_ids
     };
 
+    // Unwrap the inner values, we only need the outer for argument parsing
+    let entity_defs = &entity_defs.0;
+    let label_defs = &label_defs.0;
     let dataset = client
         .create_dataset(
             name,
@@ -79,6 +89,11 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
                 } else {
                     Some(entity_defs)
                 },
+                label_defs: if label_defs.is_empty() {
+                    None
+                } else {
+                    Some(&label_defs[..])
+                },
                 model_family: model_family.as_deref(),
                 copy_annotations_from: copy_annotations_from.as_deref(),
             },
@@ -91,4 +106,26 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
     );
     printer.print_resources(&[dataset])?;
     Ok(())
+}
+
+#[derive(Debug, Deserialize)]
+struct VecExt<T>(pub Vec<T>);
+
+/// Utility type for foreign trait interactions.
+///
+/// For actual api interatctions, `Vec<T>` is fine.
+impl<T: serde::de::DeserializeOwned> FromStr for VecExt<T> {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Self> {
+        serde_json::from_str(string).map_err(|source| {
+            // We do a map_err -> anyhow here, because we need the details inlined
+            // for when the error message is shown on the cli without backtrace
+            anyhow!(
+                "Expected valid json for type. Got: '{}', which failed because: '{}'",
+                string.to_owned(),
+                source
+            )
+        })
+    }
 }
