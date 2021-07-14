@@ -26,6 +26,8 @@ case $BUILD_PLATFORM in
     ;;
   "macos-10.15")
     build_and_upload "x86_64-apple-darwin"
+    build_and_upload "x86_64-pc-windows-gnu"
+
     ;;
   *)
     >&2 echo "fatal: unknown BUILD_PLATFORM '$BUILD_PLATFORM'"
