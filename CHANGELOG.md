@@ -1,11 +1,14 @@
 # Unreleased
 
+# v0.8.0
+
 ## Breaking
 
 - All API resources with floats now use `ordered_float::NotNan`
 - A new top level flag `-o/--output` has been added. This replaces all previous `-o/--output` flags in the `re get *` subcommands.
 - The `EntityDefs` wrapper has been removed in favour of `Vec<EntityDef>`. This impacts the `NewDataset` and `Dataset` structs
 - `EntityDef` has added fields to accurately reflect the api return type
+- Added `metadata` field to the `Label` struct
 
 ## Changed
 
