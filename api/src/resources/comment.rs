@@ -426,6 +426,8 @@ pub struct NewLabelling {
 pub struct Label {
     pub name: LabelName,
     pub sentiment: Sentiment,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub metadata: Option<HashMap<String, JsonValue>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
