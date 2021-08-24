@@ -555,7 +555,7 @@ fn get_comments_progress_bar(
                 ),
             )
         },
-        &statistics,
+        statistics,
         Some(total_bytes),
         ProgressOptions { bytes_units: false },
     )
