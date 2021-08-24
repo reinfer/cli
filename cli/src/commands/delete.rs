@@ -271,7 +271,7 @@ fn delete_comments_progress_bar(statistics: &Arc<Statistics>) -> Progress {
                 ),
             )
         },
-        &statistics,
+        statistics,
         None,
         ProgressOptions { bytes_units: false },
     )

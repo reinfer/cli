@@ -195,7 +195,7 @@ impl Client {
     ) -> Result<Source> {
         Ok(self
             .put::<_, _, CreateSourceResponse, SimpleApiError>(
-                self.endpoints.source_by_name(&source_name)?,
+                self.endpoints.source_by_name(source_name)?,
                 CreateSourceRequest { source: options },
             )?
             .source)
@@ -209,7 +209,7 @@ impl Client {
     ) -> Result<Source> {
         Ok(self
             .post::<_, _, UpdateSourceResponse, SimpleApiError>(
-                self.endpoints.source_by_name(&source_name)?,
+                self.endpoints.source_by_name(source_name)?,
                 UpdateSourceRequest { source: options },
                 Retry::Yes,
             )?
@@ -547,7 +547,7 @@ impl Client {
     ) -> Result<Bucket> {
         Ok(self
             .put::<_, _, CreateBucketResponse, SimpleApiError>(
-                self.endpoints.bucket_by_name(&bucket_name)?,
+                self.endpoints.bucket_by_name(bucket_name)?,
                 CreateBucketRequest { bucket: options },
             )?
             .bucket)

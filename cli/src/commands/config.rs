@@ -132,7 +132,7 @@ pub fn run(
             )?;
         }
         ConfigArgs::UseContext { name } => {
-            if !config.set_current_context(&name) {
+            if !config.set_current_context(name) {
                 error!(
                     "No such context `{}` exists in `{}`.",
                     name,

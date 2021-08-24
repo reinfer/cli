@@ -113,7 +113,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
                 ))
             };
             upload_comments_from_reader(
-                &client,
+                client,
                 &source,
                 file,
                 args.batch_size,
@@ -138,7 +138,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
             );
             let statistics = Statistics::new();
             upload_comments_from_reader(
-                &client,
+                client,
                 &source,
                 BufReader::new(io::stdin()),
                 args.batch_size,
@@ -244,7 +244,7 @@ fn upload_batch(
     // Upload comments
     if !comments_to_put.is_empty() {
         client
-            .put_comments(&source.full_name(), &comments_to_put)
+            .put_comments(&source.full_name(), comments_to_put)
             .context("Could not put batch of comments")?;
 
         uploaded += comments_to_put.len();
@@ -252,7 +252,7 @@ fn upload_batch(
 
     if !comments_to_sync.is_empty() {
         let result = client
-            .sync_comments(&source.full_name(), &comments_to_sync)
+            .sync_comments(&source.full_name(), comments_to_sync)
             .context("Could not sync batch of comments")?;
 
         uploaded += comments_to_sync.len();
@@ -273,7 +273,7 @@ fn upload_batch(
         for (comment_uid, labelling, entities) in annotations.iter() {
             client
                 .update_labelling(
-                    &dataset_name,
+                    dataset_name,
                     comment_uid,
                     labelling.as_ref(),
                     entities.as_ref(),
@@ -516,7 +516,7 @@ fn progress_bar(
         } else {
             basic_statistics
         },
-        &statistics,
+        statistics,
         Some(total_bytes),
         ProgressOptions { bytes_units: true },
     )
@@ -534,9 +534,9 @@ mod tests {
         let reader = BufReader::new(Cursor::new(SAMPLE_DUPLICATES));
         let statistics = Statistics::new();
 
-        let comments: Vec<_> = read_comments_iter(reader, Some(&statistics)).collect();
+        let comments_iter = read_comments_iter(reader, Some(&statistics));
 
-        assert_eq!(comments.len(), 5);
+        assert_eq!(comments_iter.count(), 5);
         assert_eq!(statistics.bytes_read(), SAMPLE_DUPLICATES.len());
     }
 

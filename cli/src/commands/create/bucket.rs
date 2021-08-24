@@ -38,7 +38,7 @@ pub fn create(client: &Client, args: &CreateBucketArgs, printer: &Printer) -> Re
             NewBucket {
                 title: title.as_ref().map(|title| title.as_str()),
                 bucket_type,
-                transform_tag: &transform_tag,
+                transform_tag,
             },
         )
         .context("Operation to create a bucket has failed")?;

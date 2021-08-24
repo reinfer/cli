@@ -63,7 +63,7 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
             } else {
                 Some(progress_bar(file_metadata.len(), &statistics))
             };
-            upload_emails_from_reader(&client, &bucket, file, args.batch_size, &statistics)?;
+            upload_emails_from_reader(client, &bucket, file, args.batch_size, &statistics)?;
             if let Some(mut progress) = progress {
                 progress.done();
             }
@@ -77,7 +77,7 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
             );
             let statistics = Statistics::new();
             upload_emails_from_reader(
-                &client,
+                client,
                 &bucket,
                 BufReader::new(io::stdin()),
                 args.batch_size,
@@ -194,7 +194,7 @@ fn progress_bar(total_bytes: u64, statistics: &Arc<Statistics>) -> Progress {
                 format!("{} {}", num_uploaded.to_string().bold(), "emails".dimmed()),
             )
         },
-        &statistics,
+        statistics,
         Some(total_bytes),
         ProgressOptions { bytes_units: true },
     )

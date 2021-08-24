@@ -59,7 +59,7 @@ pub fn create(client: &Client, args: &CreateSourceArgs, printer: &Printer) -> Re
 
     let source = client
         .create_source(
-            &name,
+            name,
             NewSource {
                 title: title.as_ref().map(|title| title.as_str()),
                 description: description.as_ref().map(|description| description.as_str()),
