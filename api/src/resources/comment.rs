@@ -339,6 +339,8 @@ pub struct AnnotatedComment {
     pub labelling: Option<Labelling>,
     #[serde(skip_serializing_if = "should_skip_serializing_entities")]
     pub entities: Option<Entities>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thread_properties: Option<ThreadProperties>,
 }
 
 impl AnnotatedComment {
@@ -375,6 +377,15 @@ impl AnnotatedComment {
         });
         self
     }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct ThreadProperties {
+    duration: Option<NotNan<f64>>,
+    response_time: Option<NotNan<f64>>,
+    num_messages: u64,
+    thread_position: u64,
+    first_sender: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
