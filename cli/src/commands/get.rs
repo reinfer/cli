@@ -197,6 +197,7 @@ pub fn run(get_args: &GetArgs, client: Client, printer: &Printer) -> Result<()> 
                     comment,
                     labelling: None,
                     entities: None,
+                    thread_properties: None,
                 }),
                 &mut writer,
             )?
@@ -417,6 +418,7 @@ fn download_comments(
                         comment,
                         labelling: None,
                         entities: None,
+                        thread_properties: None,
                     }),
                     &mut writer,
                 )

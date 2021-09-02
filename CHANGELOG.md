@@ -1,5 +1,9 @@
 # Unreleased
 
+- Deserialize thread properties when downloading comments for a dataset (the `-d
+  dataset` option for `re get comments`). This limitation exists as only the
+  /labellings API route returns thread properties.
+
 # v0.8.0
 
 ## Breaking
