@@ -10,7 +10,7 @@ use crate::{
     config::{self, ContextConfig, ReinferConfig},
     utils,
 };
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 #[derive(Debug, StructOpt)]
 pub enum ConfigArgs {
@@ -37,6 +37,10 @@ pub enum ConfigArgs {
         /// URL for an HTTP proxy that will be used for all requests if specified
         proxy: Option<Option<Url>>,
     },
+
+    /// Output the token for a given context or the current one if unspecified.
+    #[structopt(name = "get-token")]
+    GetToken { name: Option<String> },
 
     #[structopt(name = "current")]
     /// Display the current context
@@ -133,11 +137,11 @@ pub fn run(
         }
         ConfigArgs::UseContext { name } => {
             if !config.set_current_context(name) {
-                error!(
+                return Err(anyhow!(
                     "No such context `{}` exists in `{}`.",
                     name,
-                    config_path.as_ref().display()
-                );
+                    config_path.as_ref().display(),
+                ));
             } else {
                 config::write_reinfer_config(config_path, &config)?;
                 info!("Switched to context `{}`.", name);
@@ -147,6 +151,30 @@ pub fn run(
             || info!("There is no default context in use."),
             |current_context| println!("{}", current_context.name),
         ),
+        ConfigArgs::GetToken { name } => match name.as_ref() {
+            None => {
+                println!(
+                    "{}",
+                    config
+                        .get_current_context()
+                        .ok_or_else(|| anyhow!("There is no default context in use."))?
+                        .token
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("The default context has no stored token."))?
+                );
+            }
+            Some(name) => {
+                println!(
+                    "{}",
+                    config
+                        .get_context(name)
+                        .ok_or_else(|| anyhow!("No such context `{}`.", name))?
+                        .token
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("The context `{}` has no stored token.", name))?
+                );
+            }
+        },
         ConfigArgs::DeleteContext { names } => {
             for name in names {
                 if config.delete_context(name) {
@@ -157,11 +185,11 @@ pub fn run(
                         config_path.as_ref().display()
                     );
                 } else {
-                    error!(
+                    return Err(anyhow!(
                         "No such context `{}` exists in `{}`.",
                         name,
                         config_path.as_ref().display()
-                    );
+                    ));
                 }
             }
         }
