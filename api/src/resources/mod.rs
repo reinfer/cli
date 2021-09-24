@@ -15,32 +15,23 @@ use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "status")]
-pub(crate) enum Response<SuccessT, ErrorT: ApiError> {
+pub(crate) enum Response<SuccessT> {
     #[serde(rename = "ok")]
     Success(SuccessT),
 
     #[serde(rename = "error")]
-    Error(ErrorT),
+    Error(ApiError),
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub(crate) struct SimpleApiError {
+pub(crate) struct ApiError {
     message: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct EmptySuccess {}
 
-pub(crate) trait ApiError {
-    fn into_error_kind(self, status_code: StatusCode) -> Error;
-    fn message(&self) -> Option<&str>;
-}
-
-impl ApiError for SimpleApiError {
-    fn message(&self) -> Option<&str> {
-        self.message.as_deref()
-    }
-
+impl ApiError {
     fn into_error_kind(self, status_code: StatusCode) -> Error {
         Error::Api {
             status_code,
@@ -49,9 +40,7 @@ impl ApiError for SimpleApiError {
     }
 }
 
-impl<'de, SuccessT: Deserialize<'de>, ErrorT: ApiError + Deserialize<'de>>
-    Response<SuccessT, ErrorT>
-{
+impl<'de, SuccessT: Deserialize<'de>> Response<SuccessT> {
     pub fn into_result(self, status_code: StatusCode) -> Result<SuccessT> {
         match self {
             Response::Success(success) => {
@@ -68,7 +57,7 @@ impl<'de, SuccessT: Deserialize<'de>, ErrorT: ApiError + Deserialize<'de>>
                 if status_code.is_success() {
                     Err(Error::BadProtocol {
                         status_code,
-                        message: error.message().unwrap_or("").to_owned(),
+                        message: error.message.unwrap_or_default(),
                     })
                 } else {
                     Err(error.into_error_kind(status_code))
