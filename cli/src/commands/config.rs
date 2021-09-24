@@ -223,8 +223,8 @@ fn add_or_edit_context(
                 Some(
                     existing_context
                         .as_ref()
-                        .map(|context| context.endpoint.as_str())
-                        .unwrap_or_else(|| DEFAULT_ENDPOINT.as_str()),
+                        .map_or(&*DEFAULT_ENDPOINT, |context| &context.endpoint)
+                        .as_str(),
                 ),
             )?) {
                 Ok(url) => break url,

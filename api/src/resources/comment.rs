@@ -269,8 +269,8 @@ impl Serialize for PropertyMap {
         let mut full_name = String::with_capacity(32);
         for (key, value) in &self.0 {
             full_name.clear();
-            match *value {
-                PropertyValue::String(ref value) => {
+            match value {
+                PropertyValue::String(value) => {
                     if !value.trim().is_empty() {
                         full_name.push_str(STRING_PROPERTY_PREFIX);
                         full_name.push_str(key);
@@ -299,7 +299,7 @@ struct PropertyMapVisitor;
 impl<'de> Visitor<'de> for PropertyMapVisitor {
     type Value = PropertyMap;
 
-    fn expecting(&self, formatter: &mut Formatter) -> FmtResult {
+    fn expecting(&self, formatter: &mut Formatter<'_>) -> FmtResult {
         write!(formatter, "a user property map")
     }
 

@@ -32,18 +32,16 @@ pub struct CreateUserArgs {
 
 pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Result<()> {
     let CreateUserArgs {
-        ref username,
-        ref email,
-        ref global_permissions,
-        ref organisation,
-        ref organisation_permissions_list,
-    } = *args;
+        username,
+        email,
+        global_permissions,
+        organisation,
+        organisation_permissions_list,
+    } = args;
 
     let organisation_permissions = match (organisation, organisation_permissions_list) {
         (Some(organisation), permissions) if !permissions.is_empty() => maplit::hashmap!(
-            organisation.clone() => permissions.iter()
-                .map(Clone::clone)
-                .collect()
+            organisation.clone() => permissions.iter().cloned().collect()
         ),
         (None, permissions) if permissions.is_empty() => HashMap::new(),
         _ => {

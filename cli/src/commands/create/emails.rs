@@ -39,8 +39,8 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
         .get_bucket(args.bucket.clone())
         .with_context(|| format!("Unable to get bucket {}", args.bucket))?;
 
-    let statistics = match args.emails_path {
-        Some(ref emails_path) => {
+    let statistics = match &args.emails_path {
+        Some(emails_path) => {
             info!(
                 "Uploading emails from file `{}` to bucket `{}` [id: {}]",
                 emails_path.display(),

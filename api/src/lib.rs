@@ -191,7 +191,7 @@ impl Client {
     pub fn create_source(
         &self,
         source_name: &SourceFullName,
-        options: NewSource,
+        options: NewSource<'_>,
     ) -> Result<Source> {
         Ok(self
             .put::<_, _, CreateSourceResponse, SimpleApiError>(
@@ -205,7 +205,7 @@ impl Client {
     pub fn update_source(
         &self,
         source_name: &SourceFullName,
-        options: UpdateSource,
+        options: UpdateSource<'_>,
     ) -> Result<Source> {
         Ok(self
             .post::<_, _, UpdateSourceResponse, SimpleApiError>(
@@ -393,7 +393,7 @@ impl Client {
     pub fn create_dataset(
         &self,
         dataset_name: &DatasetFullName,
-        options: NewDataset,
+        options: NewDataset<'_>,
     ) -> Result<Dataset> {
         Ok(self
             .put::<_, _, CreateDatasetResponse, SimpleApiError>(
@@ -407,7 +407,7 @@ impl Client {
     pub fn update_dataset(
         &self,
         dataset_name: &DatasetFullName,
-        options: UpdateDataset,
+        options: UpdateDataset<'_>,
     ) -> Result<Dataset> {
         Ok(self
             .post::<_, _, UpdateDatasetResponse, SimpleApiError>(
@@ -458,7 +458,7 @@ impl Client {
     pub fn get_labellings_in_bulk(
         &self,
         dataset_name: &DatasetFullName,
-        query_parameters: GetLabellingsInBulk,
+        query_parameters: GetLabellingsInBulk<'_>,
     ) -> Result<GetAnnotationsResponse> {
         self.get_query::<_, _, GetAnnotationsResponse, SimpleApiError>(
             self.endpoints.get_labellings(dataset_name)?,
@@ -520,7 +520,7 @@ impl Client {
             .users)
     }
 
-    pub fn create_user(&self, user: NewUser) -> Result<User> {
+    pub fn create_user(&self, user: NewUser<'_>) -> Result<User> {
         Ok(self
             .put::<_, _, CreateUserResponse, SimpleApiError>(
                 self.endpoints.users.clone(),
@@ -543,7 +543,7 @@ impl Client {
     pub fn create_bucket(
         &self,
         bucket_name: &BucketFullName,
-        options: NewBucket,
+        options: NewBucket<'_>,
     ) -> Result<Bucket> {
         Ok(self
             .put::<_, _, CreateBucketResponse, SimpleApiError>(

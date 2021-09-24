@@ -10,7 +10,7 @@ use std::{
 };
 
 pub fn init_env_logger(verbose: bool) {
-    let format = |formatter: &mut LogFormatter, record: &LogRecord| {
+    let format = |formatter: &mut LogFormatter, record: &LogRecord<'_>| {
         let level = match record.level() {
             LogLevel::Debug => LOG_PREFIX_DEBUG.deref(),
             LogLevel::Info => LOG_PREFIX_INFO.deref(),
