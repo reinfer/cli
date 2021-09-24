@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Result as FmtResult};
@@ -10,10 +10,8 @@ use crate::{
     resources::user::Username,
 };
 
-lazy_static! {
-    static ref FULL_NAME_REGEX: Regex =
-        Regex::new("^[A-Za-z0-9-_]{1,256}/[A-Za-z0-9-_]{1,256}$").unwrap();
-}
+static FULL_NAME_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new("^[A-Za-z0-9-_]{1,256}/[A-Za-z0-9-_]{1,256}$").unwrap());
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Bucket {

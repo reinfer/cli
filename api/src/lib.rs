@@ -4,11 +4,11 @@ pub mod resources;
 pub mod retry;
 
 use chrono::{DateTime, Utc};
-use lazy_static::lazy_static;
 use log::debug;
+use once_cell::sync::Lazy;
 use reqwest::{
     blocking::{multipart::Form, Client as HttpClient, Response as HttpResponse},
-    header::{HeaderMap, HeaderName, HeaderValue},
+    header::{self, HeaderMap, HeaderValue},
     IntoUrl, Proxy, Result as ReqwestResult,
 };
 use serde::{Deserialize, Serialize};
@@ -1249,7 +1249,7 @@ fn build_http_client(config: &Config) -> Result<HttpClient> {
 fn build_headers(config: &Config) -> Result<HeaderMap> {
     let mut headers = HeaderMap::new();
     headers.insert(
-        AUTH_HEADER_NAME.clone(),
+        header::AUTHORIZATION,
         HeaderValue::from_str(&format!("Bearer {}", &config.token.0)).map_err(|_| {
             Error::BadToken {
                 token: config.token.0.clone(),
@@ -1266,11 +1266,8 @@ fn id_list_query<'a>(ids: impl Iterator<Item = &'a String>) -> Vec<(&'static str
     ids.map(|id| ("id", id.as_str())).collect()
 }
 
-lazy_static! {
-    static ref AUTH_HEADER_NAME: HeaderName = HeaderName::from_static("authorization");
-    pub static ref DEFAULT_ENDPOINT: Url =
-        Url::parse("https://reinfer.io").expect("Default URL is well-formed");
-}
+pub static DEFAULT_ENDPOINT: Lazy<Url> =
+    Lazy::new(|| Url::parse("https://reinfer.io").expect("Default URL is well-formed"));
 
 #[cfg(test)]
 mod tests {
