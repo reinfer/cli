@@ -3,6 +3,7 @@ mod common;
 mod test_buckets;
 mod test_comments;
 mod test_datasets;
+mod test_projects;
 mod test_sources;
 
 use common::TestCli;

@@ -4,6 +4,7 @@ pub mod dataset;
 pub mod email;
 pub mod entity_def;
 pub mod label_def;
+pub mod project;
 pub mod source;
 pub mod statistics;
 pub mod trigger;

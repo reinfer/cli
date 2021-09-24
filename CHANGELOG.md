@@ -5,6 +5,7 @@
   /labellings API route returns thread properties.
 - Added `re config get-token [context]` which dumps the auth token for the
   current or a different, given context.
+- Added CRUD commands for projects.
 
 # v0.8.0
 

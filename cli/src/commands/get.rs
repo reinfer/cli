@@ -8,7 +8,7 @@ use colored::Colorize;
 use log::info;
 use reinfer_client::{
     AnnotatedComment, BucketIdentifier, Client, CommentId, CommentsIterTimerange, DatasetFullName,
-    DatasetIdentifier, Source, SourceIdentifier, TriggerFullName,
+    DatasetIdentifier, ProjectName, Source, SourceIdentifier, TriggerFullName,
 };
 use std::{
     fs::File,
@@ -134,6 +134,14 @@ pub enum GetArgs {
     #[structopt(name = "current-user")]
     /// Get the user associated with the API token in use
     CurrentUser,
+
+    #[structopt(name = "projects")]
+    /// List available projects
+    Projects {
+        #[structopt(name = "project")]
+        /// If specified, only list this project (name or id)
+        project: Option<ProjectName>,
+    },
 }
 
 pub fn run(get_args: &GetArgs, client: Client, printer: &Printer) -> Result<()> {
@@ -333,6 +341,20 @@ pub fn run(get_args: &GetArgs, client: Client, printer: &Printer) -> Result<()> 
                 .get_current_user()
                 .context("Operation to get the current user has failed.")?;
             printer.print_resources(&[user])?;
+        }
+        GetArgs::Projects { project } => {
+            let projects = if let Some(project) = project {
+                vec![client
+                    .get_project(project)
+                    .context("Operation to list projects has failed.")?]
+            } else {
+                let mut projects = client
+                    .get_projects()
+                    .context("Operation to list projects has failed.")?;
+                projects.sort_unstable_by(|lhs, rhs| lhs.name.0.cmp(&rhs.name.0));
+                projects
+            };
+            printer.print_resources(&projects)?;
         }
     }
     Ok(())
