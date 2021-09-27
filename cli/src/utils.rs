@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use colored::{ColoredString, Colorize};
 use env_logger::{fmt::Formatter as LogFormatter, Builder as LogBuilder};
-use lazy_static::lazy_static;
 use log::{Level as LogLevel, LevelFilter as LogLevelFilter, Record as LogRecord};
+use once_cell::sync::Lazy;
 use std::{
     env,
     io::{self, Write},
@@ -75,11 +75,9 @@ pub fn read_token_from_stdin() -> Result<Option<String>> {
     Ok(if !input.is_empty() { Some(input) } else { None })
 }
 
-lazy_static! {
-    pub static ref LOG_PREFIX_DEBUG: ColoredString = "D".normal();
-    pub static ref LOG_PREFIX_INFO: ColoredString = "I".green();
-    pub static ref LOG_PREFIX_WARN: ColoredString = "W".yellow().bold();
-    pub static ref LOG_PREFIX_ERROR: ColoredString = "E".red().bold();
-    pub static ref LOG_PREFIX_TRACE: ColoredString = "T".normal();
-    pub static ref LOG_PREFIX_INPUT: ColoredString = "*".blue().bold();
-}
+pub static LOG_PREFIX_DEBUG: Lazy<ColoredString> = Lazy::new(|| "D".normal());
+pub static LOG_PREFIX_INFO: Lazy<ColoredString> = Lazy::new(|| "I".green());
+pub static LOG_PREFIX_WARN: Lazy<ColoredString> = Lazy::new(|| "W".yellow().bold());
+pub static LOG_PREFIX_ERROR: Lazy<ColoredString> = Lazy::new(|| "E".red().bold());
+pub static LOG_PREFIX_TRACE: Lazy<ColoredString> = Lazy::new(|| "T".normal());
+pub static LOG_PREFIX_INPUT: Lazy<ColoredString> = Lazy::new(|| "*".blue().bold());
