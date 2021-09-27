@@ -264,8 +264,8 @@ mod tests {
     #[test]
     fn unknown_organisation_permission_roundtrips() {
         let unknown_permission = OrganisationPermission::from_str("unknown").unwrap();
-        match unknown_permission {
-            OrganisationPermission::Unknown(ref error) => assert_eq!(&**error, "unknown"),
+        match &unknown_permission {
+            OrganisationPermission::Unknown(error) => assert_eq!(&**error, "unknown"),
             _ => panic!("Expected error to be parsed as Unknown(..)"),
         }
 
@@ -278,8 +278,8 @@ mod tests {
     #[test]
     fn unknown_global_permission_roundtrips() {
         let unknown_permission = GlobalPermission::from_str("unknown").unwrap();
-        match unknown_permission {
-            GlobalPermission::Unknown(ref error) => assert_eq!(&**error, "unknown"),
+        match &unknown_permission {
+            GlobalPermission::Unknown(error) => assert_eq!(&**error, "unknown"),
             _ => panic!("Expected error to be parsed as Unknown(..)"),
         }
 

@@ -1,7 +1,7 @@
 use crate::printer::Printer;
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::{BucketId, BucketIdentifier, Client, NewSource, SourceFullName};
+use reinfer_client::{BucketIdentifier, Client, NewSource, SourceFullName};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -33,37 +33,32 @@ pub struct CreateSourceArgs {
 
 pub fn create(client: &Client, args: &CreateSourceArgs, printer: &Printer) -> Result<()> {
     let CreateSourceArgs {
-        ref name,
-        ref title,
-        ref description,
-        ref language,
-        ref should_translate,
-        ref bucket,
-    } = *args;
+        name,
+        title,
+        description,
+        language,
+        should_translate,
+        bucket,
+    } = args;
 
-    let bucket_id = bucket
-        .as_ref()
-        .map(Clone::clone)
-        .map(|bucket| -> Result<BucketId> {
-            Ok(match bucket {
-                BucketIdentifier::Id(bucket_id) => bucket_id,
-                BucketIdentifier::FullName(_) => {
-                    client
-                        .get_bucket(bucket)
-                        .context("Fetching bucket for id.")?
-                        .id
-                }
-            })
-        })
-        .transpose()?;
+    let bucket_id = match bucket.to_owned() {
+        Some(BucketIdentifier::Id(bucket_id)) => Some(bucket_id),
+        Some(full_name @ BucketIdentifier::FullName(_)) => Some(
+            client
+                .get_bucket(full_name)
+                .context("Fetching bucket for id.")?
+                .id,
+        ),
+        None => None,
+    };
 
     let source = client
         .create_source(
             name,
             NewSource {
-                title: title.as_ref().map(|title| title.as_str()),
-                description: description.as_ref().map(|description| description.as_str()),
-                language: language.as_ref().map(|language| language.as_str()),
+                title: title.as_deref(),
+                description: description.as_deref(),
+                language: language.as_deref(),
                 should_translate: *should_translate,
                 bucket_id,
                 sensitive_properties: None,

@@ -26,18 +26,18 @@ pub struct CreateBucketArgs {
 
 pub fn create(client: &Client, args: &CreateBucketArgs, printer: &Printer) -> Result<()> {
     let CreateBucketArgs {
-        ref name,
-        ref title,
+        name,
+        title,
         bucket_type,
-        ref transform_tag,
-    } = *args;
+        transform_tag,
+    } = args;
 
     let bucket = client
         .create_bucket(
             name,
             NewBucket {
-                title: title.as_ref().map(|title| title.as_str()),
-                bucket_type,
+                title: title.as_deref(),
+                bucket_type: *bucket_type,
                 transform_tag,
             },
         )

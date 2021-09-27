@@ -90,22 +90,22 @@ impl FromStr for Identifier {
 }
 
 impl Display for FullName {
-    fn fmt(&self, formatter: &mut Formatter) -> FmtResult {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
         write!(formatter, "{}", self.0)
     }
 }
 
 impl Display for Id {
-    fn fmt(&self, formatter: &mut Formatter) -> FmtResult {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
         write!(formatter, "{}", self.0)
     }
 }
 
 impl Display for Identifier {
-    fn fmt(&self, formatter: &mut Formatter) -> FmtResult {
-        match *self {
-            Identifier::Id(ref id) => Display::fmt(id, formatter),
-            Identifier::FullName(ref full_name) => Display::fmt(full_name, formatter),
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            Identifier::Id(id) => Display::fmt(id, formatter),
+            Identifier::FullName(full_name) => Display::fmt(full_name, formatter),
         }
     }
 }
@@ -164,7 +164,7 @@ impl Default for BucketType {
 }
 
 impl Display for BucketType {
-    fn fmt(&self, formatter: &mut Formatter) -> FmtResult {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
         match *self {
             Self::Emails => write!(formatter, "emails"),
         }

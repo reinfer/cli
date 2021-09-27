@@ -71,8 +71,8 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
 
     ensure!(args.batch_size > 0, "--batch-size must be greater than 0");
 
-    let statistics = match args.comments_path {
-        Some(ref comments_path) => {
+    let statistics = match &args.comments_path {
+        Some(comments_path) => {
             info!(
                 "Uploading comments from file `{}` to source `{}` [id: {}]",
                 comments_path.display(),

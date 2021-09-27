@@ -26,11 +26,11 @@ pub struct UpdateDatasetArgs {
 
 pub fn update(client: &Client, args: &UpdateDatasetArgs, printer: &Printer) -> Result<()> {
     let UpdateDatasetArgs {
-        ref dataset,
-        ref title,
-        ref description,
-        ref sources,
-    } = *args;
+        dataset,
+        title,
+        description,
+        sources,
+    } = args;
 
     let source_ids = sources
         .as_ref()
@@ -43,10 +43,10 @@ pub fn update(client: &Client, args: &UpdateDatasetArgs, printer: &Printer) -> R
         .transpose()
         .context("Operation to get sources failed")?;
 
-    let dataset_full_name = match dataset.to_owned() {
-        DatasetIdentifier::FullName(name) => name,
+    let dataset_full_name = match dataset {
+        DatasetIdentifier::FullName(name) => name.to_owned(),
         dataset @ DatasetIdentifier::Id(_) => client
-            .get_dataset(dataset)
+            .get_dataset(dataset.to_owned())
             .context("Fetching dataset id.")?
             .full_name(),
     };

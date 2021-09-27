@@ -92,13 +92,13 @@ impl FromStr for Identifier {
 }
 
 impl Display for Identifier {
-    fn fmt(&self, formatter: &mut Formatter) -> FmtResult {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
         write!(
             formatter,
             "{}",
-            match *self {
-                Identifier::Id(ref id) => &id.0,
-                Identifier::FullName(ref full_name) => &full_name.0,
+            match self {
+                Identifier::Id(id) => &id.0,
+                Identifier::FullName(full_name) => &full_name.0,
             }
         )
     }

@@ -27,8 +27,8 @@ fn run(args: Args) -> Result<()> {
     let config = config::read_reinfer_config(&config_path)?;
     let printer = Printer::new(args.output);
 
-    match args.command {
-        Command::Config { ref config_args } => {
+    match &args.command {
+        Command::Config { config_args } => {
             config_command::run(config_args, config, config_path).map(|_| ())
         }
         Command::Completion { shell } => {
@@ -40,16 +40,16 @@ fn run(args: Args) -> Result<()> {
             app.gen_completions_to("re", clap_shell, &mut io::stdout());
             Ok(())
         }
-        Command::Get { ref get_args } => {
+        Command::Get { get_args } => {
             get::run(get_args, client_from_args(&args, &config)?, &printer)
         }
-        Command::Delete { ref delete_args } => {
+        Command::Delete { delete_args } => {
             delete::run(delete_args, client_from_args(&args, &config)?)
         }
-        Command::Create { ref create_args } => {
+        Command::Create { create_args } => {
             create::run(create_args, client_from_args(&args, &config)?, &printer)
         }
-        Command::Update { ref update_args } => {
+        Command::Update { update_args } => {
             update::run(update_args, client_from_args(&args, &config)?, &printer)
         }
     }

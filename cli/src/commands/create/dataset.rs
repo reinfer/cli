@@ -49,16 +49,16 @@ pub struct CreateDatasetArgs {
 
 pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> Result<()> {
     let CreateDatasetArgs {
-        ref name,
-        ref title,
-        ref description,
-        ref has_sentiment,
-        ref sources,
-        ref entity_defs,
-        ref label_defs,
-        ref model_family,
-        ref copy_annotations_from,
-    } = *args;
+        name,
+        title,
+        description,
+        has_sentiment,
+        sources,
+        entity_defs,
+        label_defs,
+        model_family,
+        copy_annotations_from,
+    } = args;
 
     let source_ids = {
         let mut source_ids = Vec::with_capacity(sources.len());
@@ -113,7 +113,7 @@ struct VecExt<T>(pub Vec<T>);
 
 /// Utility type for foreign trait interactions.
 ///
-/// For actual api interatctions, `Vec<T>` is fine.
+/// For actual api interactions, `Vec<T>` is fine.
 impl<T: serde::de::DeserializeOwned> FromStr for VecExt<T> {
     type Err = Error;
 
