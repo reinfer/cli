@@ -47,7 +47,7 @@ use crate::resources::{
         GetAvailableResponse as GetAvailableUsersResponse,
         GetCurrentResponse as GetCurrentUserResponse,
     },
-    ApiError, EmptySuccess, Response, SimpleApiError,
+    EmptySuccess, Response,
 };
 
 use crate::retry::{Retrier, RetryConfig};
@@ -165,7 +165,7 @@ impl Client {
     /// List all visible sources.
     pub fn get_sources(&self) -> Result<Vec<Source>> {
         Ok(self
-            .get::<_, GetAvailableSourcesResponse, SimpleApiError>(self.endpoints.sources.clone())?
+            .get::<_, GetAvailableSourcesResponse>(self.endpoints.sources.clone())?
             .sources)
     }
 
@@ -173,16 +173,12 @@ impl Client {
     pub fn get_source(&self, source: impl Into<SourceIdentifier>) -> Result<Source> {
         Ok(match source.into() {
             SourceIdentifier::Id(source_id) => {
-                self.get::<_, GetSourceResponse, SimpleApiError>(
-                    self.endpoints.source_by_id(&source_id)?,
-                )?
-                .source
+                self.get::<_, GetSourceResponse>(self.endpoints.source_by_id(&source_id)?)?
+                    .source
             }
             SourceIdentifier::FullName(source_name) => {
-                self.get::<_, GetSourceResponse, SimpleApiError>(
-                    self.endpoints.source_by_name(&source_name)?,
-                )?
-                .source
+                self.get::<_, GetSourceResponse>(self.endpoints.source_by_name(&source_name)?)?
+                    .source
             }
         })
     }
@@ -194,7 +190,7 @@ impl Client {
         options: NewSource,
     ) -> Result<Source> {
         Ok(self
-            .put::<_, _, CreateSourceResponse, SimpleApiError>(
+            .put::<_, _, CreateSourceResponse>(
                 self.endpoints.source_by_name(source_name)?,
                 CreateSourceRequest { source: options },
             )?
@@ -208,7 +204,7 @@ impl Client {
         options: UpdateSource,
     ) -> Result<Source> {
         Ok(self
-            .post::<_, _, UpdateSourceResponse, SimpleApiError>(
+            .post::<_, _, UpdateSourceResponse>(
                 self.endpoints.source_by_name(source_name)?,
                 UpdateSourceRequest { source: options },
                 Retry::Yes,
@@ -222,7 +218,7 @@ impl Client {
             SourceIdentifier::Id(source_id) => source_id,
             source @ SourceIdentifier::FullName(_) => self.get_source(source)?.id,
         };
-        self.delete::<_, SimpleApiError>(self.endpoints.source_by_id(&source_id)?)
+        self.delete::<_>(self.endpoints.source_by_id(&source_id)?)
     }
 
     /// Delete comments by id in a source.
@@ -235,7 +231,7 @@ impl Client {
             source @ SourceIdentifier::Id(_) => self.get_source(source)?.full_name(),
             SourceIdentifier::FullName(source_full_name) => source_full_name,
         };
-        self.delete_query::<_, _, SimpleApiError>(
+        self.delete_query::<_, _>(
             self.endpoints.comments_v1(&source_full_name)?,
             Some(&id_list_query(comments.iter().map(|uid| &uid.0))),
         )
@@ -268,10 +264,7 @@ impl Client {
             after,
             limit,
         };
-        self.get_query::<_, _, _, SimpleApiError>(
-            self.endpoints.comments(source_name)?,
-            Some(&query_params),
-        )
+        self.get_query::<_, _, _>(self.endpoints.comments(source_name)?, Some(&query_params))
     }
 
     /// Iterate through all comments in a source.
@@ -291,9 +284,7 @@ impl Client {
         comment_id: &'a CommentId,
     ) -> Result<Comment> {
         Ok(self
-            .get::<_, GetCommentResponse, SimpleApiError>(
-                self.endpoints.comment_by_id(source_name, comment_id)?,
-            )?
+            .get::<_, GetCommentResponse>(self.endpoints.comment_by_id(source_name, comment_id)?)?
             .comment)
     }
 
@@ -302,7 +293,7 @@ impl Client {
         source_name: &SourceFullName,
         comments: &[NewComment],
     ) -> Result<PutCommentsResponse> {
-        self.put::<_, _, _, SimpleApiError>(
+        self.put::<_, _, _>(
             self.endpoints.comments(source_name)?,
             PutCommentsRequest { comments },
         )
@@ -313,7 +304,7 @@ impl Client {
         source_name: &SourceFullName,
         comments: &[NewComment],
     ) -> Result<SyncCommentsResponse> {
-        self.post::<_, _, _, SimpleApiError>(
+        self.post::<_, _, _>(
             self.endpoints.sync_comments(source_name)?,
             SyncCommentsRequest { comments },
             Retry::Yes,
@@ -325,7 +316,7 @@ impl Client {
         bucket_name: &BucketFullName,
         emails: &[NewEmail],
     ) -> Result<PutEmailsResponse> {
-        self.put::<_, _, _, SimpleApiError>(
+        self.put::<_, _, _>(
             self.endpoints.put_emails(bucket_name)?,
             PutEmailsRequest { emails },
         )
@@ -355,7 +346,7 @@ impl Client {
             })?;
         let status = http_response.status();
         http_response
-            .json::<Response<EmptySuccess, SimpleApiError>>()
+            .json::<Response<EmptySuccess>>()
             .map_err(Error::BadJsonResponse)?
             .into_result(status)?;
         Ok(())
@@ -363,9 +354,7 @@ impl Client {
 
     pub fn get_datasets(&self) -> Result<Vec<Dataset>> {
         Ok(self
-            .get::<_, GetAvailableDatasetsResponse, SimpleApiError>(
-                self.endpoints.datasets.clone(),
-            )?
+            .get::<_, GetAvailableDatasetsResponse>(self.endpoints.datasets.clone())?
             .datasets)
     }
 
@@ -375,16 +364,12 @@ impl Client {
     {
         Ok(match dataset.into() {
             DatasetIdentifier::Id(dataset_id) => {
-                self.get::<_, GetDatasetResponse, SimpleApiError>(
-                    self.endpoints.dataset_by_id(&dataset_id)?,
-                )?
-                .dataset
+                self.get::<_, GetDatasetResponse>(self.endpoints.dataset_by_id(&dataset_id)?)?
+                    .dataset
             }
             DatasetIdentifier::FullName(dataset_name) => {
-                self.get::<_, GetDatasetResponse, SimpleApiError>(
-                    self.endpoints.dataset_by_name(&dataset_name)?,
-                )?
-                .dataset
+                self.get::<_, GetDatasetResponse>(self.endpoints.dataset_by_name(&dataset_name)?)?
+                    .dataset
             }
         })
     }
@@ -396,7 +381,7 @@ impl Client {
         options: NewDataset,
     ) -> Result<Dataset> {
         Ok(self
-            .put::<_, _, CreateDatasetResponse, SimpleApiError>(
+            .put::<_, _, CreateDatasetResponse>(
                 self.endpoints.dataset_by_name(dataset_name)?,
                 CreateDatasetRequest { dataset: options },
             )?
@@ -410,7 +395,7 @@ impl Client {
         options: UpdateDataset,
     ) -> Result<Dataset> {
         Ok(self
-            .post::<_, _, UpdateDatasetResponse, SimpleApiError>(
+            .post::<_, _, UpdateDatasetResponse>(
                 self.endpoints.dataset_by_name(dataset_name)?,
                 UpdateDatasetRequest { dataset: options },
                 Retry::Yes,
@@ -426,7 +411,7 @@ impl Client {
             DatasetIdentifier::Id(dataset_id) => dataset_id,
             dataset @ DatasetIdentifier::FullName(_) => self.get_dataset(dataset)?.id,
         };
-        self.delete::<_, SimpleApiError>(self.endpoints.dataset_by_id(&dataset_id)?)
+        self.delete::<_>(self.endpoints.dataset_by_id(&dataset_id)?)
     }
 
     /// Get labellings for a given a dataset and a list of comment UIDs.
@@ -436,7 +421,7 @@ impl Client {
         comment_uids: impl Iterator<Item = &'a CommentUid>,
     ) -> Result<Vec<AnnotatedComment>> {
         Ok(self
-            .get_query::<_, _, GetAnnotationsResponse, SimpleApiError>(
+            .get_query::<_, _, GetAnnotationsResponse>(
                 self.endpoints.get_labellings(dataset_name)?,
                 Some(&id_list_query(comment_uids.into_iter().map(|id| &id.0))),
             )?
@@ -460,7 +445,7 @@ impl Client {
         dataset_name: &DatasetFullName,
         query_parameters: GetLabellingsInBulk,
     ) -> Result<GetAnnotationsResponse> {
-        self.get_query::<_, _, GetAnnotationsResponse, SimpleApiError>(
+        self.get_query::<_, _, GetAnnotationsResponse>(
             self.endpoints.get_labellings(dataset_name)?,
             Some(&query_parameters),
         )
@@ -474,7 +459,7 @@ impl Client {
         labelling: Option<&NewLabelling>,
         entities: Option<&NewEntities>,
     ) -> Result<AnnotatedComment> {
-        self.post::<_, _, AnnotatedComment, SimpleApiError>(
+        self.post::<_, _, AnnotatedComment>(
             self.endpoints.post_labelling(dataset_name, comment_uid)?,
             UpdateAnnotationsRequest {
                 labelling,
@@ -486,7 +471,7 @@ impl Client {
 
     pub fn get_triggers(&self, dataset_name: &DatasetFullName) -> Result<Vec<Trigger>> {
         Ok(self
-            .get::<_, GetTriggersResponse, SimpleApiError>(self.endpoints.triggers(dataset_name)?)?
+            .get::<_, GetTriggersResponse>(self.endpoints.triggers(dataset_name)?)?
             .triggers)
     }
 
@@ -497,7 +482,7 @@ impl Client {
         limit: usize,
         continuation: Option<&Continuation>,
     ) -> Result<RecentCommentsPage> {
-        self.post::<_, _, RecentCommentsPage, SimpleApiError>(
+        self.post::<_, _, RecentCommentsPage>(
             self.endpoints.recent_comments(dataset_name)?,
             GetRecentRequest {
                 limit,
@@ -510,19 +495,19 @@ impl Client {
 
     pub fn get_current_user(&self) -> Result<User> {
         Ok(self
-            .get::<_, GetCurrentUserResponse, SimpleApiError>(self.endpoints.current_user.clone())?
+            .get::<_, GetCurrentUserResponse>(self.endpoints.current_user.clone())?
             .user)
     }
 
     pub fn get_users(&self) -> Result<Vec<User>> {
         Ok(self
-            .get::<_, GetAvailableUsersResponse, SimpleApiError>(self.endpoints.users.clone())?
+            .get::<_, GetAvailableUsersResponse>(self.endpoints.users.clone())?
             .users)
     }
 
     pub fn create_user(&self, user: NewUser) -> Result<User> {
         Ok(self
-            .put::<_, _, CreateUserResponse, SimpleApiError>(
+            .put::<_, _, CreateUserResponse>(
                 self.endpoints.users.clone(),
                 CreateUserRequest { user },
             )?
@@ -531,7 +516,7 @@ impl Client {
 
     pub fn get_statistics(&self, dataset_name: &DatasetFullName) -> Result<Statistics> {
         Ok(self
-            .post::<_, _, GetStatisticsResponse, SimpleApiError>(
+            .post::<_, _, GetStatisticsResponse>(
                 self.endpoints.statistics(dataset_name)?,
                 json!({}),
                 Retry::No,
@@ -546,7 +531,7 @@ impl Client {
         options: NewBucket,
     ) -> Result<Bucket> {
         Ok(self
-            .put::<_, _, CreateBucketResponse, SimpleApiError>(
+            .put::<_, _, CreateBucketResponse>(
                 self.endpoints.bucket_by_name(bucket_name)?,
                 CreateBucketRequest { bucket: options },
             )?
@@ -555,7 +540,7 @@ impl Client {
 
     pub fn get_buckets(&self) -> Result<Vec<Bucket>> {
         Ok(self
-            .get::<_, GetAvailableBucketsResponse, SimpleApiError>(self.endpoints.buckets.clone())?
+            .get::<_, GetAvailableBucketsResponse>(self.endpoints.buckets.clone())?
             .buckets)
     }
 
@@ -565,16 +550,12 @@ impl Client {
     {
         Ok(match bucket.into() {
             BucketIdentifier::Id(bucket_id) => {
-                self.get::<_, GetBucketResponse, SimpleApiError>(
-                    self.endpoints.bucket_by_id(&bucket_id)?,
-                )?
-                .bucket
+                self.get::<_, GetBucketResponse>(self.endpoints.bucket_by_id(&bucket_id)?)?
+                    .bucket
             }
             BucketIdentifier::FullName(bucket_name) => {
-                self.get::<_, GetBucketResponse, SimpleApiError>(
-                    self.endpoints.bucket_by_name(&bucket_name)?,
-                )?
-                .bucket
+                self.get::<_, GetBucketResponse>(self.endpoints.bucket_by_name(&bucket_name)?)?
+                    .bucket
             }
         })
     }
@@ -587,7 +568,7 @@ impl Client {
             BucketIdentifier::Id(bucket_id) => bucket_id,
             bucket @ BucketIdentifier::FullName(_) => self.get_bucket(bucket)?.id,
         };
-        self.delete::<_, SimpleApiError>(self.endpoints.bucket_by_id(&bucket_id)?)
+        self.delete::<_>(self.endpoints.bucket_by_id(&bucket_id)?)
     }
 
     pub fn fetch_trigger_comments(
@@ -595,7 +576,7 @@ impl Client {
         trigger_name: &TriggerFullName,
         size: u32,
     ) -> Result<TriggerBatch> {
-        self.post::<_, _, _, SimpleApiError>(
+        self.post::<_, _, _>(
             self.endpoints.trigger_fetch(trigger_name)?,
             TriggerFetchRequest { size },
             Retry::No,
@@ -607,7 +588,7 @@ impl Client {
         trigger_name: &TriggerFullName,
         sequence_id: TriggerSequenceId,
     ) -> Result<()> {
-        self.post::<_, _, serde::de::IgnoredAny, SimpleApiError>(
+        self.post::<_, _, serde::de::IgnoredAny>(
             self.endpoints.trigger_advance(trigger_name)?,
             TriggerAdvanceRequest { sequence_id },
             Retry::No,
@@ -620,7 +601,7 @@ impl Client {
         trigger_name: &TriggerFullName,
         to_comment_created_at: DateTime<Utc>,
     ) -> Result<()> {
-        self.post::<_, _, serde::de::IgnoredAny, SimpleApiError>(
+        self.post::<_, _, serde::de::IgnoredAny>(
             self.endpoints.trigger_reset(trigger_name)?,
             TriggerResetRequest {
                 to_comment_created_at,
@@ -630,16 +611,15 @@ impl Client {
         Ok(())
     }
 
-    fn get<LocationT, SuccessT, ErrorT>(&self, url: LocationT) -> Result<SuccessT>
+    fn get<LocationT, SuccessT>(&self, url: LocationT) -> Result<SuccessT>
     where
         LocationT: IntoUrl + Display + Clone,
         for<'de> SuccessT: Deserialize<'de>,
-        for<'de> ErrorT: Deserialize<'de> + ApiError,
     {
-        self.get_query::<LocationT, (), SuccessT, ErrorT>(url, None)
+        self.get_query::<LocationT, (), SuccessT>(url, None)
     }
 
-    fn get_query<LocationT, QueryT, SuccessT, ErrorT>(
+    fn get_query<LocationT, QueryT, SuccessT>(
         &self,
         url: LocationT,
         query: Option<&QueryT>,
@@ -648,7 +628,6 @@ impl Client {
         LocationT: IntoUrl + Display + Clone,
         QueryT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
-        for<'de> ErrorT: Deserialize<'de> + ApiError,
     {
         debug!("Attempting GET `{}`", url);
         let http_response = self
@@ -668,28 +647,22 @@ impl Client {
             })?;
         let status = http_response.status();
         http_response
-            .json::<Response<SuccessT, ErrorT>>()
+            .json::<Response<SuccessT>>()
             .map_err(Error::BadJsonResponse)?
             .into_result(status)
     }
 
-    fn delete<LocationT, ErrorT>(&self, url: LocationT) -> Result<()>
+    fn delete<LocationT>(&self, url: LocationT) -> Result<()>
     where
         LocationT: IntoUrl + Display + Clone,
-        for<'de> ErrorT: Deserialize<'de> + ApiError,
     {
-        self.delete_query::<LocationT, (), ErrorT>(url, None)
+        self.delete_query::<LocationT, ()>(url, None)
     }
 
-    fn delete_query<LocationT, QueryT, ErrorT>(
-        &self,
-        url: LocationT,
-        query: Option<&QueryT>,
-    ) -> Result<()>
+    fn delete_query<LocationT, QueryT>(&self, url: LocationT, query: Option<&QueryT>) -> Result<()>
     where
         LocationT: IntoUrl + Display + Clone,
         QueryT: Serialize,
-        for<'de> ErrorT: Deserialize<'de> + ApiError,
     {
         debug!("Attempting DELETE `{}`", url);
 
@@ -713,7 +686,7 @@ impl Client {
             })?;
         let status = http_response.status();
         http_response
-            .json::<Response<EmptySuccess, ErrorT>>()
+            .json::<Response<EmptySuccess>>()
             .map_err(Error::BadJsonResponse)?
             .into_result(status)
             .map_or_else(
@@ -730,7 +703,7 @@ impl Client {
             )
     }
 
-    fn post<LocationT, RequestT, SuccessT, ErrorT>(
+    fn post<LocationT, RequestT, SuccessT>(
         &self,
         url: LocationT,
         request: RequestT,
@@ -740,7 +713,6 @@ impl Client {
         LocationT: IntoUrl + Display + Clone,
         RequestT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
-        for<'de> ErrorT: Deserialize<'de> + ApiError,
     {
         debug!("Attempting POST `{}`", url);
         let do_request = || {
@@ -761,12 +733,12 @@ impl Client {
         })?;
         let status = http_response.status();
         http_response
-            .json::<Response<SuccessT, ErrorT>>()
+            .json::<Response<SuccessT>>()
             .map_err(Error::BadJsonResponse)?
             .into_result(status)
     }
 
-    fn put<LocationT, RequestT, SuccessT, ErrorT>(
+    fn put<LocationT, RequestT, SuccessT>(
         &self,
         url: LocationT,
         request: RequestT,
@@ -775,7 +747,6 @@ impl Client {
         LocationT: IntoUrl + Display + Clone,
         RequestT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
-        for<'de> ErrorT: Deserialize<'de> + ApiError,
     {
         debug!("Attempting PUT `{}`", url);
         let http_response = self
@@ -792,7 +763,7 @@ impl Client {
             })?;
         let status = http_response.status();
         http_response
-            .json::<Response<SuccessT, ErrorT>>()
+            .json::<Response<SuccessT>>()
             .map_err(Error::BadJsonResponse)?
             .into_result(status)
     }
