@@ -3,6 +3,8 @@
 - Deserialize thread properties when downloading comments for a dataset (the `-d
   dataset` option for `re get comments`). This limitation exists as only the
   /labellings API route returns thread properties.
+- Added `re config get-token [context]` which dumps the auth token for the
+  current or a different, given context.
 
 # v0.8.0
 
