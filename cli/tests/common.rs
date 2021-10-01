@@ -1,4 +1,5 @@
 use once_cell::sync::Lazy;
+use reinfer_client::User;
 use std::{
     env,
     ffi::OsStr,
@@ -34,6 +35,11 @@ pub struct TestCli {
 impl TestCli {
     pub fn get() -> &'static Self {
         &TEST_CLI
+    }
+
+    pub fn user(&self) -> User {
+        let output = self.run(&["--output=json", "get", "current-user"]);
+        serde_json::from_str::<User>(&output).expect("Failed to deserialize user response")
     }
 
     pub fn organisation() -> String {

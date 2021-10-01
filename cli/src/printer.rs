@@ -1,6 +1,6 @@
 use colored::Colorize;
 use prettytable::{cell, format, row, Row, Table};
-use reinfer_client::{Bucket, Dataset, Source, Trigger, User};
+use reinfer_client::{Bucket, Dataset, Project, Source, Trigger, User};
 use serde::Serialize;
 
 use anyhow::{anyhow, Context, Error, Result};
@@ -93,6 +93,16 @@ impl DisplayTable for Dataset {
             self.updated_at.format("%Y-%m-%d %H:%M:%S"),
             self.title
         ]
+    }
+}
+
+impl DisplayTable for Project {
+    fn to_table_headers() -> Row {
+        row![bFg => "Name", "Title"]
+    }
+
+    fn to_table_row(&self) -> Row {
+        row![self.name.0, self.title]
     }
 }
 

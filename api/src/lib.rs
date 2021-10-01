@@ -32,6 +32,10 @@ use crate::resources::{
         UpdateRequest as UpdateDatasetRequest, UpdateResponse as UpdateDatasetResponse,
     },
     email::{PutEmailsRequest, PutEmailsResponse},
+    project::{
+        CreateProjectRequest, CreateProjectResponse, GetProjectResponse, GetProjectsResponse,
+        UpdateProjectRequest, UpdateProjectResponse,
+    },
     source::{
         CreateRequest as CreateSourceRequest, CreateResponse as CreateSourceResponse,
         GetAvailableResponse as GetAvailableSourcesResponse, GetResponse as GetSourceResponse,
@@ -75,6 +79,7 @@ pub use crate::{
             LabelDef, LabelDefPretrained, Name as LabelName, NewLabelDef, NewLabelDefPretrained,
             PretrainedId as LabelDefPretrainedId,
         },
+        project::{NewProject, Project, ProjectName, UpdateProject},
         source::{
             FullName as SourceFullName, Id as SourceId, Identifier as SourceIdentifier,
             Name as SourceName, NewSource, Source, UpdateSource,
@@ -611,6 +616,58 @@ impl Client {
         Ok(())
     }
 
+    /// Gets a project.
+    pub fn get_project(&self, project_name: &ProjectName) -> Result<Project> {
+        let response =
+            self.get::<_, GetProjectResponse>(self.endpoints.project_by_name(project_name)?)?;
+        Ok(response.project)
+    }
+
+    /// Gets all projects.
+    pub fn get_projects(&self) -> Result<Vec<Project>> {
+        let response = self.get::<_, GetProjectsResponse>(self.endpoints.projects.clone())?;
+        Ok(response.projects)
+    }
+
+    /// Creates a new project.
+    pub fn create_project(
+        &self,
+        project_name: &ProjectName,
+        options: NewProject,
+        user_ids: &[UserId],
+    ) -> Result<Project> {
+        Ok(self
+            .put::<_, _, CreateProjectResponse>(
+                self.endpoints.project_by_name(project_name)?,
+                CreateProjectRequest {
+                    project: options,
+                    user_ids,
+                },
+            )?
+            .project)
+    }
+
+    /// Updates an existing project.
+    pub fn update_project(
+        &self,
+        project_name: &ProjectName,
+        options: UpdateProject,
+    ) -> Result<Project> {
+        Ok(self
+            .post::<_, _, UpdateProjectResponse>(
+                self.endpoints.project_by_name(project_name)?,
+                UpdateProjectRequest { project: options },
+                Retry::Yes,
+            )?
+            .project)
+    }
+
+    /// Deletes an existing project.
+    pub fn delete_project(&self, project_name: &ProjectName) -> Result<()> {
+        self.delete(self.endpoints.project_by_name(project_name)?)?;
+        Ok(())
+    }
+
     fn get<LocationT, SuccessT>(&self, url: LocationT) -> Result<SuccessT>
     where
         LocationT: IntoUrl + Display + Clone,
@@ -915,6 +972,7 @@ struct Endpoints {
     buckets: Url,
     users: Url,
     current_user: Url,
+    projects: Url,
 }
 
 impl Endpoints {
@@ -949,6 +1007,12 @@ impl Endpoints {
                 source,
                 message: "Could not build URL for users resources.".to_owned(),
             })?;
+        let projects =
+            base.join("/api/_private/projects")
+                .map_err(|source| Error::UrlParseError {
+                    source,
+                    message: "Could not build URL for project resources.".to_owned(),
+                })?;
         Ok(Endpoints {
             base,
             datasets,
@@ -956,6 +1020,7 @@ impl Endpoints {
             buckets,
             users,
             current_user,
+            projects,
         })
     }
 
@@ -1202,6 +1267,18 @@ impl Endpoints {
                 message: format!(
                     "Could not build URL for bucket resource with name `{}`.",
                     bucket_name.0
+                ),
+            })
+    }
+
+    fn project_by_name(&self, project_name: &ProjectName) -> Result<Url> {
+        self.base
+            .join(&format!("/api/_private/projects/{}", project_name.0))
+            .map_err(|source| Error::UrlParseError {
+                source,
+                message: format!(
+                    "Could not build URL for project resource with name `{}`.",
+                    project_name.0
                 ),
             })
     }

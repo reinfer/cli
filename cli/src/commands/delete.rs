@@ -9,7 +9,7 @@ use structopt::StructOpt;
 
 use reinfer_client::{
     BucketIdentifier, Client, CommentId, CommentsIter, CommentsIterTimerange, DatasetIdentifier,
-    Source, SourceIdentifier,
+    ProjectName, Source, SourceIdentifier,
 };
 
 use crate::progress::{Options as ProgressOptions, Progress};
@@ -80,6 +80,14 @@ pub enum DeleteArgs {
         /// Name or id of the dataset to delete
         dataset: DatasetIdentifier,
     },
+
+    #[structopt(name = "project")]
+    /// Delete a project
+    Project {
+        #[structopt(name = "project")]
+        /// Name or id of the project to delete
+        project: ProjectName,
+    },
 }
 
 pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
@@ -128,6 +136,12 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
                 .delete_bucket(bucket.clone())
                 .context("Operation to delete bucket has failed.")?;
             log::info!("Deleted bucket.");
+        }
+        DeleteArgs::Project { project } => {
+            client
+                .delete_project(project)
+                .context("Operation to delete project has failed.")?;
+            log::info!("Deleted project.");
         }
     };
     Ok(())
