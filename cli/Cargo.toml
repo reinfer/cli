@@ -20,7 +20,7 @@ name = "tests"
 anyhow = "1.0.40"
 chrono = "0.4.19"
 colored = "2.0.0"
-dirs = "3.0.2"
+dirs = "4.0.0"
 env_logger = "0.9.0"
 indicatif = "0.16.1"
 once_cell = "1.8.0"
@@ -37,7 +37,7 @@ url = { version = "2.2.2", features = ["serde"] }
 reinfer-client = { version = "0.8.0", path = "../api" }
 
 [dev-dependencies]
-pretty_assertions = "0.7.2"
+pretty_assertions = "1.0.0"
 uuid = { version = "0.8.2", features = ["v4"] }
 
 [features]
