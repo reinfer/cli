@@ -7,6 +7,7 @@ use crate::{
     resources::{
         entity_def::{EntityDef, NewEntityDef},
         label_def::{LabelDef, NewLabelDef},
+        label_group::{LabelGroup, NewLabelGroup},
         source::Id as SourceId,
         user::Username,
     },
@@ -28,6 +29,7 @@ pub struct Dataset {
     pub has_sentiment: bool,
     pub entity_defs: Vec<EntityDef>,
     pub label_defs: Vec<LabelDef>,
+    pub label_groups: Vec<LabelGroup>,
 }
 
 impl Dataset {
@@ -112,6 +114,9 @@ pub struct NewDataset<'request> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label_defs: Option<&'request [NewLabelDef]>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label_groups: Option<&'request [NewLabelGroup]>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model_family: Option<&'request str>,

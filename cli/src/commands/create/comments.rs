@@ -225,6 +225,8 @@ fn check_no_duplicate_ids(comments: impl BufRead) -> Result<()> {
     Ok(())
 }
 
+type Annotation = (CommentUid, Option<Vec<NewLabelling>>, Option<NewEntities>);
+
 #[allow(clippy::too_many_arguments)]
 fn upload_batch(
     client: &Client,
@@ -233,7 +235,7 @@ fn upload_batch(
     statistics: &Statistics,
     comments_to_put: &[NewComment],
     comments_to_sync: &[NewComment],
-    annotations: &[(CommentUid, Option<NewLabelling>, Option<NewEntities>)],
+    annotations: &[Annotation],
     audio_paths: &[(CommentId, PathBuf)],
 ) -> Result<()> {
     let mut uploaded = 0;
@@ -275,7 +277,7 @@ fn upload_batch(
                 .update_labelling(
                     dataset_name,
                     comment_uid,
-                    labelling.as_ref(),
+                    labelling.as_deref(),
                     entities.as_ref(),
                 )
                 .context("Could not update labelling for comment")?;
@@ -333,7 +335,7 @@ fn upload_comments_from_reader(
         if dataset_name.is_some() && new_comment.has_annotations() {
             annotations.push((
                 CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0)),
-                new_comment.labelling,
+                new_comment.labelling.map(Into::into),
                 new_comment.entities,
             ));
         }

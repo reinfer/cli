@@ -19,6 +19,8 @@ use crate::{
     error::{Error, Result},
     resources::entity_def::Name as EntityName,
     resources::label_def::Name as LabelName,
+    resources::label_group::Name as LabelGroupName,
+    resources::label_group::DEFAULT_LABEL_GROUP_NAME,
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
@@ -83,7 +85,7 @@ pub struct GetAnnotationsResponse {
 #[derive(Debug, Clone, Serialize)]
 pub struct UpdateAnnotationsRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub labelling: Option<&'a NewLabelling>,
+    pub labelling: Option<&'a [NewLabelling]>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entities: Option<&'a NewEntities>,
 }
@@ -347,20 +349,37 @@ impl<'de> Visitor<'de> for PropertyMapVisitor {
 pub struct AnnotatedComment {
     pub comment: Comment,
     #[serde(skip_serializing_if = "should_skip_serializing_labelling")]
-    pub labelling: Option<Labelling>,
+    pub labelling: Option<Vec<Labelling>>,
     #[serde(skip_serializing_if = "should_skip_serializing_entities")]
     pub entities: Option<Entities>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thread_properties: Option<ThreadProperties>,
 }
 
+pub fn get_default_labelling_group(labelling: &Option<Vec<Labelling>>) -> Option<&Labelling> {
+    labelling
+        .iter()
+        .flatten()
+        .find(|&labelling_group| labelling_group.is_default_group())
+}
+
+impl Labelling {
+    pub fn is_default_group(&self) -> bool {
+        self.group == *DEFAULT_LABEL_GROUP_NAME
+    }
+}
+
+impl NewLabelling {
+    pub fn is_default_group(&self) -> bool {
+        self.group == *DEFAULT_LABEL_GROUP_NAME
+    }
+}
+
 impl AnnotatedComment {
     pub fn has_annotations(&self) -> bool {
-        let has_labels = self
-            .labelling
-            .as_ref()
-            .map(|labelling| !labelling.assigned.is_empty() || !labelling.dismissed.is_empty())
-            .unwrap_or(false);
+        let has_labels = self.labelling.iter().flatten().any(|labelling_group| {
+            !labelling_group.assigned.is_empty() || !labelling_group.dismissed.is_empty()
+        });
         let has_entities = self
             .entities
             .as_ref()
@@ -371,10 +390,14 @@ impl AnnotatedComment {
 
     pub fn without_predictions(mut self) -> Self {
         self.labelling = self.labelling.and_then(|mut labelling| {
-            if labelling.assigned.is_empty() && labelling.dismissed.is_empty() {
+            if labelling.iter().all(|labelling_group| {
+                labelling_group.assigned.is_empty() && labelling_group.dismissed.is_empty()
+            }) {
                 None
             } else {
-                labelling.predicted = None;
+                for comment_labelling in &mut labelling {
+                    comment_labelling.predicted = None;
+                }
                 Some(labelling)
             }
         });
@@ -399,11 +422,33 @@ pub struct ThreadProperties {
     first_sender: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum EitherLabelling {
+    Labelling(Vec<NewLabelling>),
+    LegacyLabelling(NewLegacyLabelling),
+}
+
+impl From<EitherLabelling> for Vec<NewLabelling> {
+    fn from(either_labelling: EitherLabelling) -> Vec<NewLabelling> {
+        match either_labelling {
+            EitherLabelling::Labelling(new_labelling_vec) => new_labelling_vec,
+            EitherLabelling::LegacyLabelling(new_legacy_labelling) => {
+                vec![NewLabelling {
+                    group: DEFAULT_LABEL_GROUP_NAME.clone(),
+                    assigned: new_legacy_labelling.assigned,
+                    dismissed: new_legacy_labelling.dismissed,
+                }]
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct NewAnnotatedComment {
     pub comment: NewComment,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub labelling: Option<NewLabelling>,
+    pub labelling: Option<EitherLabelling>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entities: Option<NewEntities>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -412,11 +457,17 @@ pub struct NewAnnotatedComment {
 
 impl NewAnnotatedComment {
     pub fn has_annotations(&self) -> bool {
-        let has_labels = self
-            .labelling
-            .as_ref()
-            .map(|labelling| labelling.assigned.is_some() || labelling.dismissed.is_some())
-            .unwrap_or(false);
+        let has_labels = match self.labelling.as_ref() {
+            None => false,
+            Some(EitherLabelling::Labelling(new_labelling)) => {
+                new_labelling.iter().any(|labelling_group| {
+                    labelling_group.assigned.is_some() || labelling_group.dismissed.is_some()
+                })
+            }
+            Some(EitherLabelling::LegacyLabelling(new_legacy_labelling)) => {
+                new_legacy_labelling.assigned.is_some() || new_legacy_labelling.dismissed.is_some()
+            }
+        };
         let has_entities = self
             .entities
             .as_ref()
@@ -428,6 +479,7 @@ impl NewAnnotatedComment {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Labelling {
+    pub group: LabelGroupName,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub assigned: Vec<Label>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -438,6 +490,16 @@ pub struct Labelling {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct NewLabelling {
+    pub group: LabelGroupName,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub assigned: Option<Vec<Label>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub dismissed: Option<Vec<Label>>,
+}
+
+/// Old, pre-label group labelling format.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct NewLegacyLabelling {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub assigned: Option<Vec<Label>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -486,11 +548,11 @@ fn should_skip_serializing_optional_vec<T>(maybe_vec: &Option<Vec<T>>) -> bool {
     }
 }
 
-fn should_skip_serializing_labelling(maybe_labelling: &Option<Labelling>) -> bool {
-    if let Some(labelling) = maybe_labelling {
-        labelling.assigned.is_empty()
-            && labelling.dismissed.is_empty()
-            && should_skip_serializing_optional_vec(&labelling.predicted)
+fn should_skip_serializing_labelling(maybe_labelling: &Option<Vec<Labelling>>) -> bool {
+    if let Some(default_labelling) = get_default_labelling_group(maybe_labelling) {
+        default_labelling.assigned.is_empty()
+            && default_labelling.dismissed.is_empty()
+            && should_skip_serializing_optional_vec(&default_labelling.predicted)
     } else {
         true
     }

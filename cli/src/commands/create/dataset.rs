@@ -2,7 +2,7 @@ use crate::printer::Printer;
 use anyhow::{anyhow, Context, Error, Result};
 use log::info;
 use reinfer_client::{
-    Client, DatasetFullName, NewDataset, NewEntityDef, NewLabelDef, SourceIdentifier,
+    Client, DatasetFullName, NewDataset, NewEntityDef, NewLabelDef, NewLabelGroup, SourceIdentifier,
 };
 use serde::Deserialize;
 use std::str::FromStr;
@@ -35,8 +35,13 @@ pub struct CreateDatasetArgs {
     entity_defs: VecExt<NewEntityDef>,
 
     #[structopt(long = "label-defs", default_value = "[]")]
-    /// Label defs to create at dataset creation, as json
+    /// Label defs to create at dataset creation, as json.
+    /// Only used if label_groups is not provided.
     label_defs: VecExt<NewLabelDef>,
+
+    #[structopt(long = "label-groups", default_value = "[]")]
+    /// Label groups to create at dataset creation, as json
+    label_groups: VecExt<NewLabelGroup>,
 
     #[structopt(long = "model-family")]
     /// Model family to use for the new dataset
@@ -56,6 +61,7 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
         sources,
         entity_defs,
         label_defs,
+        label_groups,
         model_family,
         copy_annotations_from,
     } = args;
@@ -75,7 +81,13 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
 
     // Unwrap the inner values, we only need the outer for argument parsing
     let entity_defs = &entity_defs.0;
-    let label_defs = &label_defs.0;
+    let label_groups = &label_groups.0;
+    let label_defs = match (!&label_defs.0.is_empty(), !label_groups.is_empty()) {
+        // if we only have label defs, then use them
+        (true, false) => Some(&label_defs.0[..]),
+        // otherwise, we either don't have defs or have groups, so don't use them
+        _ => None,
+    };
     let dataset = client
         .create_dataset(
             name,
@@ -89,10 +101,11 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
                 } else {
                     Some(entity_defs)
                 },
-                label_defs: if label_defs.is_empty() {
+                label_defs,
+                label_groups: if label_groups.is_empty() {
                     None
                 } else {
-                    Some(&label_defs[..])
+                    Some(&label_groups[..])
                 },
                 model_family: model_family.as_deref(),
                 copy_annotations_from: copy_annotations_from.as_deref(),
