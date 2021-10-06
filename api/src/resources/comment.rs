@@ -129,6 +129,8 @@ pub struct Comment {
     pub messages: Vec<Message>,
     #[serde(skip_serializing_if = "PropertyMap::is_empty", default)]
     pub user_properties: PropertyMap,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub attachments: Vec<AttachmentMetadata>,
     pub created_at: DateTime<Utc>,
 
     #[serde(default)]
@@ -144,6 +146,8 @@ pub struct NewComment {
     pub messages: Vec<Message>,
     #[serde(skip_serializing_if = "PropertyMap::is_empty", default)]
     pub user_properties: PropertyMap,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub attachments: Vec<AttachmentMetadata>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -203,6 +207,13 @@ pub enum Sentiment {
 
     #[serde(rename = "negative")]
     Negative,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct AttachmentMetadata {
+    pub name: String,
+    pub size: u64,
+    pub content_type: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Eq)]
