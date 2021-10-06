@@ -45,8 +45,7 @@ pub struct NewEmail {
     pub mime_content: MimeContent,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<EmailMetadata>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub attachments: Vec<AttachmentMetadata>,
 }
 
