@@ -1,11 +1,12 @@
 # Unreleased
 
-- Deserialize thread properties when downloading comments for a dataset (the `-d
-  dataset` option for `re get comments`). This limitation exists as only the
+- Deserialize thread properties when downloading comments for a dataset (the `-d dataset` option for `re get comments`). This limitation exists as only the
   /labellings API route returns thread properties.
 - Added `re config get-token [context]` which dumps the auth token for the
   current or a different, given context.
 - Added CRUD commands for projects.
+- Added a `--upload-only-annotations` flag to the `re create comments` command.
+  This allows to upload annotations without modifying underlying comments in the source.
 
 # v0.8.0
 

@@ -51,6 +51,13 @@ pub struct CreateCommentsArgs {
     /// If not set, the upload will halt when encountering a comment with an ID
     /// which is already associated to different data on the platform.
     overwrite: bool,
+
+    #[structopt(long)]
+    /// Whether to upload comments in a source, or to only add annotations to the dataset
+    ///
+    /// This allows uploading annotations to a dataset without touching underlying comments in a
+    /// source.
+    upload_annotations_only: bool,
 }
 
 pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
@@ -121,6 +128,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
                 dataset_name.as_ref(),
                 args.overwrite,
                 args.allow_duplicates,
+                args.upload_annotations_only,
             )?;
             if let Some(mut progress) = progress {
                 progress.done();
@@ -146,6 +154,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
                 dataset_name.as_ref(),
                 args.overwrite,
                 args.allow_duplicates,
+                args.upload_annotations_only,
             )?;
             statistics
         }
@@ -235,30 +244,33 @@ fn upload_batch(
     comments_to_sync: &[NewComment],
     annotations: &[(CommentUid, Option<NewLabelling>, Option<NewEntities>)],
     audio_paths: &[(CommentId, PathBuf)],
+    upload_annotations_only: bool,
 ) -> Result<()> {
     let mut uploaded = 0;
     let mut new = 0;
     let mut updated = 0;
     let mut unchanged = 0;
 
-    // Upload comments
-    if !comments_to_put.is_empty() {
-        client
-            .put_comments(&source.full_name(), comments_to_put)
-            .context("Could not put batch of comments")?;
+    if !upload_annotations_only {
+        // Upload comments
+        if !comments_to_put.is_empty() {
+            client
+                .put_comments(&source.full_name(), comments_to_put)
+                .context("Could not put batch of comments")?;
 
-        uploaded += comments_to_put.len();
-    }
+            uploaded += comments_to_put.len();
+        }
 
-    if !comments_to_sync.is_empty() {
-        let result = client
-            .sync_comments(&source.full_name(), comments_to_sync)
-            .context("Could not sync batch of comments")?;
+        if !comments_to_sync.is_empty() {
+            let result = client
+                .sync_comments(&source.full_name(), comments_to_sync)
+                .context("Could not sync batch of comments")?;
 
-        uploaded += comments_to_sync.len();
-        new += result.new;
-        updated += result.updated;
-        unchanged += result.unchanged;
+            uploaded += comments_to_sync.len();
+            new += result.new;
+            updated += result.updated;
+            unchanged += result.unchanged;
+        }
     }
 
     statistics.add_comments(StatisticsUpdate {
@@ -309,6 +321,7 @@ fn upload_comments_from_reader(
     dataset_name: Option<&DatasetFullName>,
     overwrite: bool,
     allow_duplicates: bool,
+    upload_annotations_only: bool,
 ) -> Result<()> {
     assert!(batch_size > 0);
 
@@ -358,6 +371,7 @@ fn upload_comments_from_reader(
                 &comments_to_sync,
                 &annotations,
                 &audio_paths,
+                upload_annotations_only,
             )?;
             comments_to_put.clear();
             comments_to_sync.clear();
@@ -376,6 +390,7 @@ fn upload_comments_from_reader(
             &comments_to_sync,
             &annotations,
             &audio_paths,
+            upload_annotations_only,
         )?;
     }
 
