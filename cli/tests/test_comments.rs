@@ -10,6 +10,12 @@ fn test_comments_lifecycle_basic() {
 }
 
 #[test]
+fn test_comments_lifecycle_legacy_labelling() {
+    const SAMPLE_LEGACY_LABELLING: &str = include_str!("./samples/legacy_labelling.jsonl");
+    check_comments_lifecycle(SAMPLE_LEGACY_LABELLING);
+}
+
+#[test]
 fn test_comments_lifecycle_audio() {
     const SAMPLE_AUDIO: &str = include_str!("./samples/audio.jsonl");
     check_comments_lifecycle(SAMPLE_AUDIO);

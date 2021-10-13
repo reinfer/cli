@@ -79,6 +79,9 @@ pub use crate::{
             LabelDef, LabelDefPretrained, Name as LabelName, NewLabelDef, NewLabelDefPretrained,
             PretrainedId as LabelDefPretrainedId,
         },
+        label_group::{
+            LabelGroup, Name as LabelGroupName, NewLabelGroup, DEFAULT_LABEL_GROUP_NAME,
+        },
         project::{NewProject, Project, ProjectName, UpdateProject},
         source::{
             FullName as SourceFullName, Id as SourceId, Identifier as SourceIdentifier,
@@ -461,7 +464,7 @@ impl Client {
         &self,
         dataset_name: &DatasetFullName,
         comment_uid: &CommentUid,
-        labelling: Option<&NewLabelling>,
+        labelling: Option<&[NewLabelling]>,
         entities: Option<&NewEntities>,
     ) -> Result<AnnotatedComment> {
         self.post::<_, _, AnnotatedComment>(
