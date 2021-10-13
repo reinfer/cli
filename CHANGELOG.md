@@ -1,11 +1,17 @@
-# Unreleased
+# v.0.9.0
 
-- Deserialize thread properties when downloading comments for a dataset (the `-d
-  dataset` option for `re get comments`). This limitation exists as only the
+## Breaking
+
+- Added support for new labellings api. Old jsonl files can still be uploaded with `re` but newly downloaded jsonl files will be in the new format.
+
+## Added
+
+- Deserialize thread properties when downloading comments for a dataset (the `-d dataset` option for `re get comments`). This limitation exists as only the
   /labellings API route returns thread properties.
 - Added `re config get-token [context]` which dumps the auth token for the
   current or a different, given context.
 - Added CRUD commands for projects.
+- Added option for `--label-groups` in `re create dataset`.
 
 # v0.8.0
 
