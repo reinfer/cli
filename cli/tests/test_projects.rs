@@ -35,7 +35,7 @@ impl TestProject {
 
 impl Drop for TestProject {
     fn drop(&mut self) {
-        let output = TestCli::get().run(&["delete", "project", self.name()]);
+        let output = TestCli::get().run(&["delete", "project", self.name(), "--force"]);
         assert!(output.is_empty());
     }
 }
@@ -131,4 +131,47 @@ fn test_create_update_project_custom() {
     expected_project_info.title = "updated title for second time".to_owned();
     expected_project_info.description = "updated description".to_owned();
     assert_eq!(get_project_info(), expected_project_info);
+}
+
+#[test]
+fn test_project_force_delete() {
+    let cli = TestCli::get();
+    let project = TestProject::new();
+
+    let name = project.name().to_owned();
+    let source_name = format!("{}/a-source", name);
+
+    cli.run(&["create", "source", &source_name]);
+
+    // Regular delete fails because of the source
+
+    let output = cli
+        .command()
+        .args(&["delete", "project", &name])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("API request failed with 409 Conflict: Project contains child resources but force deletion was not requested: {\"sources\": 1}"),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    // The project still exists
+
+    let output = cli.run(&["get", "projects"]);
+    assert!(output.contains(&name));
+
+    // Force delete succeeds
+
+    cli.run(&["delete", "project", &name, "--force"]);
+
+    // The project no longer exists
+
+    let output = cli.run(&["get", "projects"]);
+    assert!(!output.contains(&name));
+
+    // To avoid panic on drop because the project has already been deleted.
+    std::mem::forget(project);
 }

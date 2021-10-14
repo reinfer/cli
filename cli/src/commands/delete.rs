@@ -8,8 +8,8 @@ use std::sync::{
 use structopt::StructOpt;
 
 use reinfer_client::{
-    BucketIdentifier, Client, CommentId, CommentsIter, CommentsIterTimerange, DatasetIdentifier,
-    ProjectName, Source, SourceIdentifier,
+    resources::project::ForceDeleteProject, BucketIdentifier, Client, CommentId, CommentsIter,
+    CommentsIterTimerange, DatasetIdentifier, ProjectName, Source, SourceIdentifier,
 };
 
 use crate::progress::{Options as ProgressOptions, Progress};
@@ -87,6 +87,10 @@ pub enum DeleteArgs {
         #[structopt(name = "project")]
         /// Name or id of the project to delete
         project: ProjectName,
+
+        #[structopt(long)]
+        /// Force deletion of the project, even if it's not empty.
+        force: bool,
     },
 }
 
@@ -137,9 +141,14 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
                 .context("Operation to delete bucket has failed.")?;
             log::info!("Deleted bucket.");
         }
-        DeleteArgs::Project { project } => {
+        DeleteArgs::Project { project, force } => {
+            let force_delete = if *force {
+                ForceDeleteProject::Yes
+            } else {
+                ForceDeleteProject::No
+            };
             client
-                .delete_project(project)
+                .delete_project(project, force_delete)
                 .context("Operation to delete project has failed.")?;
             log::info!("Deleted project.");
         }

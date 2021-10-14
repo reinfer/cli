@@ -11,6 +11,7 @@ use reqwest::{
     header::{self, HeaderMap, HeaderValue},
     IntoUrl, Proxy, Result as ReqwestResult,
 };
+use resources::project::ForceDeleteProject;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{cell::Cell, fmt::Display, path::Path};
@@ -667,8 +668,18 @@ impl Client {
     }
 
     /// Deletes an existing project.
-    pub fn delete_project(&self, project_name: &ProjectName) -> Result<()> {
-        self.delete(self.endpoints.project_by_name(project_name)?)?;
+    pub fn delete_project(
+        &self,
+        project_name: &ProjectName,
+        force_delete: ForceDeleteProject,
+    ) -> Result<()> {
+        let endpoint = self.endpoints.project_by_name(project_name)?;
+        match force_delete {
+            ForceDeleteProject::No => self.delete(endpoint)?,
+            ForceDeleteProject::Yes => {
+                self.delete_query(endpoint, Some(&json!({ "force": true })))?
+            }
+        };
         Ok(())
     }
 
