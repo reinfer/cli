@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 use crate::{
     error::{Error, Result},
@@ -11,6 +10,10 @@ use crate::{
         source::Id as SourceId,
         user::Username,
     },
+};
+use std::{
+    fmt::{Display, Formatter, Result as FmtResult},
+    str::FromStr,
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -93,6 +96,19 @@ impl FromStr for Identifier {
         } else {
             FullName::from_str(string).map(Identifier::FullName)
         }
+    }
+}
+
+impl Display for Identifier {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
+        write!(
+            formatter,
+            "{}",
+            match self {
+                Identifier::Id(id) => &id.0,
+                Identifier::FullName(full_name) => &full_name.0,
+            }
+        )
     }
 }
 

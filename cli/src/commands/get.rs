@@ -8,7 +8,7 @@ use colored::Colorize;
 use log::info;
 use reinfer_client::{
     AnnotatedComment, BucketIdentifier, Client, CommentId, CommentsIterTimerange, DatasetFullName,
-    DatasetIdentifier, ProjectName, Source, SourceIdentifier, TriggerFullName,
+    DatasetIdentifier, HasAnnotations, ProjectName, Source, SourceIdentifier, TriggerFullName,
 };
 use std::{
     fs::File,

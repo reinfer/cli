@@ -1,3 +1,4 @@
+mod annotations;
 mod bucket;
 mod comments;
 mod dataset;
@@ -7,9 +8,9 @@ mod source;
 mod user;
 
 use self::{
-    bucket::CreateBucketArgs, comments::CreateCommentsArgs, dataset::CreateDatasetArgs,
-    emails::CreateEmailsArgs, project::CreateProjectArgs, source::CreateSourceArgs,
-    user::CreateUserArgs,
+    annotations::CreateAnnotationsArgs, bucket::CreateBucketArgs, comments::CreateCommentsArgs,
+    dataset::CreateDatasetArgs, emails::CreateEmailsArgs, project::CreateProjectArgs,
+    source::CreateSourceArgs, user::CreateUserArgs,
 };
 use crate::printer::Printer;
 use anyhow::Result;
@@ -38,6 +39,10 @@ pub enum CreateArgs {
     /// Create or update comments
     Comments(CreateCommentsArgs),
 
+    #[structopt(name = "annotations")]
+    /// Create or update annotations
+    Annotations(CreateAnnotationsArgs),
+
     #[structopt(name = "emails")]
     /// Create or update emails
     Emails(CreateEmailsArgs),
@@ -54,6 +59,7 @@ pub fn run(create_args: &CreateArgs, client: Client, printer: &Printer) -> Resul
         CreateArgs::Dataset(dataset_args) => dataset::create(&client, dataset_args, printer),
         CreateArgs::Project(project_args) => project::create(&client, project_args, printer),
         CreateArgs::Comments(comments_args) => comments::create(&client, comments_args),
+        CreateArgs::Annotations(annotations_args) => annotations::create(&client, annotations_args),
         CreateArgs::Emails(emails_args) => emails::create(&client, emails_args),
         CreateArgs::User(user_args) => user::create(&client, user_args, printer),
     }
