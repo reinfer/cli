@@ -64,10 +64,11 @@ pub use crate::{
             Identifier as BucketIdentifier, Name as BucketName, NewBucket, TransformTag,
         },
         comment::{
-            AnnotatedComment, Comment, CommentFilter, CommentsIterPage, Continuation, Entity,
-            Id as CommentId, Label, Message, MessageBody, MessageSignature, MessageSubject,
-            NewAnnotatedComment, NewComment, NewEntities, NewLabelling, PropertyMap, PropertyValue,
-            Sentiment, SyncCommentsResponse, Uid as CommentUid,
+            AnnotatedComment, Comment, CommentFilter, CommentsIterPage, Continuation,
+            EitherLabelling, Entity, HasAnnotations, Id as CommentId, Label, Message, MessageBody,
+            MessageSignature, MessageSubject, NewAnnotatedComment, NewComment, NewEntities,
+            NewLabelling, PropertyMap, PropertyValue, Sentiment, SyncCommentsResponse,
+            Uid as CommentUid,
         },
         dataset::{
             Dataset, FullName as DatasetFullName, Id as DatasetId, Identifier as DatasetIdentifier,

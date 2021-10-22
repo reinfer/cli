@@ -1,3 +1,11 @@
+# Unreleased
+
+## Added
+
+- New `re create annotations` command for uploading annotations (labels and
+  entities) to existing comments in a dataset, without having to use `re create comments`.
+  This avoids potentially - and unknowingly - modifying the underlying comments in the source.
+
 # v.0.9.0
 
 ## Breaking

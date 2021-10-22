@@ -1,3 +1,10 @@
+use crate::{
+    error::{Error, Result},
+    resources::entity_def::Name as EntityName,
+    resources::label_def::Name as LabelName,
+    resources::label_group::Name as LabelGroupName,
+    resources::label_group::DEFAULT_LABEL_GROUP_NAME,
+};
 use chrono::{DateTime, Utc};
 use ordered_float::NotNan;
 use serde::{
@@ -13,14 +20,6 @@ use std::{
     path::PathBuf,
     result::Result as StdResult,
     str::FromStr,
-};
-
-use crate::{
-    error::{Error, Result},
-    resources::entity_def::Name as EntityName,
-    resources::label_def::Name as LabelName,
-    resources::label_group::Name as LabelGroupName,
-    resources::label_group::DEFAULT_LABEL_GROUP_NAME,
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
@@ -375,8 +374,8 @@ impl NewLabelling {
     }
 }
 
-impl AnnotatedComment {
-    pub fn has_annotations(&self) -> bool {
+impl HasAnnotations for AnnotatedComment {
+    fn has_annotations(&self) -> bool {
         let has_labels = self.labelling.iter().flatten().any(|labelling_group| {
             !labelling_group.assigned.is_empty() || !labelling_group.dismissed.is_empty()
         });
@@ -387,7 +386,9 @@ impl AnnotatedComment {
             .unwrap_or(false);
         has_labels || has_entities
     }
+}
 
+impl AnnotatedComment {
     pub fn without_predictions(mut self) -> Self {
         self.labelling = self.labelling.and_then(|mut labelling| {
             if labelling.iter().all(|labelling_group| {
@@ -429,9 +430,9 @@ pub enum EitherLabelling {
     LegacyLabelling(NewLegacyLabelling),
 }
 
-impl From<EitherLabelling> for Vec<NewLabelling> {
-    fn from(either_labelling: EitherLabelling) -> Vec<NewLabelling> {
-        match either_labelling {
+impl EitherLabelling {
+    fn into_new_labellings(self) -> Vec<NewLabelling> {
+        match self {
             EitherLabelling::Labelling(new_labelling_vec) => new_labelling_vec,
             EitherLabelling::LegacyLabelling(new_legacy_labelling) => {
                 vec![NewLabelling {
@@ -439,6 +440,27 @@ impl From<EitherLabelling> for Vec<NewLabelling> {
                     assigned: new_legacy_labelling.assigned,
                     dismissed: new_legacy_labelling.dismissed,
                 }]
+            }
+        }
+    }
+}
+
+impl From<EitherLabelling> for Vec<NewLabelling> {
+    fn from(either_labelling: EitherLabelling) -> Vec<NewLabelling> {
+        either_labelling.into_new_labellings()
+    }
+}
+
+impl HasAnnotations for EitherLabelling {
+    fn has_annotations(&self) -> bool {
+        match self {
+            EitherLabelling::Labelling(new_labelling) => {
+                new_labelling.iter().any(|labelling_group| {
+                    labelling_group.assigned.is_some() || labelling_group.dismissed.is_some()
+                })
+            }
+            EitherLabelling::LegacyLabelling(new_legacy_labelling) => {
+                new_legacy_labelling.assigned.is_some() || new_legacy_labelling.dismissed.is_some()
             }
         }
     }
@@ -455,25 +477,18 @@ pub struct NewAnnotatedComment {
     pub audio_path: Option<PathBuf>,
 }
 
+impl<T> HasAnnotations for Option<T>
+where
+    T: HasAnnotations,
+{
+    fn has_annotations(&self) -> bool {
+        self.as_ref().map_or(false, HasAnnotations::has_annotations)
+    }
+}
+
 impl NewAnnotatedComment {
     pub fn has_annotations(&self) -> bool {
-        let has_labels = match self.labelling.as_ref() {
-            None => false,
-            Some(EitherLabelling::Labelling(new_labelling)) => {
-                new_labelling.iter().any(|labelling_group| {
-                    labelling_group.assigned.is_some() || labelling_group.dismissed.is_some()
-                })
-            }
-            Some(EitherLabelling::LegacyLabelling(new_legacy_labelling)) => {
-                new_legacy_labelling.assigned.is_some() || new_legacy_labelling.dismissed.is_some()
-            }
-        };
-        let has_entities = self
-            .entities
-            .as_ref()
-            .map(|entities| !entities.assigned.is_empty() || !entities.dismissed.is_empty())
-            .unwrap_or(false);
-        has_labels || has_entities
+        self.labelling.has_annotations() || self.entities.has_annotations()
     }
 }
 
@@ -538,6 +553,16 @@ pub struct NewEntities {
     pub assigned: Vec<NewEntity>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub dismissed: Vec<NewEntity>,
+}
+
+pub trait HasAnnotations {
+    fn has_annotations(&self) -> bool;
+}
+
+impl HasAnnotations for NewEntities {
+    fn has_annotations(&self) -> bool {
+        !self.assigned.is_empty() || !self.dismissed.is_empty()
+    }
 }
 
 fn should_skip_serializing_optional_vec<T>(maybe_vec: &Option<Vec<T>>) -> bool {
