@@ -72,3 +72,9 @@ pub struct UpdateProjectRequest<'request> {
 pub(crate) struct UpdateProjectResponse {
     pub project: Project,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ForceDeleteProject {
+    No,
+    Yes,
+}
