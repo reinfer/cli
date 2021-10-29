@@ -12,7 +12,9 @@ case $BUILD_PLATFORM in
     ;;
   "macos-10.15")
     rustup target add x86_64-apple-darwin
+    rustup target add x86_64-pc-windows-gnu
     pip install toml
+    brew install mingw-w64
     ;;
   *)
     >&2 echo "fatal: unknown BUILD_PLATFORM '$BUILD_PLATFORM'"
