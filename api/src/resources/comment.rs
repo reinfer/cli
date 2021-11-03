@@ -419,7 +419,7 @@ pub struct ThreadProperties {
     duration: Option<NotNan<f64>>,
     response_time: Option<NotNan<f64>>,
     num_messages: u64,
-    thread_position: u64,
+    thread_position: Option<u64>,
     first_sender: Option<String>,
 }
 
