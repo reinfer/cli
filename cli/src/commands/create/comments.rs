@@ -280,7 +280,9 @@ fn upload_batch(
                     labelling.as_deref(),
                     entities.as_ref(),
                 )
-                .context("Could not update labelling for comment")?;
+                .with_context(|| {
+                    format!("Could not update labelling for comment `{}`", comment_uid.0,)
+                })?;
             statistics.add_annotation();
         }
     }
