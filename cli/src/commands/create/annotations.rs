@@ -117,17 +117,23 @@ fn upload_annotations_from_reader(
     for read_comment_result in read_annotations_iter(annotations, Some(statistics)) {
         let new_comment = read_comment_result?;
         if new_comment.has_annotations() {
+            let comment_uid = CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0));
             client
                 .update_labelling(
                     dataset_name,
-                    &CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0)),
+                    &comment_uid,
                     new_comment
                         .labelling
                         .map(Into::<Vec<NewLabelling>>::into)
                         .as_deref(),
                     new_comment.entities.as_ref(),
                 )
-                .context("Could not update labelling for comment")?;
+                .with_context(|| {
+                    format!(
+                        "Could not update labelling for comment `{}`",
+                        &comment_uid.0
+                    )
+                })?;
             statistics.add_annotation();
         }
     }
