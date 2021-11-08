@@ -6,6 +6,7 @@
   entities) to existing comments in a dataset, without having to use `re create comments`.
   This avoids potentially - and unknowingly - modifying the underlying comments in the source.
 - Add support to `--force` delete projects with existing resources.
+- Print comment `uid` when a comment upload fails due to bad annotations.
 
 # v.0.9.0
 
