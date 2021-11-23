@@ -1,5 +1,6 @@
 #!/bin/bash
-set -ex
+
+set -euxo pipefail
 
 cd "$(dirname "$0")"
 
@@ -20,8 +21,8 @@ build_and_upload() {
 
 case $BUILD_PLATFORM in
   "ubuntu-20.04")
-    build_and_upload "x86_64-unknown-linux-musl"
-    build_and_upload "x86_64-unknown-linux-gnu"
+    build_and_upload "x86_64-unknown-linux-musl" "re"
+    build_and_upload "x86_64-unknown-linux-gnu" "re"
 
     # Build and upload deb package
     cargo deb
