@@ -1,4 +1,4 @@
-# Unreleased
+# v0.10.0
 
 ## Added
 
@@ -8,7 +8,11 @@
 - Add support to `--force` delete projects with existing resources.
 - Print comment `uid` when a comment upload fails due to bad annotations.
 
-# v.0.9.0
+## Bug Fixes
+
+- Failure when uploading comments with thread properties
+
+# v0.9.0
 
 ## Breaking
 
