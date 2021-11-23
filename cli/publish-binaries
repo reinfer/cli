@@ -8,11 +8,13 @@ CLI_VERSION="$(python -c 'import toml; fh = open("Cargo.toml"); data = toml.load
 export CLI_VERSION
 
 build_and_upload() {
-  echo "Building version $CLI_VERSION ($1)"
+  local target="$1"
+  echo "Building version $CLI_VERSION ($target)"
 
-  cargo build --release --target $1
+  cargo build --release --target "$target"
   # Upload executable
-  gsutil cp ../target/${1}/release/re "gs://reinfer-public/cli/bin/${1}/${CLI_VERSION}/re"
+  gsutil cp "../target/${target}/release/re" "gs://reinfer-public/cli/bin/${target}/${CLI_VERSION}/re"
+  gsutil cp "../target/${target}/release/re" "gs://reinfer-public/cli/bin/${target}/latest/re"
 }
 
 case $BUILD_PLATFORM in
@@ -23,6 +25,7 @@ case $BUILD_PLATFORM in
     # Build and upload deb package
     cargo deb
     gsutil cp "../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb" gs://reinfer-public/cli/debian/
+    gsutil cp "../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb" gs://reinfer-public/cli/debian/reinfer-cli_latest_amd64.deb
     ;;
   "macos-10.15")
     build_and_upload "x86_64-apple-darwin"
