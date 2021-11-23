@@ -53,13 +53,13 @@ The [api](/api) directory contains a Rust client library for reinfer which can b
 
 Statically linked binaries with no dependencies are provided for selected platforms:
 
-- [Linux (x86_64-unknown-linux-musl)](https://reinfer.io/public/cli/bin/x86_64-unknown-linux-musl/0.10.0/re)
-- [macOS (x86_64-apple-darwin)](https://reinfer.io/public/cli/bin/x86_64-apple-darwin/0.10.0/re)
-- [Windows (x86_64-pc-windows-gnu)](https://reinfer.io/public/cli/bin/x86_64-pc-windows-gnu/0.10.0/re.exe)
+- [Linux (x86_64-unknown-linux-musl)](https://reinfer.io/public/cli/bin/x86_64-unknown-linux-musl/latest/re)
+- [macOS (x86_64-apple-darwin)](https://reinfer.io/public/cli/bin/x86_64-apple-darwin/latest/re)
+- [Windows (x86_64-pc-windows-gnu)](https://reinfer.io/public/cli/bin/x86_64-pc-windows-gnu/latest/re.exe)
 
 ### Debian / Ubuntu
 
-You can download a `.deb` package [here](https://reinfer.io/public/cli/debian/reinfer-cli_0.10.0_amd64.deb).
+You can download a `.deb` package [here](https://reinfer.io/public/cli/debian/reinfer-cli_latest_amd64.deb).
 
 ### From Source
 
@@ -185,3 +185,18 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the `reinfer-cli` or `reinfer-client` crate, as defined in the
 Apache-2.0 license, shall be licensed as above, without any additional terms or
 conditions.
+
+#### Release Preparation
+
+- Update repo files to represent the new version
+  - Bump the version number in both `api/Cargo.toml` and `cli/Cargo.toml`.
+    - You will also need to update the version spec in the `cli/Cargo.toml` that points to `api/Cargo.toml`.
+  - Run `cargo build` to update all lockfiles.
+  - Update the `CHANGELOG.md` to mark all `Unreleased` changes as part of the new version.
+    - Check the git log since last release to make sure it's not missing anything.
+  - Commit everything and PR it as usual.
+- Cut a release by [creating a new Github release](https://github.com/reinfer/cli/releases/new).
+  - Use the version number as the release title: `v0.10.0`.
+  - Use the relevant changelog section as the release description.
+  - `Publish release` will upload build artefacts and tag the relevant commit.
+  - Check the [Github actions log](https://github.com/reinfer/cli/actions/workflows/publish.yml) to make sure the release was successful.
