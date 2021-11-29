@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     str::FromStr,
@@ -22,6 +23,9 @@ pub struct Source {
     pub should_translate: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+
+    #[serde(rename = "_type")]
+    pub source_type: SourceType,
 }
 
 impl Source {
@@ -104,6 +108,39 @@ impl Display for Identifier {
     }
 }
 
+#[derive(Debug, Clone, SerializeDisplay, DeserializeFromStr, PartialEq, Eq, Hash)]
+pub enum SourceType {
+    Call,
+    Chat,
+    Unknown(Box<str>),
+}
+
+impl FromStr for SourceType {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Self> {
+        Ok(match string {
+            "call" => SourceType::Call,
+            "chat" => SourceType::Chat,
+            value => SourceType::Unknown(value.into()),
+        })
+    }
+}
+
+impl Display for SourceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                SourceType::Call => "call",
+                SourceType::Chat => "chat",
+                SourceType::Unknown(value) => value.as_ref(),
+            }
+        )
+    }
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
 pub struct NewSource<'request> {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -123,6 +160,9 @@ pub struct NewSource<'request> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sensitive_properties: Option<Vec<&'request str>>,
+
+    #[serde(skip_serializing_if = "Option::is_none", rename = "_type")]
+    pub source_type: Option<&'request SourceType>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
@@ -171,4 +211,38 @@ pub(crate) struct UpdateRequest<'request> {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct UpdateResponse {
     pub source: Source,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn source_type_roundtrips() {
+        assert_eq!(SourceType::Call, SourceType::from_str("call").unwrap());
+        assert_eq!(
+            &serde_json::ser::to_string(&SourceType::Call).unwrap(),
+            "\"call\""
+        );
+
+        assert_eq!(SourceType::Chat, SourceType::from_str("chat").unwrap());
+        assert_eq!(
+            &serde_json::ser::to_string(&SourceType::Chat).unwrap(),
+            "\"chat\""
+        );
+    }
+
+    #[test]
+    fn unknown_source_type_roundtrips() {
+        let source_type = SourceType::from_str("unknown").unwrap();
+        match &source_type {
+            SourceType::Unknown(error) => assert_eq!(&**error, "unknown"),
+            _ => panic!("Expected error to be parsed as Unknown(..)"),
+        }
+
+        assert_eq!(
+            &serde_json::ser::to_string(&source_type).unwrap(),
+            "\"unknown\""
+        )
+    }
 }
