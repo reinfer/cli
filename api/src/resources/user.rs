@@ -134,6 +134,9 @@ pub(crate) struct GetCurrentResponse {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(untagged)]
 pub enum OrganisationPermission {
+    // TODO(jcalero)[RE-978] There is a bug with the implementation of this enum that causes
+    // deserialization of non-Unknown properties to fail. See
+    // [RE-978](https://reinfer.atlassian.net/browse/RE-978) for more info.
     #[serde(rename = "sources-add-comments")]
     CommentsAdmin,
 
@@ -224,6 +227,9 @@ impl FromStr for OrganisationPermission {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(untagged)]
 pub enum GlobalPermission {
+    // TODO(jcalero)[RE-978] There is a bug with the implementation of this enum that causes
+    // deserialization of non-Unknown properties to fail. See
+    // [RE-978](https://reinfer.atlassian.net/browse/RE-978) for more info.
     #[serde(rename = "root")]
     Root,
 
@@ -272,6 +278,19 @@ mod tests {
         assert_eq!(
             &serde_json::ser::to_string(&unknown_permission).unwrap(),
             "\"unknown\""
+        )
+    }
+
+    #[test]
+    #[should_panic]
+    fn specific_organisation_permission_roundtrips() {
+        // TODO(jcalero)[RE-978] This test was written to showcase bug RE-978. It demonstrates that
+        // deserialization of an `OrganisationPermission` does not parse correctly.
+        let permission = OrganisationPermission::DatasetsRead;
+
+        assert_eq!(
+            &serde_json::ser::to_string(&permission).unwrap(),
+            "\"voc-readonly\""
         )
     }
 
