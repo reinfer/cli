@@ -196,7 +196,7 @@ conditions.
     - Check the git log since last release to make sure it's not missing anything.
   - Commit everything and PR it as usual.
 - Cut a release by [creating a new Github release](https://github.com/reinfer/cli/releases/new).
-  - Use the version number as the release title: `v0.10.0`.
+  - Use the version number as the release title: `v0.10.1`.
   - Use the relevant changelog section as the release description.
   - `Publish release` will upload build artefacts and tag the relevant commit.
   - Check the [Github actions log](https://github.com/reinfer/cli/actions/workflows/publish.yml) to make sure the release was successful.
