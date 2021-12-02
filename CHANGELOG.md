@@ -1,3 +1,9 @@
+# v0.10.1
+
+## Added
+
+* Add an optional `--source-type` parameter to `create source`. Only for internal use.
+
 # v0.10.0
 
 ## Added
