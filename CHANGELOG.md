@@ -1,3 +1,9 @@
+# Unreleased
+
+## Breaking
+
+- `re create dataset` will default to sentiment disabled if `--has-sentiment` is not provided.
+
 # v0.10.2
 
 ## Bug Fixes
