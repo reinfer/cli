@@ -14,9 +14,18 @@ build_and_upload() {
   echo "Building version $CLI_VERSION ($target: $artefact)"
 
   cargo build --release --target "$target"
-  # Upload executable
-  gsutil cp "../target/${target}/release/$artefact" "gs://reinfer-public/cli/bin/${target}/${CLI_VERSION}/$artefact"
-  gsutil cp "../target/${target}/release/$artefact" "gs://reinfer-public/cli/bin/${target}/latest/$artefact"
+
+  # Upload executables if they do not already exist
+  export VERSIONED_GS_PATH="gs://reinfer-public/cli/bin/${target}/${CLI_VERSION}/$artefact"
+  export LATEST_GS_PATH="gs://reinfer-public/cli/bin/${target}/latest/$artefact"
+
+  if ! gsutil -q stat "$VERSIONED_GS_PATH"; then
+    gsutil cp "../target/${target}/release/$artefact" "$VERSIONED_GS_PATH"
+  fi
+
+  if ! gsutil -q stat "$LATEST_GS_PATH"; then
+    gsutil cp "../target/${target}/release/$artefact" "$LATEST_GS_PATH"
+  fi
 }
 
 case $BUILD_PLATFORM in
