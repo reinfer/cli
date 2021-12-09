@@ -12,6 +12,7 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, StructOpt)]
 pub enum ConfigArgs {
     #[structopt(name = "add")]
