@@ -382,7 +382,7 @@ fn download_comments(
     let make_progress = |dataset_name: Option<&DatasetFullName>| -> Result<Progress> {
         Ok(get_comments_progress_bar(
             if let Some(dataset_name) = dataset_name {
-                client
+                *client
                     .get_statistics(dataset_name)
                     .context("Operation to get comment count has failed..")?
                     .num_comments as u64
