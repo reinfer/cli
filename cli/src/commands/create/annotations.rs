@@ -200,11 +200,6 @@ fn read_annotations_iter<'a>(
 }
 
 #[derive(Debug)]
-pub struct StatisticsUpdate {
-    uploaded: usize,
-}
-
-#[derive(Debug)]
 pub struct Statistics {
     bytes_read: AtomicUsize,
     annotations: AtomicUsize,
