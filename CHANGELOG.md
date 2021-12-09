@@ -1,3 +1,9 @@
+# v0.10.2
+
+## Bug Fixes
+
+- Fixes serialization issue where statistics expected `usize` not `f64`
+
 # v0.10.1
 
 ## Added
