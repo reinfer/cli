@@ -35,8 +35,17 @@ case $BUILD_PLATFORM in
 
     # Build and upload deb package
     cargo deb
-    gsutil cp "../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb" "gs://reinfer-public/cli/debian/reinfer-cli_${CLI_VERSION}_amd64.deb"
-    gsutil cp "../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb" "gs://reinfer-public/cli/debian/reinfer-cli_latest_amd64.deb"
+
+    export VERSIONED_DEB_PATH="gs://reinfer-public/cli/debian/reinfer-cli_${CLI_VERSION}_amd64.deb"
+    export LATEST_DEB_PATH="gs://reinfer-public/cli/debian/reinfer-cli_latest_amd64.deb"
+
+    if ! gsutil -q stat "$VERSIONED_DEB_PATH"; then
+            gsutil cp "../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb" "$VERSIONED_DEB_PATH"
+    fi
+
+    if ! gsutil -q stat "$LATEST_DEB_PATH"; then
+            gsutil cp "../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb" "$LATEST_DEB_PATH"
+    fi
     ;;
   "macos-10.15")
     build_and_upload "x86_64-apple-darwin" "re"
