@@ -23,9 +23,10 @@ build_and_upload() {
     gsutil cp "../target/${target}/release/$artefact" "$VERSIONED_GS_PATH"
   fi
 
-  if ! gsutil -q stat "$LATEST_GS_PATH"; then
-    gsutil cp "../target/${target}/release/$artefact" "$LATEST_GS_PATH"
-  fi
+  # TODO (tommmiligan) Disable until we can overwrite files from CI
+  # if ! gsutil -q stat "$LATEST_GS_PATH"; then
+  #   gsutil cp "../target/${target}/release/$artefact" "$LATEST_GS_PATH"
+  # fi
 }
 
 case $BUILD_PLATFORM in
@@ -43,9 +44,10 @@ case $BUILD_PLATFORM in
             gsutil cp "../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb" "$VERSIONED_DEB_PATH"
     fi
 
-    if ! gsutil -q stat "$LATEST_DEB_PATH"; then
-            gsutil cp "../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb" "$LATEST_DEB_PATH"
-    fi
+    # TODO (tommmiligan) Disable until we can overwrite files from CI
+    # if ! gsutil -q stat "$LATEST_DEB_PATH"; then
+    #         gsutil cp "../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb" "$LATEST_DEB_PATH"
+    # fi
     ;;
   "macos-10.15")
     build_and_upload "x86_64-apple-darwin" "re"
