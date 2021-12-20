@@ -4,7 +4,7 @@ use uuid::Uuid;
 #[test]
 fn test_bucket_lifecycle() {
     let cli = TestCli::get();
-    let owner = TestCli::organisation();
+    let owner = TestCli::project();
 
     let new_bucket_name = format!("{}/test-source-{}", owner, Uuid::new_v4());
 
@@ -32,7 +32,7 @@ fn test_bucket_lifecycle() {
 #[test]
 fn test_bucket_with_invalid_transform_tag_fails() {
     let cli = TestCli::get();
-    let owner = TestCli::organisation();
+    let owner = TestCli::project();
 
     let new_bucket_name = format!("{}/test-source-{}", owner, Uuid::new_v4());
 

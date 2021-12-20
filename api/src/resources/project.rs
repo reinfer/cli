@@ -2,16 +2,28 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-use crate::resources::user::Id as UserId;
+use crate::{
+    error::{Error, Result},
+    resources::user::Id as UserId,
+};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct ProjectName(pub String);
 
 impl FromStr for ProjectName {
-    type Err = std::convert::Infallible;
+    type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(s.to_owned()))
+    fn from_str(string: &str) -> Result<Self> {
+        if string
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        {
+            Ok(Self(string.into()))
+        } else {
+            Err(Error::BadProjectIdentifier {
+                identifier: string.into(),
+            })
+        }
     }
 }
 

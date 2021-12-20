@@ -5,6 +5,7 @@ use std::{
     str::FromStr,
 };
 
+use super::project::ProjectName;
 use crate::error::{Error, Result};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
@@ -56,28 +57,6 @@ impl FromStr for Email {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-pub struct Organisation(pub String);
-
-impl FromStr for Organisation {
-    type Err = Error;
-
-    fn from_str(string: &str) -> Result<Self> {
-        if string
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-        {
-            Ok(Organisation(string.into()))
-        } else {
-            Err(Error::BadUserIdentifier {
-                identifier: string.into(),
-            })
-        }
-    }
-}
-
-// TODO(mcobzarenco)[3963]: Make `Identifier` into a trait (ensure it still implements
-// `FromStr` so we can take T: Identifier as a clap command line argument).
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub enum Identifier {
     Id(Id),
     Username(Username),
@@ -91,7 +70,8 @@ pub struct User {
     #[serde(rename = "created")]
     pub created_at: DateTime<Utc>,
     pub global_permissions: HashSet<GlobalPermission>,
-    pub organisation_permissions: HashMap<Organisation, HashSet<OrganisationPermission>>,
+    #[serde(rename = "organisation_permissions")]
+    pub project_permissions: HashMap<ProjectName, HashSet<ProjectPermission>>,
     pub verified: bool,
 }
 
@@ -100,13 +80,17 @@ pub struct NewUser<'r> {
     pub username: &'r Username,
     pub email: &'r Email,
     pub global_permissions: &'r [GlobalPermission],
-    pub organisation_permissions: &'r HashMap<Organisation, HashSet<OrganisationPermission>>,
+    #[serde(rename = "organisation_permissions")]
+    pub project_permissions: &'r HashMap<ProjectName, HashSet<ProjectPermission>>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct ModifiedPermissions<'r> {
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub organisation_permissions: &'r HashMap<Organisation, HashSet<OrganisationPermission>>,
+    #[serde(
+        rename = "organisation_permissions",
+        skip_serializing_if = "HashMap::is_empty"
+    )]
+    pub project_permissions: &'r HashMap<ProjectName, HashSet<ProjectPermission>>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub global_permissions: Vec<&'r GlobalPermission>,
 }
@@ -133,7 +117,7 @@ pub(crate) struct GetCurrentResponse {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(untagged)]
-pub enum OrganisationPermission {
+pub enum ProjectPermission {
     // TODO(jcalero)[RE-978] There is a bug with the implementation of this enum that causes
     // deserialization of non-Unknown properties to fail. See
     // [RE-978](https://reinfer.atlassian.net/browse/RE-978) for more info.
@@ -212,12 +196,12 @@ pub enum OrganisationPermission {
     Unknown(Box<str>),
 }
 
-impl FromStr for OrganisationPermission {
+impl FromStr for ProjectPermission {
     type Err = Error;
 
     fn from_str(string: &str) -> Result<Self> {
         serde_json::de::from_str(&format!("\"{}\"", string)).map_err(|_| {
-            Error::BadOrganisationPermission {
+            Error::BadProjectPermission {
                 permission: string.into(),
             }
         })
@@ -268,10 +252,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn unknown_organisation_permission_roundtrips() {
-        let unknown_permission = OrganisationPermission::from_str("unknown").unwrap();
+    fn unknown_project_permission_roundtrips() {
+        let unknown_permission = ProjectPermission::from_str("unknown").unwrap();
         match &unknown_permission {
-            OrganisationPermission::Unknown(error) => assert_eq!(&**error, "unknown"),
+            ProjectPermission::Unknown(error) => assert_eq!(&**error, "unknown"),
             _ => panic!("Expected error to be parsed as Unknown(..)"),
         }
 
@@ -283,10 +267,10 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn specific_organisation_permission_roundtrips() {
+    fn specific_project_permission_roundtrips() {
         // TODO(jcalero)[RE-978] This test was written to showcase bug RE-978. It demonstrates that
-        // deserialization of an `OrganisationPermission` does not parse correctly.
-        let permission = OrganisationPermission::DatasetsRead;
+        // deserialization of an `ProjectPermission` does not parse correctly.
+        let permission = ProjectPermission::DatasetsRead;
 
         assert_eq!(
             &serde_json::ser::to_string(&permission).unwrap(),

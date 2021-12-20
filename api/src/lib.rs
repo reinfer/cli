@@ -96,7 +96,7 @@ pub use crate::{
         },
         user::{
             Email, GlobalPermission, Id as UserId, Identifier as UserIdentifier,
-            ModifiedPermissions, NewUser, Organisation, OrganisationPermission, User, Username,
+            ModifiedPermissions, NewUser, ProjectPermission, User, Username,
         },
     },
 };

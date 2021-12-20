@@ -1,33 +1,33 @@
-use crate::printer::Printer;
-use anyhow::{anyhow, Context, Result};
-use log::info;
+use anyhow::{Context, Result};
 use reinfer_client::{
-    Client, Email, GlobalPermission, NewUser, Organisation, OrganisationPermission, Username,
+    Client, Email, GlobalPermission, NewUser, ProjectName, ProjectPermission, Username,
 };
 use std::collections::hash_map::HashMap;
 use structopt::StructOpt;
 
+use crate::printer::Printer;
+
 #[derive(Debug, StructOpt)]
 pub struct CreateUserArgs {
     #[structopt(name = "username")]
-    /// Username
+    /// Username for the new user
     username: Username,
 
     #[structopt(name = "email")]
-    /// Email
+    /// Email address of the new user
     email: Email,
 
     #[structopt(long = "global-permissions")]
-    /// Global permissions
+    /// Global permissions to give to the new user
     global_permissions: Vec<GlobalPermission>,
 
-    #[structopt(short = "o", long = "organisation")]
-    /// Organisation
-    organisation: Option<Organisation>,
+    #[structopt(short = "p", long = "project")]
+    /// Add the user to this project with the permissions provided with --project-permissions
+    project: Option<ProjectName>,
 
-    #[structopt(short = "p", long = "organisation-permissions")]
-    /// Organisation permissions
-    organisation_permissions_list: Vec<OrganisationPermission>,
+    #[structopt(long = "project-permissions")]
+    /// Project permissions, required if --project is used
+    project_permissions_list: Vec<ProjectPermission>,
 }
 
 pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Result<()> {
@@ -35,19 +35,19 @@ pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Resu
         username,
         email,
         global_permissions,
-        organisation,
-        organisation_permissions_list,
+        project,
+        project_permissions_list,
     } = args;
 
-    let organisation_permissions = match (organisation, organisation_permissions_list) {
-        (Some(organisation), permissions) if !permissions.is_empty() => maplit::hashmap!(
-            organisation.clone() => permissions.iter().cloned().collect()
+    let project_permissions = match (project, project_permissions_list) {
+        (Some(project), permissions) if !permissions.is_empty() => maplit::hashmap!(
+            project.clone() => permissions.iter().cloned().collect()
         ),
         (None, permissions) if permissions.is_empty() => HashMap::new(),
         _ => {
-            return Err(anyhow!(
-                "Arguments `--organisation` and `--organisation-permissions` have to be both specified or neither."
-            ));
+            anyhow::bail!(
+                "Arguments `--project` and `--project-permissions` have to be both specified or neither"
+            );
         }
     };
 
@@ -56,12 +56,14 @@ pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Resu
             username,
             email,
             global_permissions,
-            organisation_permissions: &organisation_permissions,
+            project_permissions: &project_permissions,
         })
-        .context("Operation to create a user has failed.")?;
-    info!(
+        .context("Operation to create a user has failed")?;
+    log::info!(
         "New user `{}` with email `{}` [id: {}] created successfully",
-        user.username.0, user.email.0, user.id.0
+        user.username.0,
+        user.email.0,
+        user.id.0
     );
     printer.print_resources(&[user])?;
     Ok(())
