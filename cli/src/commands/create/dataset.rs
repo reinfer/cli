@@ -22,7 +22,10 @@ pub struct CreateDatasetArgs {
     /// Set the description of the new dataset
     description: Option<String>,
 
-    #[structopt(long = "has-sentiment")]
+    #[structopt(
+        long = "has-sentiment",
+        help = "Enable sentiment prediction for the dataset [default: false]"
+    )]
     /// Enable sentiment prediction for the dataset
     has_sentiment: Option<bool>,
 
@@ -95,7 +98,7 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
                 source_ids: &source_ids,
                 title: title.as_deref(),
                 description: description.as_deref(),
-                has_sentiment: *has_sentiment,
+                has_sentiment: Some(has_sentiment.unwrap_or(false)),
                 entity_defs: if entity_defs.is_empty() {
                     None
                 } else {
