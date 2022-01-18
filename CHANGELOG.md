@@ -4,6 +4,12 @@
 
 - `re create dataset` will default to sentiment disabled if `--has-sentiment` is not provided.
 
+## Added
+
+- Changed `--source-type` parameter to `--kind`.
+- Updated to support api change of internal parameter `_kind`.
+>>>>>>> Stashed changes
+
 # v0.10.2
 
 ## Bug Fixes
@@ -14,7 +20,7 @@
 
 ## Added
 
-* Add an optional `--source-type` parameter to `create source`. Only for internal use.
+- Add an optional `--source-type` parameter to `create source`. Only for internal use.
 
 # v0.10.0
 
