@@ -150,7 +150,7 @@ fn main() {
 
     if let Err(error) = run(args) {
         error!("An error occurred:");
-        for cause in error.chain().into_iter() {
+        for cause in error.chain() {
             error!(" |- {}", cause);
         }
 

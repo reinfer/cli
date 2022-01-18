@@ -287,10 +287,11 @@ fn delete_comments_progress_bar(statistics: &Arc<Statistics>) -> Progress {
             (
                 num_deleted + num_skipped,
                 format!(
-                    "{} {}{}",
+                    "{} {} [{} {}] total",
                     num_deleted.to_string().bold(),
                     "deleted".dimmed(),
-                    format!(" [{} {}] total", num_skipped, "skipped".dimmed())
+                    num_skipped,
+                    "skipped".dimmed()
                 ),
             )
         },
