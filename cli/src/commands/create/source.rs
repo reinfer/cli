@@ -1,7 +1,7 @@
 use crate::printer::Printer;
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::{BucketIdentifier, Client, NewSource, SourceFullName, SourceType};
+use reinfer_client::{BucketIdentifier, Client, NewSource, SourceFullName, SourceKind};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -30,9 +30,9 @@ pub struct CreateSourceArgs {
     /// Bucket to pull emails from.
     bucket: Option<BucketIdentifier>,
 
-    #[structopt(long = "source-type")]
-    /// Set the source type of the new source
-    source_type: Option<SourceType>,
+    #[structopt(long = "kind")]
+    /// Set the kind of the new source
+    kind: Option<SourceKind>,
 }
 
 pub fn create(client: &Client, args: &CreateSourceArgs, printer: &Printer) -> Result<()> {
@@ -43,7 +43,7 @@ pub fn create(client: &Client, args: &CreateSourceArgs, printer: &Printer) -> Re
         language,
         should_translate,
         bucket,
-        source_type,
+        kind,
     } = args;
 
     let bucket_id = match bucket.to_owned() {
@@ -67,7 +67,7 @@ pub fn create(client: &Client, args: &CreateSourceArgs, printer: &Printer) -> Re
                 should_translate: *should_translate,
                 bucket_id,
                 sensitive_properties: None,
-                source_type: source_type.as_ref(),
+                kind: kind.as_ref(),
             },
         )
         .context("Operation to create a source has failed")?;

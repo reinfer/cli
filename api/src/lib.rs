@@ -87,7 +87,7 @@ pub use crate::{
         project::{NewProject, Project, ProjectName, UpdateProject},
         source::{
             FullName as SourceFullName, Id as SourceId, Identifier as SourceIdentifier,
-            Name as SourceName, NewSource, Source, SourceType, UpdateSource,
+            Name as SourceName, NewSource, Source, SourceKind, UpdateSource,
         },
         statistics::Statistics,
         trigger::{

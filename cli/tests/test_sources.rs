@@ -119,7 +119,7 @@ fn test_create_update_source_custom() {
         description: String,
         language: String,
         should_translate: bool,
-        source_type: String,
+        kind: String,
     }
 
     impl From<Source> for SourceInfo {
@@ -131,7 +131,7 @@ fn test_create_update_source_custom() {
                 description: source.description,
                 language: source.language,
                 should_translate: source.should_translate,
-                source_type: source.source_type.to_string(),
+                kind: source.kind.to_string(),
             }
         }
     }
@@ -148,7 +148,7 @@ fn test_create_update_source_custom() {
         description: "some description".to_owned(),
         language: "de".to_owned(),
         should_translate: true,
-        source_type: "unknown".to_owned(),
+        kind: "unknown".to_owned(),
     };
     assert_eq!(get_source_info(), expected_source_info);
 
@@ -182,9 +182,9 @@ fn test_create_update_source_custom() {
 }
 
 #[test]
-fn test_create_source_with_type() {
+fn test_create_source_with_kind() {
     let cli = TestCli::get();
-    let source = TestSource::new_args(&["--title=some title", "--source-type=call"]);
+    let source = TestSource::new_args(&["--title=some title", "--kind=call"]);
 
     /// A subset of source fields that we can easily check for equality accross
     #[derive(PartialEq, Eq, Debug)]
@@ -192,7 +192,7 @@ fn test_create_source_with_type() {
         owner: String,
         name: String,
         title: String,
-        source_type: String,
+        kind: String,
     }
 
     impl From<Source> for SourceInfo {
@@ -201,7 +201,7 @@ fn test_create_source_with_type() {
                 owner: source.owner.0,
                 name: source.name.0,
                 title: source.title,
-                source_type: source.source_type.to_string(),
+                kind: source.kind.to_string(),
             }
         }
     }
@@ -215,7 +215,7 @@ fn test_create_source_with_type() {
         owner: source.owner().to_owned(),
         name: source.name().to_owned(),
         title: "some title".to_owned(),
-        source_type: "call".to_owned(),
+        kind: "call".to_owned(),
     };
     assert_eq!(get_source_info(), expected_source_info);
 }
