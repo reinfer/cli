@@ -28,8 +28,11 @@ pub enum Error {
     #[error("Expected a username or user id, got: {}", identifier)]
     BadUserIdentifier { identifier: String },
 
-    #[error("Unknown organisation permission: {}", permission)]
-    BadOrganisationPermission { permission: String },
+    #[error("Expected a valid project name, got: {}", identifier)]
+    BadProjectIdentifier { identifier: String },
+
+    #[error("Unknown project permission: {}", permission)]
+    BadProjectPermission { permission: String },
 
     #[error("Unknown global permission: {}", permission)]
     BadGlobalPermission { permission: String },

@@ -11,9 +11,9 @@ pub struct TestSource {
 impl TestSource {
     pub fn new() -> Self {
         let cli = TestCli::get();
-        let user = TestCli::organisation();
-        let full_name = format!("{}/test-source-{}", user, Uuid::new_v4());
-        let sep_index = user.len();
+        let project_name = TestCli::project();
+        let full_name = format!("{}/test-source-{}", project_name, Uuid::new_v4());
+        let sep_index = project_name.len();
 
         let output = cli.run(&["create", "source", &full_name]);
         assert!(output.contains(&full_name));
@@ -26,9 +26,9 @@ impl TestSource {
 
     pub fn new_args(args: &[&str]) -> Self {
         let cli = TestCli::get();
-        let user = TestCli::organisation();
-        let full_name = format!("{}/test-source-{}", user, Uuid::new_v4());
-        let sep_index = user.len();
+        let project_name = TestCli::project();
+        let full_name = format!("{}/test-source-{}", project_name, Uuid::new_v4());
+        let sep_index = project_name.len();
 
         let output = cli.run(["create", "source", &full_name].iter().chain(args));
         assert!(output.contains(&full_name));

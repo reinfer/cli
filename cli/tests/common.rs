@@ -8,9 +8,9 @@ use std::{
     process::{Command, Stdio},
 };
 
-static REINFER_CLI_TEST_ORG: Lazy<String> = Lazy::new(|| {
-    env::var("REINFER_CLI_TEST_ORG")
-        .expect("REINFER_CLI_TEST_ORG must be set for integration tests")
+static REINFER_CLI_TEST_PROJECT: Lazy<String> = Lazy::new(|| {
+    env::var("REINFER_CLI_TEST_PROJECT")
+        .expect("REINFER_CLI_TEST_PROJECT must be set for integration tests")
 });
 static REINFER_CLI_TEST_ENDPOINT: Lazy<Option<String>> =
     Lazy::new(|| env::var("REINFER_CLI_TEST_ENDPOINT").ok());
@@ -42,8 +42,8 @@ impl TestCli {
         serde_json::from_str::<User>(&output).expect("Failed to deserialize user response")
     }
 
-    pub fn organisation() -> String {
-        REINFER_CLI_TEST_ORG.to_owned()
+    pub fn project() -> String {
+        REINFER_CLI_TEST_PROJECT.to_owned()
     }
 
     pub fn command(&self) -> Command {

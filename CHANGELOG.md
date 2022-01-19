@@ -3,6 +3,8 @@
 ## Breaking
 
 - `re create dataset` will default to sentiment disabled if `--has-sentiment` is not provided.
+ - Renames organisation -> project throughout, including in the CLI command line
+   arguments for consistency with the new API
 
 # v0.10.2
 

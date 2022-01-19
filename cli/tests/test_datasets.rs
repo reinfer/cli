@@ -16,7 +16,7 @@ pub struct TestDataset {
 impl TestDataset {
     pub fn new() -> Self {
         let cli = TestCli::get();
-        let user = TestCli::organisation();
+        let user = TestCli::project();
         let full_name = format!("{}/test-dataset-{}", user, Uuid::new_v4());
         let sep_index = user.len();
 
@@ -31,7 +31,7 @@ impl TestDataset {
 
     pub fn new_args(args: &[&str]) -> Self {
         let cli = TestCli::get();
-        let user = TestCli::organisation();
+        let user = TestCli::project();
         let full_name = format!("{}/test-dataset-{}", user, Uuid::new_v4());
         let sep_index = user.len();
 
@@ -352,11 +352,7 @@ fn test_create_dataset_wrong_model_family() {
             "create",
             "dataset",
             "--model-family==non-existent-family",
-            &format!(
-                "{}/test-dataset-{}",
-                TestCli::organisation(),
-                Uuid::new_v4()
-            ),
+            &format!("{}/test-dataset-{}", TestCli::project(), Uuid::new_v4()),
         ])
         .output()
         .unwrap();
@@ -378,11 +374,7 @@ fn test_create_dataset_copy_annotations() {
             "create",
             "dataset",
             &format!("--copy-annotations-from={}", dataset1_info.id.0),
-            &format!(
-                "{}/test-dataset-{}",
-                TestCli::organisation(),
-                Uuid::new_v4()
-            ),
+            &format!("{}/test-dataset-{}", TestCli::project(), Uuid::new_v4()),
         ])
         .output()
         .unwrap();
