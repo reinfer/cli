@@ -23,6 +23,11 @@ impl TestProject {
                 .iter()
                 .chain(args),
         );
+
+        // Creating projects is complex and can sometimes cause race conditions, sleeping after
+        // creating should hopefully reduce the probability of that.
+        std::thread::sleep(std::time::Duration::from_millis(200));
+
         assert!(output.contains(&name));
 
         Self { name }
