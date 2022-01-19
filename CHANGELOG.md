@@ -1,10 +1,14 @@
-# Unreleased
+# v0.11.0
 
 ## Breaking
 
+- Renames organisation -> project throughout, including in the CLI command line arguments for consistency with the new API
 - `re create dataset` will default to sentiment disabled if `--has-sentiment` is not provided.
- - Renames organisation -> project throughout, including in the CLI command line
-   arguments for consistency with the new API
+- Changed `--source-type` parameter to `--kind`.
+
+## Bug Fixes
+
+- Fix serialization of sources after api change of internal parameter `_kind`.
 
 # v0.10.2
 
@@ -16,7 +20,7 @@
 
 ## Added
 
-* Add an optional `--source-type` parameter to `create source`. Only for internal use.
+- Add an optional `--source-type` parameter to `create source`. Only for internal use.
 
 # v0.10.0
 
