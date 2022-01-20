@@ -6,6 +6,10 @@
 - `re create dataset` will default to sentiment disabled if `--has-sentiment` is not provided.
 - Changed `--source-type` parameter to `--kind`.
 
+## Added
+
+- `re create trigger-exception` to tag a comment exception within a trigger.
+
 ## Bug Fixes
 
 - Fix serialization of sources after api change of internal parameter `_kind`.

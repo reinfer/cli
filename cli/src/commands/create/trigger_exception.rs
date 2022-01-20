@@ -8,8 +8,8 @@ use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub struct CreateTriggerExceptionArgs {
-    #[structopt(short = "t", long = "trigger")]
-    /// The dataset name or id
+    #[structopt(long = "trigger")]
+    /// The trigger full name, qualified by dataset, such as 'my-project-name/my-dataset-name/my-trigger-name'.
     trigger: TriggerFullName,
 
     #[structopt(long = "type")]
