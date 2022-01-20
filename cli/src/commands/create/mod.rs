@@ -5,12 +5,13 @@ mod dataset;
 mod emails;
 mod project;
 mod source;
+mod trigger_exception;
 mod user;
 
 use self::{
     annotations::CreateAnnotationsArgs, bucket::CreateBucketArgs, comments::CreateCommentsArgs,
     dataset::CreateDatasetArgs, emails::CreateEmailsArgs, project::CreateProjectArgs,
-    source::CreateSourceArgs, user::CreateUserArgs,
+    source::CreateSourceArgs, trigger_exception::CreateTriggerExceptionArgs, user::CreateUserArgs,
 };
 use crate::printer::Printer;
 use anyhow::Result;
@@ -50,6 +51,10 @@ pub enum CreateArgs {
     #[structopt(name = "user")]
     /// Create a new user (note: no welcome email will be sent)
     User(CreateUserArgs),
+
+    #[structopt(name = "trigger-exception")]
+    /// Create a new trigger exception
+    TriggerException(CreateTriggerExceptionArgs),
 }
 
 pub fn run(create_args: &CreateArgs, client: Client, printer: &Printer) -> Result<()> {
@@ -62,5 +67,8 @@ pub fn run(create_args: &CreateArgs, client: Client, printer: &Printer) -> Resul
         CreateArgs::Annotations(annotations_args) => annotations::create(&client, annotations_args),
         CreateArgs::Emails(emails_args) => emails::create(&client, emails_args),
         CreateArgs::User(user_args) => user::create(&client, user_args, printer),
+        CreateArgs::TriggerException(trigger_exception_args) => {
+            trigger_exception::create(&client, trigger_exception_args, printer)
+        }
     }
 }

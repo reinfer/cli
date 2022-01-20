@@ -6,7 +6,7 @@ use std::str::FromStr;
 use crate::error::{Error, Result};
 
 use super::{
-    comment::{Comment, CommentFilter, Entity, PredictedLabel},
+    comment::{Comment, CommentFilter, Entity, PredictedLabel, Uid as CommentUid},
     dataset::{FullName as DatasetFullName, Id as DatasetId},
     label_def::Name as LabelName,
 };
@@ -103,4 +103,20 @@ pub(crate) struct AdvanceRequest {
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct ResetRequest {
     pub to_comment_created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct TagExceptionsRequest<'request> {
+    pub exceptions: &'request [TriggerException<'request>],
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TriggerException<'request> {
+    pub metadata: TriggerExceptionMetadata<'request>,
+    pub uid: &'request CommentUid,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TriggerExceptionMetadata<'request> {
+    pub r#type: &'request String,
 }

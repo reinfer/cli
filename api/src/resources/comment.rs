@@ -36,6 +36,14 @@ impl FromStr for Id {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Uid(pub String);
 
+impl FromStr for Uid {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Self> {
+        Ok(Self(string.to_owned()))
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct ThreadId(pub String);
 

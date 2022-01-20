@@ -46,6 +46,7 @@ use crate::resources::{
     trigger::{
         AdvanceRequest as TriggerAdvanceRequest, FetchRequest as TriggerFetchRequest,
         GetResponse as GetTriggersResponse, ResetRequest as TriggerResetRequest,
+        TagExceptionsRequest as TagTriggerExceptionsRequest,
     },
     user::{
         CreateRequest as CreateUserRequest, CreateResponse as CreateUserResponse,
@@ -92,7 +93,7 @@ pub use crate::{
         statistics::Statistics,
         trigger::{
             Batch as TriggerBatch, FullName as TriggerFullName, SequenceId as TriggerSequenceId,
-            Trigger,
+            Trigger, TriggerException, TriggerExceptionMetadata,
         },
         user::{
             Email, GlobalPermission, Id as UserId, Identifier as UserIdentifier,
@@ -621,6 +622,18 @@ impl Client {
         Ok(())
     }
 
+    pub fn tag_trigger_exceptions(
+        &self,
+        trigger_name: &TriggerFullName,
+        exceptions: &[TriggerException],
+    ) -> Result<()> {
+        self.put::<_, _, serde::de::IgnoredAny>(
+            self.endpoints.trigger_exceptions(trigger_name)?,
+            TagTriggerExceptionsRequest { exceptions },
+        )?;
+        Ok(())
+    }
+
     /// Gets a project.
     pub fn get_project(&self, project_name: &ProjectName) -> Result<Project> {
         let response =
@@ -1081,6 +1094,18 @@ impl Endpoints {
             .map_err(|source| Error::UrlParseError {
                 source,
                 message: "Could not build URL to reset triggers.".to_owned(),
+            })
+    }
+
+    fn trigger_exceptions(&self, trigger_name: &TriggerFullName) -> Result<Url> {
+        self.base
+            .join(&format!(
+                "/api/v1/datasets/{}/triggers/{}/exceptions",
+                trigger_name.dataset.0, trigger_name.trigger.0
+            ))
+            .map_err(|source| Error::UrlParseError {
+                source,
+                message: "Could not build URL for trigger exceptions.".to_owned(),
             })
     }
 
