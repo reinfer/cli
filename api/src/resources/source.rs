@@ -23,6 +23,7 @@ pub struct Source {
     pub should_translate: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub bucket_id: Option<BucketId>,
 
     #[serde(rename = "_kind")]
     pub kind: SourceKind,

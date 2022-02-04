@@ -9,6 +9,7 @@
 ## Added
 
 - `re create trigger-exception` to tag a comment exception within a trigger.
+- `re get source` and `re get sources` will show bucket name if exists.
 
 ## Bug Fixes
 

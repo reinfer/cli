@@ -1,5 +1,5 @@
 use crate::{
-    printer::{print_resources_as_json, Printer},
+    printer::{print_resources_as_json, EnrichedSource, Printer},
     progress::{Options as ProgressOptions, Progress},
 };
 use anyhow::{anyhow, Context, Result};
@@ -176,7 +176,16 @@ pub fn run(get_args: &GetArgs, client: Client, printer: &Printer) -> Result<()> 
                 });
                 sources
             };
-            printer.print_resources(&sources)?;
+            let mut enriched_sources: Vec<EnrichedSource> = Vec::with_capacity(sources.len());
+            for source in sources.into_iter() {
+                let bucket = match source.bucket_id.as_ref() {
+                    // User may not have permission to fetch bucket, or bucket may not exist
+                    Some(bucket_id) => client.get_bucket(bucket_id.clone()).ok(),
+                    None => None,
+                };
+                enriched_sources.push(EnrichedSource { source, bucket });
+            }
+            printer.print_resources(&enriched_sources)?;
         }
         GetArgs::Comment {
             source,

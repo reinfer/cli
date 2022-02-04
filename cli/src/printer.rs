@@ -108,7 +108,7 @@ impl DisplayTable for Project {
 
 impl DisplayTable for Source {
     fn to_table_headers() -> Row {
-        row![bFg => "Name", "ID", "Updated (UTC)", "Title"]
+        row![bFg => "Name", "ID", "Updated (UTC)", "Title", "Bucket ID"]
     }
 
     fn to_table_row(&self) -> Row {
@@ -117,7 +117,45 @@ impl DisplayTable for Source {
             full_name,
             self.id.0,
             self.updated_at.format("%Y-%m-%d %H:%M:%S"),
-            self.title
+            self.title,
+            match &self.bucket_id {
+                Some(bucket_id) => bucket_id.0.as_str().into(),
+                None => "none".dimmed(),
+            }
+        ]
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct EnrichedSource {
+    pub source: Source,
+    pub bucket: Option<Bucket>,
+}
+
+impl DisplayTable for EnrichedSource {
+    fn to_table_headers() -> Row {
+        row![bFg => "Name", "ID", "Updated (UTC)", "Title", "Bucket"]
+    }
+
+    fn to_table_row(&self) -> Row {
+        let full_name = format!(
+            "{}{}{}",
+            self.source.owner.0.dimmed(),
+            "/".dimmed(),
+            self.source.name.0
+        );
+        row![
+            full_name,
+            self.source.id.0,
+            self.source.updated_at.format("%Y-%m-%d %H:%M:%S"),
+            self.source.title,
+            match &self.bucket {
+                Some(bucket) => bucket.name.0.as_str().into(),
+                None => match &self.source.bucket_id {
+                    Some(bucket_id) => bucket_id.0.as_str().dimmed(),
+                    None => "none".dimmed(),
+                },
+            }
         ]
     }
 }
