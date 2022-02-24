@@ -9,6 +9,7 @@ use log::info;
 use reinfer_client::{
     AnnotatedComment, BucketIdentifier, Client, CommentId, CommentsIterTimerange, DatasetFullName,
     DatasetIdentifier, HasAnnotations, ProjectName, Source, SourceIdentifier, TriggerFullName,
+    UserIdentifier,
 };
 use std::{
     fs::File,
@@ -129,7 +130,11 @@ pub enum GetArgs {
 
     #[structopt(name = "users")]
     /// List available users
-    Users,
+    Users {
+        #[structopt(short = "u", long = "user")]
+        /// The dataset name or id
+        user: Option<UserIdentifier>,
+    },
 
     #[structopt(name = "current-user")]
     /// Get the user associated with the API token in use
@@ -330,12 +335,20 @@ pub fn run(get_args: &GetArgs, client: Client, printer: &Printer) -> Result<()> 
                 print_resources_as_json(Some(&batch), io::stdout().lock())?;
             }
         },
-        GetArgs::Users {} => {
-            let users = client
-                .get_users()
-                .context("Operation to list users has failed.")?;
-            printer.print_resources(&users)?;
-        }
+        GetArgs::Users { user } => match user {
+            Some(user_id) => {
+                let user = client
+                    .get_user(user_id.clone())
+                    .context("Operation to get user has failed.")?;
+                printer.print_resources(&[user])?;
+            }
+            None => {
+                let users = client
+                    .get_users()
+                    .context("Operation to list users has failed.")?;
+                printer.print_resources(&users)?;
+            }
+        },
         GetArgs::CurrentUser {} => {
             let user = client
                 .get_current_user()

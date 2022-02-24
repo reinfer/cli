@@ -10,6 +10,7 @@ use structopt::StructOpt;
 use reinfer_client::{
     resources::project::ForceDeleteProject, BucketIdentifier, Client, CommentId, CommentsIter,
     CommentsIterTimerange, DatasetIdentifier, ProjectName, Source, SourceIdentifier,
+    UserIdentifier,
 };
 
 use crate::progress::{Options as ProgressOptions, Progress};
@@ -81,6 +82,14 @@ pub enum DeleteArgs {
         dataset: DatasetIdentifier,
     },
 
+    #[structopt(name = "user")]
+    /// Delete a user
+    User {
+        #[structopt(name = "user")]
+        /// Username or id of the user to delete
+        user: UserIdentifier,
+    },
+
     #[structopt(name = "project")]
     /// Delete a project
     Project {
@@ -101,6 +110,12 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
                 .delete_source(source.clone())
                 .context("Operation to delete source has failed.")?;
             log::info!("Deleted source.");
+        }
+        DeleteArgs::User { user } => {
+            client
+                .delete_user(user.clone())
+                .context("Operation to delete user has failed.")?;
+            log::info!("Deleted user.");
         }
         DeleteArgs::Comments { source, comments } => {
             client

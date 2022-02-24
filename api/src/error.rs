@@ -25,7 +25,10 @@ pub enum Error {
     #[error("Expected <owner>/<dataset>/<trigger>: {}", identifier)]
     BadTriggerName { identifier: String },
 
-    #[error("Expected a username or user id, got: {}", identifier)]
+    #[error(
+        "Expected a user id (usernames and emails are not supported), got: {}",
+        identifier
+    )]
     BadUserIdentifier { identifier: String },
 
     #[error("Expected a valid project name, got: {}", identifier)]
