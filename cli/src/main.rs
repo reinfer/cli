@@ -80,7 +80,7 @@ fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
     let token = Token(if let Some(token) = args_or_config_token {
         token
     } else {
-        utils::read_token_from_stdin()?.unwrap_or_else(String::new)
+        utils::read_token_from_stdin()?.unwrap_or_default()
     });
 
     let accept_invalid_certificates = args

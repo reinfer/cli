@@ -37,7 +37,7 @@ impl ApiError {
     fn into_error_kind(self, status_code: StatusCode) -> Error {
         Error::Api {
             status_code,
-            message: self.message.unwrap_or_else(String::new),
+            message: self.message.unwrap_or_default(),
         }
     }
 }
