@@ -43,7 +43,7 @@ fn check_comments_lifecycle(comments_str: &str) {
     );
     assert!(output.is_empty());
 
-    let output = cli.run(&["get", "comments", &source.identifier().to_string()]);
+    let output = cli.run(&["get", "comments", source.identifier()]);
     assert_eq!(output.lines().count(), annotated_comments.len());
 
     // Test getting a comment by id to check the content matches
@@ -73,7 +73,7 @@ fn check_comments_lifecycle(comments_str: &str) {
     ]);
     assert!(output.is_empty());
 
-    let output = cli.run(&["get", "comments", &source.identifier().to_string()]);
+    let output = cli.run(&["get", "comments", source.identifier()]);
     assert_eq!(output.lines().count(), annotated_comments.len() - 1);
 
     // Delete all ids
@@ -86,7 +86,7 @@ fn check_comments_lifecycle(comments_str: &str) {
     let output = cli.run(&args);
     assert!(output.is_empty());
 
-    let output = cli.run(&["get", "comments", &source.identifier().to_string()]);
+    let output = cli.run(&["get", "comments", source.identifier()]);
     assert!(output.is_empty());
 }
 
@@ -107,7 +107,6 @@ fn test_delete_comments_in_range() {
     let cli = TestCli::get();
     let source = TestSource::new();
     let dataset1 = TestDataset::new_args(&[&format!("--source={}", source.identifier())]);
-    // let dataset2 = TestDataset::new_args(&[&format!("--source={}", source.identifier())]);
 
     // Upload our test data
     let output = cli.run_with_stdin(
@@ -122,7 +121,7 @@ fn test_delete_comments_in_range() {
     );
     assert!(output.is_empty());
 
-    let uploaded_all = cli.run(&["get", "comments", &source.identifier().to_string()]);
+    let uploaded_all = cli.run(&["get", "comments", source.identifier()]);
     assert_eq!(uploaded_all.lines().count(), num_comments);
 
     // Download annotated comments and check count

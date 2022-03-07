@@ -103,7 +103,7 @@ pub fn run(
                         "No"
                     },
                     if *tokens {
-                        context.token.clone().unwrap_or_else(String::new)
+                        context.token.clone().unwrap_or_default()
                     } else {
                         "<Hidden>".into()
                     },
