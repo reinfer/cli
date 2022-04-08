@@ -27,8 +27,17 @@ impl FromStr for ProjectName {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct Id(pub String);
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Project {
+    // CODE HEALTH: At time of addition, deployed versions of reinfer may not
+    // return project ids.
+    //
+    // This can be removed once reinfer is deployed everywhere.
+    #[serde(default)]
+    pub id: Option<Id>,
     pub name: ProjectName,
     pub title: String,
     pub description: String,

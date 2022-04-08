@@ -98,11 +98,18 @@ impl DisplayTable for Dataset {
 
 impl DisplayTable for Project {
     fn to_table_headers() -> Row {
-        row![bFg => "Name", "Title"]
+        row![bFg => "Name", "ID", "Title"]
     }
 
     fn to_table_row(&self) -> Row {
-        row![self.name.0, self.title]
+        row![
+            self.name.0,
+            match &self.id {
+                Some(id) => id.0.as_str().into(),
+                None => "unknown".dimmed(),
+            },
+            self.title
+        ]
     }
 }
 
