@@ -59,7 +59,20 @@ impl FromStr for Email {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub enum Identifier {
     Id(Id),
-    Username(Username),
+}
+
+impl FromStr for Identifier {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Self> {
+        if string.chars().all(|c| c.is_digit(16)) {
+            Ok(Identifier::Id(Id(string.into())))
+        } else {
+            Err(Error::BadUserIdentifier {
+                identifier: string.into(),
+            })
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -112,6 +125,11 @@ pub(crate) struct GetAvailableResponse {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct GetCurrentResponse {
+    pub user: User,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub(crate) struct GetResponse {
     pub user: User,
 }
 

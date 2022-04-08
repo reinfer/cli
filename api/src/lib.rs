@@ -48,6 +48,7 @@ use crate::resources::{
         GetResponse as GetTriggersResponse, ResetRequest as TriggerResetRequest,
         TagExceptionsRequest as TagTriggerExceptionsRequest,
     },
+    user::GetResponse as GetUserResponse,
     user::{
         CreateRequest as CreateUserRequest, CreateResponse as CreateUserResponse,
         GetAvailableResponse as GetAvailableUsersResponse,
@@ -181,6 +182,16 @@ impl Client {
     }
 
     /// Get a source by either id or name.
+    pub fn get_user(&self, user: impl Into<UserIdentifier>) -> Result<User> {
+        Ok(match user.into() {
+            UserIdentifier::Id(user_id) => {
+                self.get::<_, GetUserResponse>(self.endpoints.user_by_id(&user_id)?)?
+                    .user
+            }
+        })
+    }
+
+    /// Get a source by either id or name.
     pub fn get_source(&self, source: impl Into<SourceIdentifier>) -> Result<Source> {
         Ok(match source.into() {
             SourceIdentifier::Id(source_id) => {
@@ -229,7 +240,13 @@ impl Client {
             SourceIdentifier::Id(source_id) => source_id,
             source @ SourceIdentifier::FullName(_) => self.get_source(source)?.id,
         };
-        self.delete::<_>(self.endpoints.source_by_id(&source_id)?)
+        self.delete(self.endpoints.source_by_id(&source_id)?)
+    }
+
+    /// Delete a user.
+    pub fn delete_user(&self, user: impl Into<UserIdentifier>) -> Result<()> {
+        let UserIdentifier::Id(user_id) = user.into();
+        self.delete(self.endpoints.user_by_id(&user_id)?)
     }
 
     /// Delete comments by id in a source.
@@ -242,7 +259,7 @@ impl Client {
             source @ SourceIdentifier::Id(_) => self.get_source(source)?.full_name(),
             SourceIdentifier::FullName(source_full_name) => source_full_name,
         };
-        self.delete_query::<_, _>(
+        self.delete_query(
             self.endpoints.comments_v1(&source_full_name)?,
             Some(&id_list_query(comments.iter().map(|uid| &uid.0))),
         )
@@ -275,7 +292,7 @@ impl Client {
             after,
             limit,
         };
-        self.get_query::<_, _, _>(self.endpoints.comments(source_name)?, Some(&query_params))
+        self.get_query(self.endpoints.comments(source_name)?, Some(&query_params))
     }
 
     /// Iterate through all comments in a source.
@@ -304,7 +321,7 @@ impl Client {
         source_name: &SourceFullName,
         comments: &[NewComment],
     ) -> Result<PutCommentsResponse> {
-        self.put::<_, _, _>(
+        self.put(
             self.endpoints.comments(source_name)?,
             PutCommentsRequest { comments },
         )
@@ -315,7 +332,7 @@ impl Client {
         source_name: &SourceFullName,
         comments: &[NewComment],
     ) -> Result<SyncCommentsResponse> {
-        self.post::<_, _, _>(
+        self.post(
             self.endpoints.sync_comments(source_name)?,
             SyncCommentsRequest { comments },
             Retry::Yes,
@@ -327,7 +344,7 @@ impl Client {
         bucket_name: &BucketFullName,
         emails: &[NewEmail],
     ) -> Result<PutEmailsResponse> {
-        self.put::<_, _, _>(
+        self.put(
             self.endpoints.put_emails(bucket_name)?,
             PutEmailsRequest { emails },
         )
@@ -422,7 +439,7 @@ impl Client {
             DatasetIdentifier::Id(dataset_id) => dataset_id,
             dataset @ DatasetIdentifier::FullName(_) => self.get_dataset(dataset)?.id,
         };
-        self.delete::<_>(self.endpoints.dataset_by_id(&dataset_id)?)
+        self.delete(self.endpoints.dataset_by_id(&dataset_id)?)
     }
 
     /// Get labellings for a given a dataset and a list of comment UIDs.
@@ -579,7 +596,7 @@ impl Client {
             BucketIdentifier::Id(bucket_id) => bucket_id,
             bucket @ BucketIdentifier::FullName(_) => self.get_bucket(bucket)?.id,
         };
-        self.delete::<_>(self.endpoints.bucket_by_id(&bucket_id)?)
+        self.delete(self.endpoints.bucket_by_id(&bucket_id)?)
     }
 
     pub fn fetch_trigger_comments(
@@ -587,7 +604,7 @@ impl Client {
         trigger_name: &TriggerFullName,
         size: u32,
     ) -> Result<TriggerBatch> {
-        self.post::<_, _, _>(
+        self.post(
             self.endpoints.trigger_fetch(trigger_name)?,
             TriggerFetchRequest { size },
             Retry::No,
@@ -1127,6 +1144,18 @@ impl Endpoints {
             .map_err(|source| Error::UrlParseError {
                 source,
                 message: "Could not build URL for dataset statistics query.".to_owned(),
+            })
+    }
+
+    fn user_by_id(&self, user_id: &UserId) -> Result<Url> {
+        self.base
+            .join(&format!("/api/_private/users/{}", user_id.0))
+            .map_err(|source| Error::UrlParseError {
+                source,
+                message: format!(
+                    "Could not build URL for source resource with id `{}`.",
+                    user_id.0
+                ),
             })
     }
 
