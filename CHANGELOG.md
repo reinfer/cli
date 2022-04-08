@@ -1,3 +1,10 @@
+# Unreleased
+
+## Added
+ - Display project ids when listing projects
+ - Add support for getting or deleting a single user
+
+
 # v0.11.0
 
 ## Breaking
