@@ -385,7 +385,9 @@ impl NewLabelling {
 impl HasAnnotations for AnnotatedComment {
     fn has_annotations(&self) -> bool {
         let has_labels = self.labelling.iter().flatten().any(|labelling_group| {
-            !labelling_group.assigned.is_empty() || !labelling_group.dismissed.is_empty()
+            !labelling_group.assigned.is_empty()
+                || !labelling_group.dismissed.is_empty()
+                || labelling_group.uninformative.is_some()
         });
         let has_entities = self
             .entities
@@ -447,6 +449,7 @@ impl EitherLabelling {
                     group: DEFAULT_LABEL_GROUP_NAME.clone(),
                     assigned: new_legacy_labelling.assigned,
                     dismissed: new_legacy_labelling.dismissed,
+                    uninformative: None,
                 }]
             }
         }
@@ -464,7 +467,9 @@ impl HasAnnotations for EitherLabelling {
         match self {
             EitherLabelling::Labelling(new_labelling) => {
                 new_labelling.iter().any(|labelling_group| {
-                    labelling_group.assigned.is_some() || labelling_group.dismissed.is_some()
+                    labelling_group.assigned.is_some()
+                        || labelling_group.dismissed.is_some()
+                        || labelling_group.uninformative.is_some()
                 })
             }
             EitherLabelling::LegacyLabelling(new_legacy_labelling) => {
@@ -509,6 +514,8 @@ pub struct Labelling {
     pub dismissed: Vec<Label>,
     #[serde(skip_serializing_if = "should_skip_serializing_optional_vec", default)]
     pub predicted: Option<Vec<PredictedLabel>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub uninformative: Option<UninformativeLabel>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -518,6 +525,8 @@ pub struct NewLabelling {
     pub assigned: Option<Vec<Label>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub dismissed: Option<Vec<Label>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub uninformative: Option<UninformativeLabel>,
 }
 
 /// Old, pre-label group labelling format.
@@ -533,6 +542,16 @@ pub struct NewLegacyLabelling {
 pub struct Label {
     pub name: LabelName,
     pub sentiment: Sentiment,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub metadata: Option<HashMap<String, JsonValue>>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct UninformativeMode(pub String);
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
+pub struct UninformativeLabel {
+    pub mode: UninformativeMode,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub metadata: Option<HashMap<String, JsonValue>>,
 }
@@ -585,6 +604,7 @@ fn should_skip_serializing_labelling(maybe_labelling: &Option<Vec<Labelling>>) -
     if let Some(default_labelling) = get_default_labelling_group(maybe_labelling) {
         default_labelling.assigned.is_empty()
             && default_labelling.dismissed.is_empty()
+            && default_labelling.uninformative.is_none()
             && should_skip_serializing_optional_vec(&default_labelling.predicted)
     } else {
         true
