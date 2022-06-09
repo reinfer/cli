@@ -221,6 +221,65 @@ fn test_create_source_with_kind() {
 }
 
 #[test]
+fn test_create_source_with_transform_tag() {
+    let cli = TestCli::get();
+    let source = TestSource::new_args(&["--transform-tag=generic.0.CONVKER5"]);
+
+    /// A subset of source fields that we can easily check for equality accross
+    #[derive(PartialEq, Eq, Debug)]
+    struct SourceInfo {
+        owner: String,
+        name: String,
+        transform_tag: Option<String>,
+    }
+
+    impl From<Source> for SourceInfo {
+        fn from(source: Source) -> SourceInfo {
+            SourceInfo {
+                owner: source.owner.0,
+                name: source.name.0,
+                transform_tag: source.transform_tag.map(|tag| tag.0),
+            }
+        }
+    }
+
+    let get_source_info = || -> SourceInfo {
+        let output = cli.run(&["--output=json", "get", "sources", source.identifier()]);
+        serde_json::from_str::<Source>(&output).unwrap().into()
+    };
+
+    let expected_source_info = SourceInfo {
+        owner: source.owner().to_owned(),
+        name: source.name().to_owned(),
+        transform_tag: Some("generic.0.CONVKER5".to_owned()),
+    };
+    assert_eq!(get_source_info(), expected_source_info);
+}
+
+#[test]
+fn test_create_source_with_invalid_transform_tag_fails() {
+    let cli = TestCli::get();
+    let owner = TestCli::project();
+
+    let new_source_name = format!("{}/test-source-{}", owner, Uuid::new_v4());
+
+    let output = cli.run_and_error(&[
+        "create",
+        "source",
+        &new_source_name,
+        "--transform-tag",
+        "not-a-valid-transform-tag.0.ABCDEFGH",
+    ]);
+    assert!(
+        output.contains(
+            "422 Unprocessable Entity: The value 'not-a-valid-transform-tag.0.ABCDEFGH' is not a valid transform tag."
+        ),
+        "{}",
+        output,
+    );
+}
+
+#[test]
 fn test_create_source_requires_owner() {
     let cli = TestCli::get();
 

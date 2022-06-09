@@ -9,6 +9,7 @@ use std::{
 use crate::{
     error::{Error, Result},
     resources::bucket::Id as BucketId,
+    resources::bucket::TransformTag,
     resources::user::Username,
 };
 
@@ -26,6 +27,8 @@ pub struct Source {
 
     #[serde(rename = "_kind")]
     pub kind: SourceKind,
+    #[serde(default, rename = "email_transform_tag")]
+    pub transform_tag: Option<TransformTag>,
 }
 
 impl Source {
@@ -163,6 +166,12 @@ pub struct NewSource<'request> {
 
     #[serde(skip_serializing_if = "Option::is_none", rename = "_kind")]
     pub kind: Option<&'request SourceKind>,
+
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "email_transform_tag"
+    )]
+    pub transform_tag: Option<&'request TransformTag>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
