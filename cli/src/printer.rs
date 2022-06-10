@@ -115,7 +115,7 @@ impl DisplayTable for Project {
 
 impl DisplayTable for Source {
     fn to_table_headers() -> Row {
-        row![bFg => "Name", "ID", "Updated (UTC)", "Title"]
+        row![bFg => "Name", "ID", "Updated (UTC)", "Transform Tag", "Title"]
     }
 
     fn to_table_row(&self) -> Row {
@@ -124,7 +124,11 @@ impl DisplayTable for Source {
             full_name,
             self.id.0,
             self.updated_at.format("%Y-%m-%d %H:%M:%S"),
-            self.title
+            match &self.transform_tag {
+                Some(transform_tag) => transform_tag.0.as_str().into(),
+                None => "missing".dimmed(),
+            },
+            self.title,
         ]
     }
 }

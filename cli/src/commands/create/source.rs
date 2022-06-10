@@ -1,7 +1,9 @@
 use crate::printer::Printer;
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::{BucketIdentifier, Client, NewSource, SourceFullName, SourceKind};
+use reinfer_client::{
+    BucketIdentifier, Client, NewSource, SourceFullName, SourceKind, TransformTag,
+};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -33,6 +35,10 @@ pub struct CreateSourceArgs {
     #[structopt(long = "kind")]
     /// Set the kind of the new source
     kind: Option<SourceKind>,
+
+    #[structopt(long = "transform-tag")]
+    /// Set the transform tag of the new source
+    transform_tag: Option<TransformTag>,
 }
 
 pub fn create(client: &Client, args: &CreateSourceArgs, printer: &Printer) -> Result<()> {
@@ -44,6 +50,7 @@ pub fn create(client: &Client, args: &CreateSourceArgs, printer: &Printer) -> Re
         should_translate,
         bucket,
         kind,
+        transform_tag,
     } = args;
 
     let bucket_id = match bucket.to_owned() {
@@ -68,6 +75,7 @@ pub fn create(client: &Client, args: &CreateSourceArgs, printer: &Printer) -> Re
                 bucket_id,
                 sensitive_properties: None,
                 kind: kind.as_ref(),
+                transform_tag: transform_tag.as_ref(),
             },
         )
         .context("Operation to create a source has failed")?;
