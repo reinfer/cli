@@ -8,15 +8,16 @@ mod source;
 mod trigger_exception;
 mod user;
 
+use anyhow::Result;
+use reinfer_client::Client;
+use structopt::StructOpt;
+
 use self::{
     annotations::CreateAnnotationsArgs, bucket::CreateBucketArgs, comments::CreateCommentsArgs,
     dataset::CreateDatasetArgs, emails::CreateEmailsArgs, project::CreateProjectArgs,
     source::CreateSourceArgs, trigger_exception::CreateTriggerExceptionArgs, user::CreateUserArgs,
 };
 use crate::printer::Printer;
-use anyhow::Result;
-use reinfer_client::Client;
-use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub enum CreateArgs {

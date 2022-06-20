@@ -8,14 +8,13 @@ use std::{
 
 use crate::{
     error::{Error, Result},
-    resources::bucket::Id as BucketId,
-    resources::user::Username,
+    resources::{bucket::Id as BucketId, project::ProjectName},
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Source {
     pub id: Id,
-    pub owner: Username,
+    pub project: ProjectName,
     pub name: Name,
     pub title: String,
     pub description: String,
@@ -30,7 +29,10 @@ pub struct Source {
 
 impl Source {
     pub fn full_name(&self) -> FullName {
-        FullName(format!("{}/{}", self.owner.0, self.name.0))
+        FullName {
+            project: self.project.clone(),
+            source: self.name.clone(),
+        }
     }
 }
 
@@ -38,18 +40,23 @@ impl Source {
 pub struct Name(pub String);
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-pub struct FullName(pub String);
+pub struct FullName {
+    pub project: ProjectName,
+    pub source: Name,
+}
 
 impl FromStr for FullName {
     type Err = Error;
 
     fn from_str(string: &str) -> Result<Self> {
-        if string.split('/').count() == 2 {
-            Ok(FullName(string.into()))
-        } else {
-            Err(Error::BadSourceIdentifier {
+        match string.split('/').collect::<Vec<_>>()[..] {
+            [project, source] => Ok(FullName {
+                project: ProjectName(project.into()),
+                source: Name(source.into()),
+            }),
+            _ => Err(Error::BadSourceIdentifier {
                 identifier: string.into(),
-            })
+            }),
         }
     }
 }
@@ -97,14 +104,12 @@ impl FromStr for Identifier {
 
 impl Display for Identifier {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
-        write!(
-            formatter,
-            "{}",
-            match self {
-                Identifier::Id(id) => &id.0,
-                Identifier::FullName(full_name) => &full_name.0,
+        match self {
+            Identifier::Id(id) => write!(formatter, "{}", id.0),
+            Identifier::FullName(full_name) => {
+                write!(formatter, "{}/{}", full_name.project.0, full_name.source.0)
             }
-        )
+        }
     }
 }
 

@@ -33,9 +33,11 @@ impl Bucket {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Name(pub String);
 
+/// The bucket full name, i.e. `<project-name>/<bucket-name>`
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct FullName(pub String);
 
+/// The bucket id, a hexadecimal string
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Id(pub String);
 

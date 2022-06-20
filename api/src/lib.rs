@@ -1,4 +1,5 @@
 #![deny(clippy::all)]
+
 mod error;
 pub mod resources;
 pub mod retry;
@@ -48,11 +49,10 @@ use crate::resources::{
         GetResponse as GetTriggersResponse, ResetRequest as TriggerResetRequest,
         TagExceptionsRequest as TagTriggerExceptionsRequest,
     },
-    user::GetResponse as GetUserResponse,
     user::{
         CreateRequest as CreateUserRequest, CreateResponse as CreateUserResponse,
         GetAvailableResponse as GetAvailableUsersResponse,
-        GetCurrentResponse as GetCurrentUserResponse,
+        GetCurrentResponse as GetCurrentUserResponse, GetResponse as GetUserResponse,
     },
     EmptySuccess, Response,
 };
@@ -70,7 +70,7 @@ pub use crate::{
             AnnotatedComment, Comment, CommentFilter, CommentsIterPage, Continuation,
             EitherLabelling, Entity, HasAnnotations, Id as CommentId, Label, Message, MessageBody,
             MessageSignature, MessageSubject, NewAnnotatedComment, NewComment, NewEntities,
-            NewLabelling, PropertyMap, PropertyValue, Sentiment, SyncCommentsResponse,
+            NewLabelling, PropertyMap, PropertyValue, Sentiment, SyncCommentsResponse, ThreadId,
             Uid as CommentUid,
         },
         dataset::{
@@ -350,10 +350,10 @@ impl Client {
         )
     }
 
-    pub fn put_comment_audio(
+    pub fn set_audio_for_conversation(
         &self,
-        source_id: &SourceId,
-        comment_id: &CommentId,
+        source_name: &SourceFullName,
+        thread_id: &ThreadId,
         audio_path: impl AsRef<Path>,
     ) -> Result<()> {
         let form = Form::new()
@@ -362,9 +362,14 @@ impl Client {
                 message: "PUT comment audio operation failed".to_owned(),
                 source: source.into(),
             })?;
+        let endpoint = self.endpoints.conversation_audio(
+            &source_name.project,
+            &source_name.source,
+            thread_id,
+        )?;
         let http_response = self
             .http_client
-            .put(self.endpoints.comment_audio(source_id, comment_id)?)
+            .put(endpoint)
             .headers(self.headers.clone())
             .multipart(form)
             .send()
@@ -1173,7 +1178,7 @@ impl Endpoints {
 
     fn source_by_name(&self, source_name: &SourceFullName) -> Result<Url> {
         self.base
-            .join(&format!("/api/v1/sources/{}", source_name.0))
+            .join(&format!("/api/v1/sources/{}", source_name))
             .map_err(|source| Error::UrlParseError {
                 source,
                 message: format!(
@@ -1185,7 +1190,7 @@ impl Endpoints {
 
     fn comments(&self, source_name: &SourceFullName) -> Result<Url> {
         self.base
-            .join(&format!("/api/_private/sources/{}/comments", source_name.0))
+            .join(&format!("/api/_private/sources/{}/comments", source_name))
             .map_err(|source| Error::UrlParseError {
                 source,
                 message: format!(
@@ -1231,16 +1236,20 @@ impl Endpoints {
             })
     }
 
-    fn comment_audio(&self, source_id: &SourceId, comment_id: &CommentId) -> Result<Url> {
+    fn conversation_audio(
+        &self,
+        source_name: &SourceFullName,
+        thread_id: &ThreadId,
+    ) -> Result<Url> {
         self.base
             .join(&format!(
-                "/api/_private/sources/id:{}/comments/{}/audio",
-                source_id.0, comment_id.0
+                "/api/v2beta/projects/{}/sources/{}/conversations/{}",
+                source_name.project.0, source_name.source.0, thread_id.0,
             ))
             .map_err(|source| Error::UrlParseError {
                 message: format!(
-                    "Could not build audio content URL for source id `{}` and comment id `{}`.",
-                    source_id.0, comment_id.0,
+                    "Could not build audio URL for project `{}` source `{}` and thread id `{}`",
+                    source_name.project, source_name.id, source_name.thread_id.0,
                 ),
                 source,
             })
