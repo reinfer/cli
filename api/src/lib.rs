@@ -493,7 +493,7 @@ impl Client {
                 labelling,
                 entities,
             },
-            Retry::No,
+            Retry::Yes,
         )
     }
 
