@@ -1,9 +1,13 @@
 # Unreleased
 
+# v0.12.0
+
 ## Added
- - Display project ids when listing projects
- - Add support for getting or deleting a single user
- - Upgrade all dependencies to their latest released version
+
+- Display project ids when listing projects
+- Add support for getting or deleting a single user
+- Upgrade all dependencies to their latest released version
+- Enable retry logic for uploading annotations
 
 # v0.11.0
 
