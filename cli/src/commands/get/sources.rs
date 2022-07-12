@@ -1,8 +1,9 @@
 use anyhow::{Context, Result};
 use reinfer_client::{Client, SourceIdentifier};
+use std::collections::HashMap;
 use structopt::StructOpt;
 
-use crate::printer::Printer;
+use crate::printer::{PrintableSource, Printer};
 
 #[derive(Debug, StructOpt)]
 pub struct GetSourcesArgs {
@@ -26,5 +27,25 @@ pub fn get(client: &Client, args: &GetSourcesArgs, printer: &Printer) -> Result<
         });
         sources
     };
-    printer.print_resources(&sources)
+
+    let buckets: HashMap<_, _> = client
+        .get_buckets()
+        .context("Operation to list buckets has failed.")?
+        .into_iter()
+        .map(|bucket| (bucket.id.clone(), bucket))
+        .collect();
+
+    let printable_sources: Vec<PrintableSource> = sources
+        .into_iter()
+        .map(|source| {
+            let bucket = source
+                .bucket_id
+                .as_ref()
+                .and_then(|id| buckets.get(id))
+                .cloned();
+            PrintableSource { source, bucket }
+        })
+        .collect();
+
+    printer.print_resources(&printable_sources)
 }
