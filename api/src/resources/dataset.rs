@@ -91,7 +91,7 @@ impl FromStr for Identifier {
     type Err = Error;
 
     fn from_str(string: &str) -> Result<Self> {
-        if string.chars().all(|c| c.is_digit(16)) {
+        if string.chars().all(|c| c.is_ascii_hexdigit()) {
             Ok(Identifier::Id(Id(string.into())))
         } else {
             FullName::from_str(string).map(Identifier::FullName)
