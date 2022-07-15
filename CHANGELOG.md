@@ -1,4 +1,5 @@
 # Unreleased
+- `re get source` and `re get sources` will show bucket name if exists.
 
 # v0.12.0
 
@@ -8,6 +9,7 @@
 - Add support for getting or deleting a single user
 - Upgrade all dependencies to their latest released version
 - Enable retry logic for uploading annotations
+- Add support for optionally setting a transform tag on a source
 
 # v0.11.0
 

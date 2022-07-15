@@ -1,7 +1,7 @@
 use colored::Colorize;
 use prettytable::{cell, format, row, Row, Table};
 use reinfer_client::{Bucket, Dataset, Project, Source, Trigger, User};
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 
 use anyhow::{anyhow, Context, Error, Result};
 use std::{
@@ -129,6 +129,55 @@ impl DisplayTable for Source {
                 None => "missing".dimmed(),
             },
             self.title,
+        ]
+    }
+}
+
+/// Source with additional fields for printing
+/// Serializes to a Source
+#[derive(Debug)]
+pub struct PrintableSource {
+    pub source: Source,
+    pub bucket: Option<Bucket>,
+}
+
+impl Serialize for PrintableSource {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        Serialize::serialize(&self.source, serializer)
+    }
+}
+
+impl DisplayTable for PrintableSource {
+    fn to_table_headers() -> Row {
+        row![bFg => "Name", "ID", "Updated (UTC)", "Transform Tag", "Bucket", "Title"]
+    }
+
+    fn to_table_row(&self) -> Row {
+        let full_name = format!(
+            "{}{}{}",
+            self.source.owner.0.dimmed(),
+            "/".dimmed(),
+            self.source.name.0
+        );
+        row![
+            full_name,
+            self.source.id.0,
+            self.source.updated_at.format("%Y-%m-%d %H:%M:%S"),
+            match &self.source.transform_tag {
+                Some(transform_tag) => transform_tag.0.as_str().into(),
+                None => "missing".dimmed(),
+            },
+            match &self.bucket {
+                Some(bucket) => bucket.name.0.as_str().into(),
+                None => match &self.source.bucket_id {
+                    Some(bucket_id) => bucket_id.0.as_str().dimmed(),
+                    None => "none".dimmed(),
+                },
+            },
+            self.source.title
         ]
     }
 }
