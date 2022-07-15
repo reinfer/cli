@@ -1,4 +1,5 @@
 use indicatif::{ProgressBar, ProgressStyle};
+use std::fmt::Write;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -80,14 +81,18 @@ where
 {
     use std::ops::Deref;
     let mut template_str = String::new();
-    template_str.push_str(&format!("{} ", LOG_PREFIX_INFO.deref()));
-    template_str.push_str("{spinner:.green} ");
-    template_str.push_str("[{elapsed_precise}] {prefix} ");
+    write!(template_str, "{} ", LOG_PREFIX_INFO.deref()).unwrap();
+    write!(template_str, "{{spinner:.green}} ").unwrap();
+    write!(template_str, "[{{elapsed_precise}}] {{prefix}} ").unwrap();
 
     match (max_progress_value.is_some(), options.bytes_units) {
-        (true, true) => template_str.push_str("{bar:32.cyan/blue} {bytes} / {total_bytes} ({eta})"),
-        (true, false) => template_str.push_str("{bar:32.cyan/blue} {msg} ({eta})"),
-        _ => template_str.push_str("{msg}"),
+        (true, true) => write!(
+            template_str,
+            "{{bar:32.cyan/blue}} {{bytes}} / {{total_bytes}} ({{eta}})"
+        )
+        .unwrap(),
+        (true, false) => write!(template_str, "{{bar:32.cyan/blue}} {{msg}} ({{eta}})").unwrap(),
+        _ => write!(template_str, "{{msg}}").unwrap(),
     }
 
     let progress_bar = ProgressBar::new(max_progress_value.unwrap_or(0));
