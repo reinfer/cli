@@ -1,4 +1,5 @@
 # Unreleased
+- `re update source` can now update the source's transform tag
 - `re get source` and `re get sources` will show bucket name if exists.
 
 # v0.12.0

@@ -211,6 +211,12 @@ pub struct UpdateSource<'request> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sensitive_properties: Option<Vec<&'request str>>,
+
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "email_transform_tag"
+    )]
+    pub transform_tag: Option<&'request TransformTag>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
