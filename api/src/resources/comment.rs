@@ -95,6 +95,8 @@ pub struct UpdateAnnotationsRequest<'a> {
     pub labelling: Option<&'a [NewLabelling]>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entities: Option<&'a NewEntities>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub moon_forms: Option<&'a [NewMoonForm]>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -361,6 +363,8 @@ pub struct AnnotatedComment {
     pub entities: Option<Entities>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thread_properties: Option<ThreadProperties>,
+    #[serde(skip_serializing_if = "should_skip_serializing_optional_vec", default)]
+    pub moon_forms: Option<Vec<MoonForm>>,
 }
 
 pub fn get_default_labelling_group(labelling: &Option<Vec<Labelling>>) -> Option<&Labelling> {
@@ -483,6 +487,8 @@ pub struct NewAnnotatedComment {
     pub entities: Option<NewEntities>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub audio_path: Option<PathBuf>,
+    #[serde(skip_serializing_if = "should_skip_serializing_optional_vec", default)]
+    pub moon_forms: Option<Vec<NewMoonForm>>,
 }
 
 impl<T> HasAnnotations for Option<T>
@@ -563,6 +569,36 @@ pub struct NewEntities {
     pub dismissed: Vec<NewEntity>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct MoonFormCapture {
+    pub label: Label,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub fields: Vec<Entity>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct MoonForm {
+    pub group: LabelGroupName,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub assigned: Vec<MoonFormCapture>,
+    #[serde(skip_serializing_if = "should_skip_serializing_optional_vec", default)]
+    pub predicted: Option<Vec<MoonFormCapture>>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct NewMoonFormCapture {
+    pub label: Label,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub fields: Vec<NewEntity>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct NewMoonForm {
+    pub group: LabelGroupName,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub assigned: Vec<NewMoonFormCapture>,
+}
+
 pub trait HasAnnotations {
     fn has_annotations(&self) -> bool;
 }
@@ -573,7 +609,7 @@ impl HasAnnotations for NewEntities {
     }
 }
 
-fn should_skip_serializing_optional_vec<T>(maybe_vec: &Option<Vec<T>>) -> bool {
+pub fn should_skip_serializing_optional_vec<T>(maybe_vec: &Option<Vec<T>>) -> bool {
     if let Some(actual_vec) = maybe_vec {
         actual_vec.is_empty()
     } else {

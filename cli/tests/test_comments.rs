@@ -6,22 +6,40 @@ use reinfer_client::{AnnotatedComment, NewAnnotatedComment};
 #[test]
 fn test_comments_lifecycle_basic() {
     const SAMPLE_BASIC: &str = include_str!("./samples/basic.jsonl");
-    check_comments_lifecycle(SAMPLE_BASIC);
+    check_comments_lifecycle(SAMPLE_BASIC, vec!["--allow-duplicates"]);
+}
+
+#[test]
+fn test_comments_lifecycle_labellings() {
+    const SAMPLE_LABELLING: &str = include_str!("./samples/labelling.jsonl");
+    check_comments_lifecycle(SAMPLE_LABELLING, vec!["--allow-duplicates"]);
 }
 
 #[test]
 fn test_comments_lifecycle_legacy_labelling() {
     const SAMPLE_LEGACY_LABELLING: &str = include_str!("./samples/legacy_labelling.jsonl");
-    check_comments_lifecycle(SAMPLE_LEGACY_LABELLING);
+    check_comments_lifecycle(SAMPLE_LEGACY_LABELLING, vec!["--allow-duplicates"]);
+}
+
+#[test]
+fn test_comments_lifecycle_moon_forms() {
+    const SAMPLE_MOON_LABELLING: &str = include_str!("./samples/moon_forms.jsonl");
+    // check without moon forms
+    check_comments_lifecycle(SAMPLE_MOON_LABELLING, vec!["--allow-duplicates"]);
+    // and with moon forms
+    check_comments_lifecycle(
+        SAMPLE_MOON_LABELLING,
+        vec!["--allow-duplicates", "--use-moon-forms"],
+    );
 }
 
 #[test]
 fn test_comments_lifecycle_audio() {
     const SAMPLE_AUDIO: &str = include_str!("./samples/audio.jsonl");
-    check_comments_lifecycle(SAMPLE_AUDIO);
+    check_comments_lifecycle(SAMPLE_AUDIO, vec!["--allow-duplicates"]);
 }
 
-fn check_comments_lifecycle(comments_str: &str) {
+fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
     let annotated_comments: Vec<NewAnnotatedComment> = comments_str
         .lines()
         .map(serde_json::from_str)
@@ -33,12 +51,14 @@ fn check_comments_lifecycle(comments_str: &str) {
 
     // Upload our test data
     let output = cli.run_with_stdin(
-        &[
+        &([
             "create",
             "comments",
-            "--allow-duplicates",
             &format!("--source={}", source.identifier()),
-        ],
+        ]
+        .into_iter()
+        .chain(args.into_iter()))
+        .collect::<Vec<&str>>(),
         comments_str.as_bytes(),
     );
     assert!(output.is_empty());
