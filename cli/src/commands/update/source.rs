@@ -1,7 +1,7 @@
 use crate::printer::Printer;
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::{BucketIdentifier, Client, SourceIdentifier, UpdateSource};
+use reinfer_client::{BucketIdentifier, Client, SourceIdentifier, TransformTag, UpdateSource};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -25,6 +25,10 @@ pub struct UpdateSourceArgs {
     #[structopt(long = "bucket")]
     /// Bucket to pull emails from.
     bucket: Option<BucketIdentifier>,
+
+    #[structopt(long = "transform-tag")]
+    /// Set the transform tag of the source
+    transform_tag: Option<TransformTag>,
 }
 
 pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Result<()> {
@@ -34,6 +38,7 @@ pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Re
         description,
         should_translate,
         bucket,
+        transform_tag,
     } = args;
 
     let bucket_id = match bucket.to_owned() {
@@ -64,6 +69,7 @@ pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Re
                 should_translate: *should_translate,
                 bucket_id,
                 sensitive_properties: None,
+                transform_tag: transform_tag.as_ref(),
             },
         )
         .context("Operation to update a source has failed")?;
