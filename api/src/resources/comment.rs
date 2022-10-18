@@ -47,7 +47,7 @@ impl FromStr for Uid {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct ThreadId(pub String);
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct CommentFilter(pub JsonValue);
 
 impl Default for CommentFilter {
