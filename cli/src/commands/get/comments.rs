@@ -98,6 +98,7 @@ pub fn get_single(client: &Client, args: &GetSingleCommentArgs) -> Result<()> {
             labelling: None,
             entities: None,
             thread_properties: None,
+            moon_forms: None,
         }),
         &mut writer,
     )
@@ -234,6 +235,7 @@ fn download_comments(
                         labelling: None,
                         entities: None,
                         thread_properties: None,
+                        moon_forms: None,
                     }),
                     &mut writer,
                 )

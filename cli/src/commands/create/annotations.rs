@@ -3,9 +3,9 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use log::info;
 use reinfer_client::{
-    resources::comment::{EitherLabelling, HasAnnotations},
+    resources::comment::{should_skip_serializing_optional_vec, EitherLabelling, HasAnnotations},
     Client, CommentId, CommentUid, DatasetFullName, DatasetIdentifier, NewEntities, NewLabelling,
-    Source, SourceIdentifier,
+    NewMoonForm, Source, SourceIdentifier,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -36,6 +36,11 @@ pub struct CreateAnnotationsArgs {
     #[structopt(long)]
     /// Don't display a progress bar (only applicable when --file is used).
     no_progress: bool,
+
+    #[structopt(long)]
+    /// Whether to use the moon_forms field when creating annotations
+    /// for a comment.
+    use_moon_forms: bool,
 }
 
 pub fn create(client: &Client, args: &CreateAnnotationsArgs) -> Result<()> {
@@ -75,7 +80,14 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs) -> Result<()> {
             } else {
                 Some(progress_bar(file_metadata.len(), &statistics))
             };
-            upload_annotations_from_reader(client, &source, file, &statistics, &dataset_name)?;
+            upload_annotations_from_reader(
+                client,
+                &source,
+                file,
+                &statistics,
+                &dataset_name,
+                args.use_moon_forms,
+            )?;
             if let Some(mut progress) = progress {
                 progress.done();
             }
@@ -94,6 +106,7 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs) -> Result<()> {
                 BufReader::new(io::stdin()),
                 &statistics,
                 &dataset_name,
+                args.use_moon_forms,
             )?;
             statistics
         }
@@ -113,13 +126,14 @@ fn upload_annotations_from_reader(
     annotations: impl BufRead,
     statistics: &Statistics,
     dataset_name: &DatasetFullName,
+    use_moon_forms: bool,
 ) -> Result<()> {
     for read_comment_result in read_annotations_iter(annotations, Some(statistics)) {
         let new_comment = read_comment_result?;
         if new_comment.has_annotations() {
             let comment_uid = CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0));
-            client
-                .update_labelling(
+            (if !use_moon_forms {
+                client.update_labelling(
                     dataset_name,
                     &comment_uid,
                     new_comment
@@ -127,13 +141,23 @@ fn upload_annotations_from_reader(
                         .map(Into::<Vec<NewLabelling>>::into)
                         .as_deref(),
                     new_comment.entities.as_ref(),
+                    None,
                 )
-                .with_context(|| {
-                    format!(
-                        "Could not update labelling for comment `{}`",
-                        &comment_uid.0
-                    )
-                })?;
+            } else {
+                client.update_labelling(
+                    dataset_name,
+                    &comment_uid,
+                    None,
+                    None,
+                    new_comment.moon_forms.as_deref(),
+                )
+            })
+            .with_context(|| {
+                format!(
+                    "Could not update labelling for comment `{}`",
+                    &comment_uid.0
+                )
+            })?;
             statistics.add_annotation();
         }
     }
@@ -156,11 +180,15 @@ struct NewAnnotation {
     pub labelling: Option<EitherLabelling>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entities: Option<NewEntities>,
+    #[serde(skip_serializing_if = "should_skip_serializing_optional_vec", default)]
+    pub moon_forms: Option<Vec<NewMoonForm>>,
 }
 
 impl HasAnnotations for NewAnnotation {
     fn has_annotations(&self) -> bool {
-        self.labelling.has_annotations() || self.entities.has_annotations()
+        self.labelling.has_annotations()
+            || self.entities.has_annotations()
+            || self.moon_forms.has_annotations()
     }
 }
 

@@ -4,7 +4,7 @@ use colored::Colorize;
 use log::{debug, info};
 use reinfer_client::{
     Client, CommentId, CommentUid, DatasetFullName, DatasetIdentifier, NewAnnotatedComment,
-    NewComment, NewEntities, NewLabelling, Source, SourceIdentifier,
+    NewComment, NewEntities, NewLabelling, NewMoonForm, Source, SourceIdentifier,
 };
 use std::{
     collections::HashSet,
@@ -51,6 +51,11 @@ pub struct CreateCommentsArgs {
     /// If not set, the upload will halt when encountering a comment with an ID
     /// which is already associated to different data on the platform.
     overwrite: bool,
+
+    #[structopt(long)]
+    /// Whether to use the moon_forms field when creating annotations
+    /// for a comment.
+    use_moon_forms: bool,
 }
 
 pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
@@ -121,6 +126,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
                 dataset_name.as_ref(),
                 args.overwrite,
                 args.allow_duplicates,
+                args.use_moon_forms,
             )?;
             if let Some(mut progress) = progress {
                 progress.done();
@@ -146,6 +152,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
                 dataset_name.as_ref(),
                 args.overwrite,
                 args.allow_duplicates,
+                args.use_moon_forms,
             )?;
             statistics
         }
@@ -225,7 +232,12 @@ fn check_no_duplicate_ids(comments: impl BufRead) -> Result<()> {
     Ok(())
 }
 
-type Annotation = (CommentUid, Option<Vec<NewLabelling>>, Option<NewEntities>);
+type Annotation = (
+    CommentUid,
+    Option<Vec<NewLabelling>>,
+    Option<NewEntities>,
+    Option<Vec<NewMoonForm>>,
+);
 
 #[allow(clippy::too_many_arguments)]
 fn upload_batch(
@@ -272,13 +284,14 @@ fn upload_batch(
 
     // Upload annotations
     if let Some(dataset_name) = dataset_name.as_ref() {
-        for (comment_uid, labelling, entities) in annotations.iter() {
+        for (comment_uid, labelling, entities, moon_forms) in annotations.iter() {
             client
                 .update_labelling(
                     dataset_name,
                     comment_uid,
                     labelling.as_deref(),
                     entities.as_ref(),
+                    moon_forms.as_deref(),
                 )
                 .with_context(|| {
                     format!("Could not update labelling for comment `{}`", comment_uid.0,)
@@ -313,6 +326,7 @@ fn upload_comments_from_reader(
     dataset_name: Option<&DatasetFullName>,
     overwrite: bool,
     allow_duplicates: bool,
+    use_moon_forms: bool,
 ) -> Result<()> {
     assert!(batch_size > 0);
 
@@ -335,11 +349,21 @@ fn upload_comments_from_reader(
         let new_comment = read_comment_result?;
 
         if dataset_name.is_some() && new_comment.has_annotations() {
-            annotations.push((
-                CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0)),
-                new_comment.labelling.map(Into::into),
-                new_comment.entities,
-            ));
+            if !use_moon_forms {
+                annotations.push((
+                    CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0)),
+                    new_comment.labelling.map(Into::into),
+                    new_comment.entities,
+                    None,
+                ));
+            } else {
+                annotations.push((
+                    CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0)),
+                    None,
+                    None,
+                    new_comment.moon_forms.map(Into::into),
+                ));
+            };
         }
 
         if let Some(audio_path) = new_comment.audio_path {

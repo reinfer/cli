@@ -70,7 +70,7 @@ pub use crate::{
             AnnotatedComment, Comment, CommentFilter, CommentsIterPage, Continuation,
             EitherLabelling, Entity, HasAnnotations, Id as CommentId, Label, Message, MessageBody,
             MessageSignature, MessageSubject, NewAnnotatedComment, NewComment, NewEntities,
-            NewLabelling, PropertyMap, PropertyValue, Sentiment, SyncCommentsResponse,
+            NewLabelling, NewMoonForm, PropertyMap, PropertyValue, Sentiment, SyncCommentsResponse,
             Uid as CommentUid,
         },
         dataset::{
@@ -486,12 +486,14 @@ impl Client {
         comment_uid: &CommentUid,
         labelling: Option<&[NewLabelling]>,
         entities: Option<&NewEntities>,
+        moon_forms: Option<&[NewMoonForm]>,
     ) -> Result<AnnotatedComment> {
         self.post::<_, _, AnnotatedComment>(
             self.endpoints.post_labelling(dataset_name, comment_uid)?,
             UpdateAnnotationsRequest {
                 labelling,
                 entities,
+                moon_forms,
             },
             Retry::Yes,
         )
