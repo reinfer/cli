@@ -396,7 +396,7 @@ impl HasAnnotations for AnnotatedComment {
             .as_ref()
             .map(|entities| !entities.assigned.is_empty() || !entities.dismissed.is_empty())
             .unwrap_or(false);
-        has_labels || has_entities
+        has_labels || has_entities || self.moon_forms.has_annotations()
     }
 }
 
@@ -500,9 +500,23 @@ where
     }
 }
 
+impl HasAnnotations for Vec<MoonForm> {
+    fn has_annotations(&self) -> bool {
+        self.iter().any(|form| !form.assigned.is_empty())
+    }
+}
+
+impl HasAnnotations for Vec<NewMoonForm> {
+    fn has_annotations(&self) -> bool {
+        self.iter().any(|form| !form.assigned.is_empty())
+    }
+}
+
 impl NewAnnotatedComment {
     pub fn has_annotations(&self) -> bool {
-        self.labelling.has_annotations() || self.entities.has_annotations()
+        self.labelling.has_annotations()
+            || self.entities.has_annotations()
+            || self.moon_forms.has_annotations()
     }
 }
 

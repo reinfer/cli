@@ -186,7 +186,9 @@ struct NewAnnotation {
 
 impl HasAnnotations for NewAnnotation {
     fn has_annotations(&self) -> bool {
-        self.labelling.has_annotations() || self.entities.has_annotations()
+        self.labelling.has_annotations()
+            || self.entities.has_annotations()
+            || self.moon_forms.has_annotations()
     }
 }
 
