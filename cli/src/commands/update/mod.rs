@@ -1,8 +1,12 @@
 mod dataset;
 mod project;
 mod source;
+mod users;
 
-use self::{dataset::UpdateDatasetArgs, project::UpdateProjectArgs, source::UpdateSourceArgs};
+use self::{
+    dataset::UpdateDatasetArgs, project::UpdateProjectArgs, source::UpdateSourceArgs,
+    users::UpdateUsersArgs,
+};
 use crate::printer::Printer;
 use anyhow::Result;
 use reinfer_client::Client;
@@ -21,6 +25,10 @@ pub enum UpdateArgs {
     #[structopt(name = "project")]
     /// Update an existing project
     Project(UpdateProjectArgs),
+
+    #[structopt(name = "users")]
+    /// Update existing users
+    Users(UpdateUsersArgs),
 }
 
 pub fn run(update_args: &UpdateArgs, client: Client, printer: &Printer) -> Result<()> {
@@ -28,5 +36,6 @@ pub fn run(update_args: &UpdateArgs, client: Client, printer: &Printer) -> Resul
         UpdateArgs::Source(source_args) => source::update(&client, source_args, printer),
         UpdateArgs::Dataset(dataset_args) => dataset::update(&client, dataset_args, printer),
         UpdateArgs::Project(project_args) => project::update(&client, project_args, printer),
+        UpdateArgs::Users(users_args) => users::update(&client, users_args),
     }
 }

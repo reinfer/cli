@@ -265,6 +265,25 @@ impl FromStr for GlobalPermission {
     }
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Deserialize)]
+pub struct UpdateUser {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub organisation_permissions: Option<HashMap<ProjectName, Vec<ProjectPermission>>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub global_permissions: Option<Vec<GlobalPermission>>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub(crate) struct PostUserRequest<'request> {
+    pub user: &'request UpdateUser,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct PostUserResponse {
+    pub user: User,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

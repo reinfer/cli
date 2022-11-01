@@ -1,3 +1,9 @@
+# Unreleased
+
+## Added
+
+- `re update users` for bulk user permission updates
+
 # v0.12.1
 
 ## Added
