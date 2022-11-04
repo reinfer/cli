@@ -40,7 +40,7 @@ impl TestProject {
 
 impl Drop for TestProject {
     fn drop(&mut self) {
-        let output = TestCli::get().run(&["delete", "project", self.name(), "--force"]);
+        let output = TestCli::get().run(["delete", "project", self.name(), "--force"]);
         assert!(output.is_empty());
     }
 }
@@ -52,13 +52,13 @@ fn test_test_project() {
 
     let name = project.name().to_owned();
 
-    let output = cli.run(&["get", "projects"]);
+    let output = cli.run(["get", "projects"]);
     assert!(output.contains(&name));
 
     drop(project);
 
     // RAII TestProject; should automatically clean up the temporary project on drop.
-    let output = cli.run(&["get", "projects"]);
+    let output = cli.run(["get", "projects"]);
     assert!(!output.contains(&name));
 }
 
@@ -68,15 +68,15 @@ fn test_list_multiple_projects() {
     let project1 = TestProject::new();
     let project2 = TestProject::new();
 
-    let output = cli.run(&["get", "projects"]);
+    let output = cli.run(["get", "projects"]);
     assert!(output.contains(project1.name()));
     assert!(output.contains(project2.name()));
 
-    let output = cli.run(&["get", "projects", project1.name()]);
+    let output = cli.run(["get", "projects", project1.name()]);
     assert!(output.contains(project1.name()));
     assert!(!output.contains(project2.name()));
 
-    let output = cli.run(&["get", "projects", project2.name()]);
+    let output = cli.run(["get", "projects", project2.name()]);
     assert!(!output.contains(project1.name()));
     assert!(output.contains(project2.name()));
 }
@@ -105,7 +105,7 @@ fn test_create_update_project_custom() {
     }
 
     let get_project_info = || -> ProjectInfo {
-        let output = cli.run(&["--output=json", "get", "projects", project.name()]);
+        let output = cli.run(["--output=json", "get", "projects", project.name()]);
         serde_json::from_str::<Project>(&output).unwrap().into()
     };
 
@@ -117,16 +117,16 @@ fn test_create_update_project_custom() {
     assert_eq!(get_project_info(), expected_project_info);
 
     // An empty update should be fine
-    cli.run(&["update", "project", project.name()]);
+    cli.run(["update", "project", project.name()]);
     assert_eq!(get_project_info(), expected_project_info);
 
     // Partial update
-    cli.run(&["update", "project", "--title=updated title", project.name()]);
+    cli.run(["update", "project", "--title=updated title", project.name()]);
     expected_project_info.title = "updated title".to_owned();
     assert_eq!(get_project_info(), expected_project_info);
 
     // Should be able to update all fields
-    cli.run(&[
+    cli.run([
         "update",
         "project",
         "--title=updated title for second time",
@@ -146,13 +146,13 @@ fn test_project_force_delete() {
     let name = project.name().to_owned();
     let source_name = format!("{}/a-source", name);
 
-    cli.run(&["create", "source", &source_name]);
+    cli.run(["create", "source", &source_name]);
 
     // Regular delete fails because of the source
 
     let output = cli
         .command()
-        .args(&["delete", "project", &name])
+        .args(["delete", "project", &name])
         .output()
         .unwrap();
     assert!(!output.status.success());
@@ -165,16 +165,16 @@ fn test_project_force_delete() {
 
     // The project still exists
 
-    let output = cli.run(&["get", "projects"]);
+    let output = cli.run(["get", "projects"]);
     assert!(output.contains(&name));
 
     // Force delete succeeds
 
-    cli.run(&["delete", "project", &name, "--force"]);
+    cli.run(["delete", "project", &name, "--force"]);
 
     // The project no longer exists
 
-    let output = cli.run(&["get", "projects"]);
+    let output = cli.run(["get", "projects"]);
     assert!(!output.contains(&name));
 
     // To avoid panic on drop because the project has already been deleted.

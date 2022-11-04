@@ -15,7 +15,7 @@ impl TestSource {
         let full_name = format!("{}/test-source-{}", project_name, Uuid::new_v4());
         let sep_index = project_name.len();
 
-        let output = cli.run(&["create", "source", &full_name]);
+        let output = cli.run(["create", "source", &full_name]);
         assert!(output.contains(&full_name));
 
         Self {
@@ -52,14 +52,14 @@ impl TestSource {
     }
 
     pub fn get(&self) -> Source {
-        let output = TestCli::get().run(&["--output=json", "get", "sources", self.identifier()]);
+        let output = TestCli::get().run(["--output=json", "get", "sources", self.identifier()]);
         serde_json::from_str::<Source>(&output).unwrap()
     }
 }
 
 impl Drop for TestSource {
     fn drop(&mut self) {
-        let output = TestCli::get().run(&["delete", "source", self.identifier()]);
+        let output = TestCli::get().run(["delete", "source", self.identifier()]);
         assert!(output.is_empty());
     }
 }
@@ -71,13 +71,13 @@ fn test_test_source() {
 
     let identifier = source.identifier().to_owned();
 
-    let output = cli.run(&["get", "sources"]);
+    let output = cli.run(["get", "sources"]);
     assert!(output.contains(&identifier));
 
     drop(source);
 
     // RAII TestSource; should automatically clean up the temporary source on drop.
-    let output = cli.run(&["get", "sources"]);
+    let output = cli.run(["get", "sources"]);
     assert!(!output.contains(&identifier));
 }
 
@@ -87,15 +87,15 @@ fn test_list_multiple_sources() {
     let source1 = TestSource::new();
     let source2 = TestSource::new();
 
-    let output = cli.run(&["get", "sources"]);
+    let output = cli.run(["get", "sources"]);
     assert!(output.contains(source1.identifier()));
     assert!(output.contains(source2.identifier()));
 
-    let output = cli.run(&["get", "sources", source1.identifier()]);
+    let output = cli.run(["get", "sources", source1.identifier()]);
     assert!(output.contains(source1.identifier()));
     assert!(!output.contains(source2.identifier()));
 
-    let output = cli.run(&["get", "sources", source2.identifier()]);
+    let output = cli.run(["get", "sources", source2.identifier()]);
     assert!(!output.contains(source1.identifier()));
     assert!(output.contains(source2.identifier()));
 }
@@ -137,7 +137,7 @@ fn test_create_update_source_custom() {
     }
 
     let get_source_info = || -> SourceInfo {
-        let output = cli.run(&["--output=json", "get", "sources", source.identifier()]);
+        let output = cli.run(["--output=json", "get", "sources", source.identifier()]);
         serde_json::from_str::<Source>(&output).unwrap().into()
     };
 
@@ -153,11 +153,11 @@ fn test_create_update_source_custom() {
     assert_eq!(get_source_info(), expected_source_info);
 
     // An empty update should be fine
-    cli.run(&["update", "source", source.identifier()]);
+    cli.run(["update", "source", source.identifier()]);
     assert_eq!(get_source_info(), expected_source_info);
 
     // Partial update
-    cli.run(&[
+    cli.run([
         "update",
         "source",
         "--title=updated title",
@@ -167,7 +167,7 @@ fn test_create_update_source_custom() {
     assert_eq!(get_source_info(), expected_source_info);
 
     // Should be able to update all fields
-    cli.run(&[
+    cli.run([
         "update",
         "source",
         "--title=updated title",
@@ -207,7 +207,7 @@ fn test_create_source_with_kind() {
     }
 
     let get_source_info = || -> SourceInfo {
-        let output = cli.run(&["--output=json", "get", "sources", source.identifier()]);
+        let output = cli.run(["--output=json", "get", "sources", source.identifier()]);
         serde_json::from_str::<Source>(&output).unwrap().into()
     };
 
@@ -244,7 +244,7 @@ fn test_create_source_with_transform_tag() {
     }
 
     let get_source_info = || -> SourceInfo {
-        let output = cli.run(&["--output=json", "get", "sources", source.identifier()]);
+        let output = cli.run(["--output=json", "get", "sources", source.identifier()]);
         serde_json::from_str::<Source>(&output).unwrap().into()
     };
 
@@ -263,7 +263,7 @@ fn test_create_source_with_invalid_transform_tag_fails() {
 
     let new_source_name = format!("{}/test-source-{}", owner, Uuid::new_v4());
 
-    let output = cli.run_and_error(&[
+    let output = cli.run_and_error([
         "create",
         "source",
         &new_source_name,
@@ -285,7 +285,7 @@ fn test_create_source_requires_owner() {
 
     let output = cli
         .command()
-        .args(&["create", "source", "source-without-owner"])
+        .args(["create", "source", "source-without-owner"])
         .output()
         .unwrap();
 

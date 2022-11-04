@@ -47,7 +47,7 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
                 bucket.full_name(),
                 bucket.id,
             );
-            let file_metadata = fs::metadata(&emails_path).with_context(|| {
+            let file_metadata = fs::metadata(emails_path).with_context(|| {
                 format!(
                     "Could not get file metadata for `{}`",
                     emails_path.display()

@@ -38,7 +38,7 @@ impl TestCli {
     }
 
     pub fn user(&self) -> User {
-        let output = self.run(&["--output=json", "get", "current-user"]);
+        let output = self.run(["--output=json", "get", "current-user"]);
         serde_json::from_str::<User>(&output).expect("Failed to deserialize user response")
     }
 

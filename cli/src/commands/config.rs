@@ -1,6 +1,6 @@
 use colored::Colorize;
 use log::{error, info, warn};
-use prettytable::{self, cell, row, Table};
+use prettytable::{self, row, Table};
 use reinfer_client::DEFAULT_ENDPOINT;
 use reqwest::Url;
 use std::path::Path;
