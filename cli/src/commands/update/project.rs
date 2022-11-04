@@ -4,7 +4,7 @@ use log::info;
 use reinfer_client::{Client, ProjectName, UpdateProject};
 use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Clone, Debug, StructOpt)]
 pub struct UpdateProjectArgs {
     #[structopt(name = "project-name")]
     /// Full name of the project
@@ -19,7 +19,7 @@ pub struct UpdateProjectArgs {
     description: Option<String>,
 }
 
-pub fn update(client: &Client, args: &UpdateProjectArgs, printer: &Printer) -> Result<()> {
+pub async fn update(client: &Client, args: UpdateProjectArgs, printer: &Printer) -> Result<()> {
     let UpdateProjectArgs {
         name,
         title,
@@ -28,12 +28,13 @@ pub fn update(client: &Client, args: &UpdateProjectArgs, printer: &Printer) -> R
 
     let project = client
         .update_project(
-            name,
+            &name,
             UpdateProject {
                 title: title.as_deref(),
                 description: description.as_deref(),
             },
         )
+        .await
         .context("Operation to update a project has failed")?;
     info!("Project `{}` updated successfully", project.name.0,);
     printer.print_resources(&[project])?;

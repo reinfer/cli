@@ -21,7 +21,7 @@ pub struct CreateTriggerExceptionArgs {
     uid: CommentUid,
 }
 
-pub fn create(
+pub async fn create(
     client: &Client,
     args: &CreateTriggerExceptionArgs,
     _printer: &Printer,
@@ -40,6 +40,7 @@ pub fn create(
                 uid,
             }],
         )
+        .await
         .context("Operation to create a trigger exception has failed")?;
     info!("New trigger exception created successfully");
     Ok(())

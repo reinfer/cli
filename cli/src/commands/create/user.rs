@@ -34,7 +34,7 @@ pub struct CreateUserArgs {
     send_welcome_email: bool,
 }
 
-pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Result<()> {
+pub async fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Result<()> {
     let CreateUserArgs {
         username,
         email,
@@ -63,6 +63,7 @@ pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Resu
             global_permissions,
             project_permissions: &project_permissions,
         })
+        .await
         .context("Operation to create a user has failed")?;
     log::info!(
         "New user `{}` with email `{}` [id: {}] created successfully",
@@ -74,6 +75,7 @@ pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Resu
     if *send_welcome_email {
         client
             .send_welcome_email(user.id.clone())
+            .await
             .context("Operation to send welcome email failed")?;
         log::info!("Welcome email sent for user '{}'", user.username.0);
     }

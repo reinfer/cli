@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use colored::Colorize;
+use futures::stream::StreamExt;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
@@ -8,9 +9,9 @@ use std::sync::{
 use structopt::StructOpt;
 
 use reinfer_client::{
-    resources::project::ForceDeleteProject, BucketIdentifier, Client, CommentId, CommentsIter,
+    resources::project::ForceDeleteProject, BucketIdentifier, Client, CommentId,
     CommentsIterTimerange, DatasetIdentifier, ProjectName, Source, SourceIdentifier,
-    UserIdentifier,
+    UserIdentifier, MAX_PAGE_SIZE,
 };
 
 use crate::progress::{Options as ProgressOptions, Progress};
@@ -103,23 +104,26 @@ pub enum DeleteArgs {
     },
 }
 
-pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
+pub async fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
     match delete_args {
         DeleteArgs::Source { source } => {
             client
                 .delete_source(source.clone())
+                .await
                 .context("Operation to delete source has failed.")?;
             log::info!("Deleted source.");
         }
         DeleteArgs::User { user } => {
             client
                 .delete_user(user.clone())
+                .await
                 .context("Operation to delete user has failed.")?;
             log::info!("Deleted user.");
         }
         DeleteArgs::Comments { source, comments } => {
             client
                 .delete_comments(source.clone(), comments)
+                .await
                 .context("Operation to delete comments has failed.")?;
             log::info!("Deleted comments.");
         }
@@ -130,7 +134,7 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
             to_timestamp,
             no_progress,
         } => {
-            let source = client.get_source(source_identifier.clone())?;
+            let source = client.get_source(source_identifier.clone()).await?;
             let show_progress = !no_progress;
             delete_comments_in_period(
                 &client,
@@ -142,17 +146,20 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
                 },
                 show_progress,
             )
+            .await
             .context("Operation to delete comments has failed.")?;
         }
         DeleteArgs::Dataset { dataset } => {
             client
                 .delete_dataset(dataset.clone())
+                .await
                 .context("Operation to delete dataset has failed.")?;
             log::info!("Deleted dataset.");
         }
         DeleteArgs::Bucket { bucket } => {
             client
                 .delete_bucket(bucket.clone())
+                .await
                 .context("Operation to delete bucket has failed.")?;
             log::info!("Deleted bucket.");
         }
@@ -164,6 +171,7 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
             };
             client
                 .delete_project(project, force_delete)
+                .await
                 .context("Operation to delete project has failed.")?;
             log::info!("Deleted project.");
         }
@@ -171,7 +179,7 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
     Ok(())
 }
 
-fn delete_comments_in_period(
+async fn delete_comments_in_period(
     client: &Client,
     source: Source,
     include_annotated: bool,
@@ -201,54 +209,52 @@ fn delete_comments_in_period(
 
         // This is the maximum number of comments which the API permits deleting in a single call.
         const DELETION_BATCH_SIZE: usize = 128;
+
         // Buffer to store comment IDs to delete - allow it to be slightly larger than the deletion
         // batch size so that if there's an incomplete page it'll increase the counts.
-        let mut comments_to_delete =
-            Vec::with_capacity(DELETION_BATCH_SIZE + CommentsIter::MAX_PAGE_SIZE);
+        let mut comments_to_delete = Vec::with_capacity(DELETION_BATCH_SIZE + MAX_PAGE_SIZE);
 
-        let delete_batch = |comment_ids: Vec<CommentId>| -> Result<()> {
-            client
-                .delete_comments(&source, &comment_ids)
-                .context("Operation to delete comments failed")?;
-            statistics.increment_deleted(comment_ids.len());
-            Ok(())
-        };
+        let source_name = source.full_name();
+        let comments = client.get_comments(&source_name, Some(MAX_PAGE_SIZE), timerange.clone());
+        futures::pin_mut!(comments); // pin the comment stream to the stack
 
-        client
-            .get_comments_iter(
-                &source.full_name(),
-                Some(CommentsIter::MAX_PAGE_SIZE),
-                timerange,
-            )
-            .try_for_each(|page| -> Result<()> {
-                let page = page.context("Operation to get comments failed")?;
-                let num_comments = page.len();
-                let comment_ids = page
-                    .into_iter()
-                    .filter_map(|comment| {
-                        if !include_annotated && comment.has_annotations {
-                            None
-                        } else {
-                            Some(comment.id)
-                        }
-                    })
-                    .collect::<Vec<_>>();
+        while let Some(page_result) = comments.next().await {
+            let page = page_result.context("Operation to get comments failed")?;
+            let num_comments = page.len();
+            let comment_ids = page
+                .into_iter()
+                .filter_map(|comment| {
+                    if !include_annotated && comment.has_annotations {
+                        None
+                    } else {
+                        Some(comment.id)
+                    }
+                })
+                .collect::<Vec<_>>();
 
-                let num_skipped = num_comments - comment_ids.len();
-                statistics.increment_skipped(num_skipped);
+            let num_skipped = num_comments - comment_ids.len();
+            statistics.increment_skipped(num_skipped);
 
-                comments_to_delete.extend(comment_ids);
-                while comments_to_delete.len() >= DELETION_BATCH_SIZE {
-                    let remainder = comments_to_delete.split_off(DELETION_BATCH_SIZE);
-                    delete_batch(std::mem::replace(&mut comments_to_delete, remainder))?;
-                }
-                Ok(())
-            })?;
+            comments_to_delete.extend(comment_ids);
+            while comments_to_delete.len() >= DELETION_BATCH_SIZE {
+                let remainder = comments_to_delete.split_off(DELETION_BATCH_SIZE);
+                let comment_ids = std::mem::replace(&mut comments_to_delete, remainder);
+                client
+                    .delete_comments(&source, &comment_ids)
+                    .await
+                    .context("Operation to delete comments failed")?;
+                statistics.increment_deleted(comment_ids.len());
+            }
+        }
 
         // Delete any comments left over in any potential last partial batch.
         if !comments_to_delete.is_empty() {
             assert!(comments_to_delete.len() < DELETION_BATCH_SIZE);
-            delete_batch(comments_to_delete)?;
+            client
+                .delete_comments(&source, &comments_to_delete)
+                .await
+                .context("Operation to delete comments failed")?;
+            statistics.increment_deleted(comments_to_delete.len());
         }
     }
     log::info!(
@@ -256,6 +262,7 @@ fn delete_comments_in_period(
         statistics.deleted(),
         statistics.skipped()
     );
+
     Ok(())
 }
 

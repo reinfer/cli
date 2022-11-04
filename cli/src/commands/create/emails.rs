@@ -34,9 +34,10 @@ pub struct CreateEmailsArgs {
     no_progress: bool,
 }
 
-pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
+pub async fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
     let bucket = client
         .get_bucket(args.bucket.clone())
+        .await
         .with_context(|| format!("Unable to get bucket {}", args.bucket))?;
 
     let statistics = match &args.emails_path {
@@ -63,7 +64,7 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
             } else {
                 Some(progress_bar(file_metadata.len(), &statistics))
             };
-            upload_emails_from_reader(client, &bucket, file, args.batch_size, &statistics)?;
+            upload_emails_from_reader(client, &bucket, file, args.batch_size, &statistics).await?;
             if let Some(mut progress) = progress {
                 progress.done();
             }
@@ -82,7 +83,8 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
                 BufReader::new(io::stdin()),
                 args.batch_size,
                 &statistics,
-            )?;
+            )
+            .await?;
             statistics
         }
     };
@@ -95,7 +97,7 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
     Ok(())
 }
 
-fn upload_emails_from_reader(
+async fn upload_emails_from_reader(
     client: &Client,
     bucket: &Bucket,
     mut emails: impl BufRead,
@@ -131,6 +133,7 @@ fn upload_emails_from_reader(
             // Upload emails
             client
                 .put_emails(&bucket.full_name(), &batch)
+                .await
                 .context("Could not upload batch of emails")?;
             statistics.add_emails(StatisticsUpdate {
                 uploaded: batch.len(),

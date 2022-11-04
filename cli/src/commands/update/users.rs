@@ -15,7 +15,7 @@ use structopt::StructOpt;
 
 use crate::progress::{Options as ProgressOptions, Progress};
 
-#[derive(Debug, StructOpt)]
+#[derive(Clone, Debug, StructOpt)]
 pub struct UpdateUsersArgs {
     #[structopt(short = "f", long = "file", parse(from_os_str))]
     /// Path to JSON file with users. If not specified, stdin will be used.
@@ -26,7 +26,7 @@ pub struct UpdateUsersArgs {
     no_progress: bool,
 }
 
-pub fn update(client: &Client, args: &UpdateUsersArgs) -> Result<()> {
+pub async fn update(client: &Client, args: &UpdateUsersArgs) -> Result<()> {
     let statistics = match &args.input_file {
         Some(input_file) => {
             info!("Processing users from file `{}`", input_file.display(),);
@@ -43,7 +43,7 @@ pub fn update(client: &Client, args: &UpdateUsersArgs) -> Result<()> {
             } else {
                 Some(progress_bar(file_metadata.len(), &statistics))
             };
-            update_users_from_reader(client, file, &statistics)?;
+            update_users_from_reader(client, file, &statistics).await?;
             if let Some(mut progress) = progress {
                 progress.done();
             }
@@ -52,7 +52,7 @@ pub fn update(client: &Client, args: &UpdateUsersArgs) -> Result<()> {
         None => {
             info!("Processing users from stdin",);
             let statistics = Statistics::new();
-            update_users_from_reader(client, BufReader::new(io::stdin()), &statistics)?;
+            update_users_from_reader(client, BufReader::new(io::stdin()), &statistics).await?;
             statistics
         }
     };
@@ -74,7 +74,7 @@ struct UserLine {
     update: UpdateUser,
 }
 
-fn update_users_from_reader(
+async fn update_users_from_reader(
     client: &Client,
     mut users: impl BufRead,
     statistics: &Statistics,
@@ -103,6 +103,7 @@ fn update_users_from_reader(
         // Upload users
         client
             .post_user(&user_line.id, user_line.update)
+            .await
             .context("Could not update user")?;
         statistics.add_user();
 

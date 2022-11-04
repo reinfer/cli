@@ -11,15 +11,17 @@ pub struct GetBucketsArgs {
     bucket: Option<BucketIdentifier>,
 }
 
-pub fn get(client: &Client, args: &GetBucketsArgs, printer: &Printer) -> Result<()> {
+pub async fn get(client: &Client, args: &GetBucketsArgs, printer: &Printer) -> Result<()> {
     let GetBucketsArgs { bucket } = args;
     let buckets = if let Some(bucket) = bucket {
         vec![client
             .get_bucket(bucket.clone())
+            .await
             .context("Operation to list buckets has failed.")?]
     } else {
         let mut buckets = client
             .get_buckets()
+            .await
             .context("Operation to list buckets has failed.")?;
         buckets.sort_unstable_by(|lhs, rhs| {
             (&lhs.owner.0, &lhs.name.0).cmp(&(&rhs.owner.0, &rhs.name.0))

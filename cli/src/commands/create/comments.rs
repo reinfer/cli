@@ -58,9 +58,10 @@ pub struct CreateCommentsArgs {
     use_moon_forms: bool,
 }
 
-pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
+pub async fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
     let source = client
         .get_source(args.source.clone())
+        .await
         .with_context(|| format!("Unable to get source {}", args.source))?;
     let source_name = source.full_name();
 
@@ -68,6 +69,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
         Some(dataset_ident) => Some(
             client
                 .get_dataset(dataset_ident.clone())
+                .await
                 .with_context(|| format!("Unable to get dataset {}", args.source))?
                 .full_name(),
         ),
@@ -127,7 +129,8 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
                 args.overwrite,
                 args.allow_duplicates,
                 args.use_moon_forms,
-            )?;
+            )
+            .await?;
             if let Some(mut progress) = progress {
                 progress.done();
             }
@@ -153,7 +156,8 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
                 args.overwrite,
                 args.allow_duplicates,
                 args.use_moon_forms,
-            )?;
+            )
+            .await?;
             statistics
         }
     };
@@ -240,7 +244,7 @@ type Annotation = (
 );
 
 #[allow(clippy::too_many_arguments)]
-fn upload_batch(
+async fn upload_batch(
     client: &Client,
     source: &Source,
     dataset_name: Option<&DatasetFullName>,
@@ -259,6 +263,7 @@ fn upload_batch(
     if !comments_to_put.is_empty() {
         client
             .put_comments(&source.full_name(), comments_to_put)
+            .await
             .context("Could not put batch of comments")?;
 
         uploaded += comments_to_put.len();
@@ -267,6 +272,7 @@ fn upload_batch(
     if !comments_to_sync.is_empty() {
         let result = client
             .sync_comments(&source.full_name(), comments_to_sync)
+            .await
             .context("Could not sync batch of comments")?;
 
         uploaded += comments_to_sync.len();
@@ -293,6 +299,7 @@ fn upload_batch(
                     entities.as_ref(),
                     moon_forms.as_deref(),
                 )
+                .await
                 .with_context(|| {
                     format!("Could not update labelling for comment `{}`", comment_uid.0,)
                 })?;
@@ -304,6 +311,7 @@ fn upload_batch(
     for (comment_id, audio_path) in audio_paths.iter() {
         client
             .put_comment_audio(&source.id, comment_id, audio_path)
+            .await
             .with_context(|| {
                 format!(
                     "Could not upload audio file at `{}` for comment id `{}",
@@ -317,7 +325,7 @@ fn upload_batch(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn upload_comments_from_reader(
+async fn upload_comments_from_reader(
     client: &Client,
     source: &Source,
     comments: impl BufRead,
@@ -386,7 +394,8 @@ fn upload_comments_from_reader(
                 &comments_to_sync,
                 &annotations,
                 &audio_paths,
-            )?;
+            )
+            .await?;
             comments_to_put.clear();
             comments_to_sync.clear();
             annotations.clear();
@@ -404,7 +413,8 @@ fn upload_comments_from_reader(
             &comments_to_sync,
             &annotations,
             &audio_paths,
-        )?;
+        )
+        .await?;
     }
 
     Ok(())
