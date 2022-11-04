@@ -63,12 +63,12 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
     );
     assert!(output.is_empty());
 
-    let output = cli.run(&["get", "comments", source.identifier()]);
+    let output = cli.run(["get", "comments", source.identifier()]);
     assert_eq!(output.lines().count(), annotated_comments.len());
 
     // Test getting a comment by id to check the content matches
     let test_comment = annotated_comments.get(0).unwrap().comment.clone();
-    let output = cli.run(&[
+    let output = cli.run([
         "get",
         "comment",
         &format!("--source={}", source.identifier()),
@@ -85,7 +85,7 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
     );
 
     // Deleting one comment reduces the comment count in the source
-    let output = cli.run(&[
+    let output = cli.run([
         "delete",
         "comments",
         &format!("--source={}", source.identifier()),
@@ -93,7 +93,7 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
     ]);
     assert!(output.is_empty());
 
-    let output = cli.run(&["get", "comments", source.identifier()]);
+    let output = cli.run(["get", "comments", source.identifier()]);
     assert_eq!(output.lines().count(), annotated_comments.len() - 1);
 
     // Delete all ids
@@ -106,7 +106,7 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
     let output = cli.run(&args);
     assert!(output.is_empty());
 
-    let output = cli.run(&["get", "comments", source.identifier()]);
+    let output = cli.run(["get", "comments", source.identifier()]);
     assert!(output.is_empty());
 }
 
@@ -130,7 +130,7 @@ fn test_delete_comments_in_range() {
 
     // Upload our test data
     let output = cli.run_with_stdin(
-        &[
+        [
             "create",
             "comments",
             "--allow-duplicates",
@@ -141,11 +141,11 @@ fn test_delete_comments_in_range() {
     );
     assert!(output.is_empty());
 
-    let uploaded_all = cli.run(&["get", "comments", source.identifier()]);
+    let uploaded_all = cli.run(["get", "comments", source.identifier()]);
     assert_eq!(uploaded_all.lines().count(), num_comments);
 
     // Download annotated comments and check count
-    let uploaded_annotated = cli.run(&[
+    let uploaded_annotated = cli.run([
         "get",
         "comments",
         "--reviewed-only",
@@ -163,7 +163,7 @@ fn test_delete_comments_in_range() {
     let to_timestamp_str = "2020-02-01T00:00:00Z";
     let to_timestamp = DateTime::parse_from_rfc3339(to_timestamp_str).unwrap();
 
-    cli.run(&[
+    cli.run([
         "delete",
         "bulk",
         "--source",
@@ -185,7 +185,7 @@ fn test_delete_comments_in_range() {
         .count();
 
     // Get all comments and check counts
-    let after_deleting_range = cli.run(&[
+    let after_deleting_range = cli.run([
         "get",
         "comments",
         "--dataset",
@@ -198,7 +198,7 @@ fn test_delete_comments_in_range() {
     );
 
     // Delete comments in source, excluding annotated comments
-    cli.run(&[
+    cli.run([
         "delete",
         "bulk",
         "--source",
@@ -207,7 +207,7 @@ fn test_delete_comments_in_range() {
     ]);
 
     // Get all comments and check that only annotated ones are left
-    let after_deleting_unannotated = cli.run(&[
+    let after_deleting_unannotated = cli.run([
         "get",
         "comments",
         "--dataset",
@@ -217,7 +217,7 @@ fn test_delete_comments_in_range() {
     assert_eq!(after_deleting_unannotated.lines().count(), num_annotated);
 
     // Delete all comments
-    cli.run(&[
+    cli.run([
         "delete",
         "bulk",
         &format!("--source={}", source.identifier()),
@@ -225,7 +225,7 @@ fn test_delete_comments_in_range() {
     ]);
 
     // Get all comments and check there are none left
-    let after_deleting_all = cli.run(&[
+    let after_deleting_all = cli.run([
         "get",
         "comments",
         "--dataset",

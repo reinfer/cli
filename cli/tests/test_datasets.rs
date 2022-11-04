@@ -20,7 +20,7 @@ impl TestDataset {
         let full_name = format!("{}/test-dataset-{}", user, Uuid::new_v4());
         let sep_index = user.len();
 
-        let output = cli.run(&["create", "dataset", &full_name]);
+        let output = cli.run(["create", "dataset", &full_name]);
         assert!(output.contains(&full_name));
 
         Self {
@@ -59,7 +59,7 @@ impl TestDataset {
 
 impl Drop for TestDataset {
     fn drop(&mut self) {
-        let output = TestCli::get().run(&["delete", "dataset", self.identifier()]);
+        let output = TestCli::get().run(["delete", "dataset", self.identifier()]);
         assert!(output.is_empty());
     }
 }
@@ -70,13 +70,13 @@ fn test_test_dataset() {
     let dataset = TestDataset::new();
     let identifier = dataset.identifier().to_owned();
 
-    let output = cli.run(&["get", "datasets"]);
+    let output = cli.run(["get", "datasets"]);
     assert!(output.contains(&identifier));
 
     drop(dataset);
 
     // RAII TestDataset; should automatically clean up the temporary dataset on drop.
-    let output = cli.run(&["get", "datasets"]);
+    let output = cli.run(["get", "datasets"]);
     assert!(!output.contains(&identifier));
 }
 
@@ -86,15 +86,15 @@ fn test_list_multiple_datasets() {
     let dataset1 = TestDataset::new();
     let dataset2 = TestDataset::new();
 
-    let output = cli.run(&["get", "datasets"]);
+    let output = cli.run(["get", "datasets"]);
     assert!(output.contains(dataset1.identifier()));
     assert!(output.contains(dataset2.identifier()));
 
-    let output = cli.run(&["get", "datasets", dataset1.identifier()]);
+    let output = cli.run(["get", "datasets", dataset1.identifier()]);
     assert!(output.contains(dataset1.identifier()));
     assert!(!output.contains(dataset2.identifier()));
 
-    let output = cli.run(&["get", "datasets", dataset2.identifier()]);
+    let output = cli.run(["get", "datasets", dataset2.identifier()]);
     assert!(!output.contains(dataset1.identifier()));
     assert!(output.contains(dataset2.identifier()));
 }
@@ -197,7 +197,7 @@ fn test_create_update_dataset_custom() {
     }
 
     let get_dataset_info = || -> DatasetInfo {
-        let output = cli.run(&["--output=json", "get", "datasets", dataset.identifier()]);
+        let output = cli.run(["--output=json", "get", "datasets", dataset.identifier()]);
         serde_json::from_str::<Dataset>(&output).unwrap().into()
     };
 
@@ -259,7 +259,7 @@ fn test_create_update_dataset_custom() {
     assert_eq!(get_dataset_info(), expected_dataset_info);
 
     // Partial update
-    cli.run(&[
+    cli.run([
         "update",
         "dataset",
         "--title=updated title",
@@ -271,7 +271,7 @@ fn test_create_update_dataset_custom() {
     // Should be able to update all fields
     let test_source = TestSource::new();
     let source = test_source.get();
-    cli.run(&[
+    cli.run([
         "update",
         "dataset",
         "--title=updated title",
@@ -286,11 +286,11 @@ fn test_create_update_dataset_custom() {
     assert_eq!(get_dataset_info(), expected_dataset_info);
 
     // An empty update should be fine, including leaving source ids untouched
-    cli.run(&["update", "dataset", dataset.identifier()]);
+    cli.run(["update", "dataset", dataset.identifier()]);
     assert_eq!(get_dataset_info(), expected_dataset_info);
 
     // Setting the sources flag with no ids should clear sources
-    cli.run(&["update", "dataset", dataset.identifier(), "--source"]);
+    cli.run(["update", "dataset", dataset.identifier(), "--source"]);
     expected_dataset_info.source_ids = vec![];
     assert_eq!(get_dataset_info(), expected_dataset_info);
 }
@@ -301,13 +301,13 @@ fn test_create_dataset_with_source() {
     let source = TestSource::new();
     let dataset = TestDataset::new_args(&[&format!("--source={}", source.identifier())]);
 
-    let output = cli.run(&["--output=json", "get", "datasets", dataset.identifier()]);
+    let output = cli.run(["--output=json", "get", "datasets", dataset.identifier()]);
     let dataset_info: Dataset = serde_json::from_str(output.trim()).unwrap();
     assert_eq!(&dataset_info.owner.0, dataset.owner());
     assert_eq!(&dataset_info.name.0, dataset.name());
     assert_eq!(dataset_info.source_ids.len(), 1);
 
-    let source_output = cli.run(&[
+    let source_output = cli.run([
         "--output=json",
         "get",
         "sources",
@@ -324,7 +324,7 @@ fn test_create_dataset_requires_owner() {
 
     let output = cli
         .command()
-        .args(&["create", "dataset", "dataset-without-owner"])
+        .args(["create", "dataset", "dataset-without-owner"])
         .output()
         .unwrap();
 
@@ -336,7 +336,7 @@ fn test_create_dataset_model_family() {
     let cli = TestCli::get();
     let dataset = TestDataset::new_args(&["--model-family==german"]);
 
-    let output = cli.run(&["--output=json", "get", "datasets", dataset.identifier()]);
+    let output = cli.run(["--output=json", "get", "datasets", dataset.identifier()]);
     let dataset_info: Dataset = serde_json::from_str(output.trim()).unwrap();
     assert_eq!(&dataset_info.owner.0, dataset.owner());
     assert_eq!(&dataset_info.name.0, dataset.name());
@@ -348,7 +348,7 @@ fn test_create_dataset_wrong_model_family() {
     let cli = TestCli::get();
     let output = cli
         .command()
-        .args(&[
+        .args([
             "create",
             "dataset",
             "--model-family==non-existent-family",
@@ -365,12 +365,12 @@ fn test_create_dataset_wrong_model_family() {
 fn test_create_dataset_copy_annotations() {
     let cli = TestCli::get();
     let dataset1 = TestDataset::new();
-    let dataset1_output = cli.run(&["--output=json", "get", "datasets", dataset1.identifier()]);
+    let dataset1_output = cli.run(["--output=json", "get", "datasets", dataset1.identifier()]);
     let dataset1_info: Dataset = serde_json::from_str(dataset1_output.trim()).unwrap();
 
     let output = cli
         .command()
-        .args(&[
+        .args([
             "create",
             "dataset",
             &format!("--copy-annotations-from={}", dataset1_info.id.0),

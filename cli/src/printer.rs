@@ -1,5 +1,5 @@
 use colored::Colorize;
-use prettytable::{cell, format, row, Row, Table};
+use prettytable::{format, row, Row, Table};
 use reinfer_client::{Bucket, Dataset, Project, Source, Trigger, User};
 use serde::{Serialize, Serializer};
 
