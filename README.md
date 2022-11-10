@@ -59,7 +59,7 @@ Statically linked binaries with no dependencies are provided for selected platfo
 
 ### Debian / Ubuntu
 
-You can download a `.deb` package [here](https://reinfer.io/public/cli/debian/reinfer-cli_0.12.0_amd64.deb).
+You can download a `.deb` package [here](https://reinfer.io/public/cli/debian/reinfer-cli_0.12.1_amd64.deb).
 
 ### From Source
 
