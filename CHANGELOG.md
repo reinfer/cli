@@ -1,6 +1,10 @@
-# Unreleased
+# v0.12.1
+
+## Added
+
 - `re update source` can now update the source's transform tag
 - `re get source` and `re get sources` will show bucket name if exists.
+- `re get comments` can now download predictions within a given timerange
 
 # v0.12.0
 
