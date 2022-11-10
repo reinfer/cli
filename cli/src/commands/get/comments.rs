@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use colored::Colorize;
 use reinfer_client::{
@@ -117,11 +117,18 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
     } = args;
 
     let by_timerange = from_timestamp.is_some() || to_timestamp.is_some();
-    if dataset.is_some() && by_timerange {
-        return Err(anyhow!(
-            "The `dataset` and `from/to-timestamp` options are mutually exclusive."
-        ));
+    if reviewed_only.unwrap_or_default() && by_timerange {
+        bail!("The `reviewed_only` and `from/to-timestamp` options are mutually exclusive.")
     }
+
+    if reviewed_only.unwrap_or_default() && dataset.is_none() {
+        bail!("Cannot get reviewed comments when `dataset` is not provided.")
+    }
+
+    if include_predictions.unwrap_or_default() && dataset.is_none() {
+        bail!("Cannot get predictions when `dataset` is not provided.")
+    }
+
     let file = match path {
         Some(path) => Some(
             File::create(path)
@@ -216,6 +223,7 @@ fn download_comments(
                 &statistics,
                 options.include_predictions,
                 writer,
+                options.timerange,
             )?;
         }
     } else {
@@ -256,9 +264,10 @@ fn get_comments_from_uids(
     statistics: &Arc<Statistics>,
     include_predictions: bool,
     mut writer: impl Write,
+    timerange: CommentsIterTimerange,
 ) -> Result<()> {
     client
-        .get_comments_iter(&source.full_name(), None, Default::default())
+        .get_comments_iter(&source.full_name(), None, timerange)
         .try_for_each(|page| {
             let page = page.context("Operation to get comments has failed.")?;
             if page.is_empty() {
