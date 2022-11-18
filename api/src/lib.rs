@@ -52,7 +52,7 @@ use crate::resources::{
     user::{
         CreateRequest as CreateUserRequest, CreateResponse as CreateUserResponse,
         GetAvailableResponse as GetAvailableUsersResponse,
-        GetCurrentResponse as GetCurrentUserResponse,
+        GetCurrentResponse as GetCurrentUserResponse, PostUserRequest, PostUserResponse,
     },
     EmptySuccess, Response,
 };
@@ -98,7 +98,7 @@ pub use crate::{
         },
         user::{
             Email, GlobalPermission, Id as UserId, Identifier as UserIdentifier,
-            ModifiedPermissions, NewUser, ProjectPermission, User, Username,
+            ModifiedPermissions, NewUser, ProjectPermission, UpdateUser, User, Username,
         },
     },
 };
@@ -347,6 +347,14 @@ impl Client {
         self.put(
             self.endpoints.put_emails(bucket_name)?,
             PutEmailsRequest { emails },
+        )
+    }
+
+    pub fn post_user(&self, user_id: &UserId, user: UpdateUser) -> Result<PostUserResponse> {
+        self.post(
+            self.endpoints.post_user(user_id)?,
+            PostUserRequest { user: &user },
+            Retry::Yes,
         )
     }
 
@@ -1257,6 +1265,15 @@ impl Endpoints {
                     "Could not build put emails URL for bucket `{}`.",
                     bucket_name,
                 ),
+            })
+    }
+
+    fn post_user(&self, user_id: &UserId) -> Result<Url> {
+        self.base
+            .join(&format!("/api/_private/users/{}", user_id.0))
+            .map_err(|source| Error::UrlParseError {
+                source,
+                message: format!("Could not build post user URL for user `{}`.", user_id.0,),
             })
     }
 
