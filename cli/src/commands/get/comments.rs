@@ -3,7 +3,8 @@ use chrono::{DateTime, Utc};
 use colored::Colorize;
 use reinfer_client::{
     AnnotatedComment, Client, CommentId, CommentsIterTimerange, DatasetFullName, DatasetIdentifier,
-    HasAnnotations, Source, SourceIdentifier,
+    Entities, HasAnnotations, LabelName, Labelling, ModelVersion, PredictedLabel, Source,
+    SourceIdentifier, DEFAULT_LABEL_GROUP_NAME,
 };
 use std::{
     fs::File,
@@ -53,6 +54,10 @@ pub struct GetManyCommentsArgs {
     #[structopt(long = "predictions")]
     /// Save predicted labels and entities for each comment.
     include_predictions: Option<bool>,
+
+    #[structopt(long = "model-version")]
+    /// Get predicted labels and entities from the specified model version rather than latest.
+    model_version: Option<String>,
 
     #[structopt(long = "reviewed-only")]
     /// Download reviewed comments only.
@@ -110,6 +115,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         dataset,
         no_progress,
         include_predictions,
+        model_version,
         reviewed_only,
         from_timestamp,
         to_timestamp,
@@ -121,7 +127,12 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         bail!("The `reviewed_only` and `from/to-timestamp` options are mutually exclusive.")
     }
 
-    if reviewed_only.unwrap_or_default() && dataset.is_none() {
+    let reviewed_only = reviewed_only.unwrap_or(false);
+    if reviewed_only && model_version.is_some() {
+        bail!("The `reviewed_only` and `model_version` options are mutually exclusive.")
+    }
+
+    if reviewed_only && dataset.is_none() {
         bail!("Cannot get reviewed comments when `dataset` is not provided.")
     }
 
@@ -141,7 +152,8 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
     let download_options = CommentDownloadOptions {
         dataset_identifier: dataset.clone(),
         include_predictions: include_predictions.unwrap_or(false),
-        reviewed_only: reviewed_only.unwrap_or(false),
+        model_version: model_version.clone(),
+        reviewed_only,
         timerange: CommentsIterTimerange {
             from: *from_timestamp,
             to: *to_timestamp,
@@ -165,6 +177,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
 struct CommentDownloadOptions {
     dataset_identifier: Option<DatasetIdentifier>,
     include_predictions: bool,
+    model_version: Option<String>,
     reviewed_only: bool,
     timerange: CommentsIterTimerange,
     show_progress: bool,
@@ -222,6 +235,7 @@ fn download_comments(
                 source,
                 &statistics,
                 options.include_predictions,
+                options.model_version,
                 writer,
                 options.timerange,
             )?;
@@ -257,12 +271,14 @@ fn download_comments(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn get_comments_from_uids(
     client: &Client,
     dataset_name: DatasetFullName,
     source: Source,
     statistics: &Arc<Statistics>,
     include_predictions: bool,
+    model_version: Option<String>,
     mut writer: impl Write,
     timerange: CommentsIterTimerange,
 ) -> Result<()> {
@@ -275,26 +291,70 @@ fn get_comments_from_uids(
             }
 
             statistics.add_comments(page.len());
-            let annotations =
-                client.get_labellings(&dataset_name, page.iter().map(|comment| &comment.uid));
-            let comments = page
-                .into_iter()
-                .zip(
-                    annotations
-                        .context("Operation to get comments has failed.")?
-                        .into_iter(),
-                )
-                .map(|(comment, mut annotated)| {
-                    if !include_predictions {
-                        annotated = annotated.without_predictions();
-                    }
-                    annotated.comment = comment;
-                    if annotated.has_annotations() {
-                        statistics.add_annotated(1);
-                    }
-                    annotated
-                });
-            print_resources_as_json(comments, &mut writer)
+
+            if let Some(model_version) = &model_version {
+                let model_version = model_version
+                    .parse::<u32>()
+                    .context("Invalid model version")?;
+                let predictions = client
+                    .get_comment_predictions(
+                        &dataset_name,
+                        &ModelVersion(model_version),
+                        page.iter().map(|comment| &comment.uid),
+                    )
+                    .context("Operation to get predictions has failed.")?;
+                // since predict-comments endpoint doesn't return some fields,
+                // they are set to None or [] here
+                let comments =
+                    page.into_iter()
+                        .zip(predictions.into_iter())
+                        .map(|(comment, prediction)| AnnotatedComment {
+                            comment,
+                            labelling: Some(vec![Labelling {
+                                group: DEFAULT_LABEL_GROUP_NAME.clone(),
+                                assigned: Vec::new(),
+                                dismissed: Vec::new(),
+                                predicted: prediction.labels.map(|auto_threshold_labels| {
+                                    auto_threshold_labels
+                                        .iter()
+                                        .map(|auto_threshold_label| PredictedLabel {
+                                            name: LabelName(auto_threshold_label.name.join(" > ")),
+                                            sentiment: None,
+                                            probability: auto_threshold_label.probability,
+                                            auto_thresholds: Some(
+                                                auto_threshold_label.auto_thresholds.to_vec(),
+                                            ),
+                                        })
+                                        .collect()
+                                }),
+                            }]),
+                            entities: Some(Entities {
+                                assigned: Vec::new(),
+                                dismissed: Vec::new(),
+                                predicted: prediction.entities,
+                            }),
+                            thread_properties: None,
+                            moon_forms: None,
+                        });
+                print_resources_as_json(comments, &mut writer)
+            } else {
+                let annotations = client
+                    .get_labellings(&dataset_name, page.iter().map(|comment| &comment.uid))
+                    .context("Operation to get labellings has failed.")?;
+                let comments = page.into_iter().zip(annotations.into_iter()).map(
+                    |(comment, mut annotated)| {
+                        if !include_predictions {
+                            annotated = annotated.without_predictions();
+                        }
+                        annotated.comment = comment;
+                        if annotated.has_annotations() {
+                            statistics.add_annotated(1);
+                        }
+                        annotated
+                    },
+                );
+                print_resources_as_json(comments, &mut writer)
+            }
         })?;
     Ok(())
 }

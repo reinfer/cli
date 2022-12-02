@@ -23,9 +23,9 @@ use crate::resources::{
         GetAvailableResponse as GetAvailableBucketsResponse, GetResponse as GetBucketResponse,
     },
     comment::{
-        GetAnnotationsResponse, GetCommentResponse, GetLabellingsAfter, GetRecentRequest,
-        PutCommentsRequest, PutCommentsResponse, RecentCommentsPage, SyncCommentsRequest,
-        UpdateAnnotationsRequest,
+        GetAnnotationsResponse, GetCommentResponse, GetLabellingsAfter, GetPredictionsResponse,
+        GetRecentRequest, PutCommentsRequest, PutCommentsResponse, RecentCommentsPage,
+        SyncCommentsRequest, UpdateAnnotationsRequest,
     },
     dataset::{
         CreateRequest as CreateDatasetRequest, CreateResponse as CreateDatasetResponse,
@@ -68,14 +68,14 @@ pub use crate::{
         },
         comment::{
             AnnotatedComment, Comment, CommentFilter, CommentsIterPage, Continuation,
-            EitherLabelling, Entity, HasAnnotations, Id as CommentId, Label, Message, MessageBody,
-            MessageSignature, MessageSubject, NewAnnotatedComment, NewComment, NewEntities,
-            NewLabelling, NewMoonForm, PropertyMap, PropertyValue, Sentiment, SyncCommentsResponse,
-            Uid as CommentUid,
+            EitherLabelling, Entities, Entity, HasAnnotations, Id as CommentId, Label, Labelling,
+            Message, MessageBody, MessageSignature, MessageSubject, NewAnnotatedComment,
+            NewComment, NewEntities, NewLabelling, NewMoonForm, PredictedLabel, Prediction,
+            PropertyMap, PropertyValue, Sentiment, SyncCommentsResponse, Uid as CommentUid,
         },
         dataset::{
             Dataset, FullName as DatasetFullName, Id as DatasetId, Identifier as DatasetIdentifier,
-            Name as DatasetName, NewDataset, UpdateDataset,
+            ModelVersion, Name as DatasetName, NewDataset, UpdateDataset,
         },
         email::{Id as EmailId, Mailbox, MimeContent, NewEmail},
         entity_def::{EntityDef, Id as EntityDefId, Name as EntityName, NewEntityDef},
@@ -505,6 +505,26 @@ impl Client {
             },
             Retry::Yes,
         )
+    }
+
+    /// Get predictions for a given a dataset, a model version, and a list of comment UIDs.
+    pub fn get_comment_predictions<'a>(
+        &self,
+        dataset_name: &DatasetFullName,
+        model_version: &ModelVersion,
+        comment_uids: impl Iterator<Item = &'a CommentUid>,
+    ) -> Result<Vec<Prediction>> {
+        Ok(self
+            .post::<_, _, GetPredictionsResponse>(
+                self.endpoints
+                    .get_comment_predictions(dataset_name, model_version)?,
+                json!({
+                    "threshold": "auto",
+                    "uids": comment_uids.into_iter().map(|id| id.0.as_str()).collect::<Vec<_>>(),
+                }),
+                Retry::Yes,
+            )?
+            .predictions)
     }
 
     pub fn get_triggers(&self, dataset_name: &DatasetFullName) -> Result<Vec<Trigger>> {
@@ -1312,6 +1332,25 @@ impl Endpoints {
                 message: format!(
                     "Could not build get labellings URL for dataset `{}`.",
                     dataset_name.0,
+                ),
+            })
+    }
+
+    fn get_comment_predictions(
+        &self,
+        dataset_name: &DatasetFullName,
+        model_version: &ModelVersion,
+    ) -> Result<Url> {
+        self.base
+            .join(&format!(
+                "/api/v1/datasets/{}/labellers/{}/predict-comments",
+                dataset_name.0, model_version.0
+            ))
+            .map_err(|source| Error::UrlParseError {
+                source,
+                message: format!(
+                    "Could not build get predictions URL for dataset `{}` and model version `{}`.",
+                    dataset_name.0, model_version.0
                 ),
             })
     }

@@ -67,6 +67,9 @@ pub struct Id(pub String);
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct ModelFamily(pub String);
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct ModelVersion(pub u32);
+
 // TODO(mcobzarenco)[3963]: Make `Identifier` into a trait (ensure it still implements
 // `FromStr` so we can take T: Identifier as a clap command line argument).
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]

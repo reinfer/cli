@@ -30,7 +30,7 @@ pub fn update(client: &Client, args: &UpdateUsersArgs) -> Result<()> {
     let statistics = match &args.input_file {
         Some(input_file) => {
             info!("Processing users from file `{}`", input_file.display(),);
-            let file_metadata = fs::metadata(&input_file).with_context(|| {
+            let file_metadata = fs::metadata(input_file).with_context(|| {
                 format!("Could not get file metadata for `{}`", input_file.display())
             })?;
             let file = BufReader::new(
