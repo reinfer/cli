@@ -89,6 +89,11 @@ pub struct GetAnnotationsResponse {
     pub after: Option<GetLabellingsAfter>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetPredictionsResponse {
+    pub predictions: Vec<Prediction>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct UpdateAnnotationsRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -367,6 +372,15 @@ pub struct AnnotatedComment {
     pub moon_forms: Option<Vec<MoonForm>>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct Prediction {
+    pub uid: Uid,
+    #[serde(skip_serializing_if = "should_skip_serializing_optional_vec")]
+    pub labels: Option<Vec<AutoThresholdLabel>>,
+    #[serde(skip_serializing_if = "should_skip_serializing_optional_vec")]
+    pub entities: Option<Vec<Entity>>,
+}
+
 pub fn get_default_labelling_group(labelling: &Option<Vec<Labelling>>) -> Option<&Labelling> {
     labelling
         .iter()
@@ -563,6 +577,15 @@ pub struct PredictedLabel {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sentiment: Option<NotNan<f64>>,
     pub probability: NotNan<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_thresholds: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct AutoThresholdLabel {
+    pub name: Vec<String>,
+    pub probability: NotNan<f64>,
+    pub auto_thresholds: Vec<String>,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]

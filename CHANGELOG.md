@@ -2,6 +2,7 @@
 
 ## Added
 
+- `re get comments` will now return auto-thresholds for predicted labels if provided with a `--model-version` parameter
 - `re update users` for bulk user permission updates
 
 # v0.12.1
