@@ -1050,40 +1050,31 @@ struct Endpoints {
     projects: Url,
 }
 
-fn construct_endpoint(base: &Url, segments: Vec<&str>) -> Result<Url> {
-    let mut base = base.clone();
-    let original = base.clone();
+fn construct_endpoint(base: &Url, segments: &[&str]) -> Result<Url> {
+    let mut endpoint = base.clone();
 
-    let mut endpoint_segments = base.path_segments_mut().map_err(|_| Error::UrlParseError {
-        message: format!(
-            "Could not parse url with the base '{}' and segments '{}'",
-            original,
-            segments.join(", ")
-        ),
-    })?;
+    let mut endpoint_segments = endpoint
+        .path_segments_mut()
+        .map_err(|_| Error::BadEndpoint {
+            endpoint: base.clone(),
+        })?;
 
-    for segment in segments.into_iter() {
+    for segment in segments {
         endpoint_segments.push(segment);
     }
 
     drop(endpoint_segments);
-
-    Ok(base)
+    Ok(endpoint)
 }
 
 impl Endpoints {
     pub fn new(base: Url) -> Result<Self> {
-        let datasets = construct_endpoint(&base, vec!["api", "v1", "datasets"])?;
-
-        let sources = construct_endpoint(&base, vec!["api", "v1", "sources"])?;
-
-        let buckets = construct_endpoint(&base, vec!["api", "_private", "buckets"])?;
-
-        let users = construct_endpoint(&base, vec!["api", "_private", "users"])?;
-
-        let current_user = construct_endpoint(&base, vec!["auth", "user"])?;
-
-        let projects = construct_endpoint(&base, vec!["api", "_private", "projects"])?;
+        let datasets = construct_endpoint(&base, &["api", "v1", "datasets"])?;
+        let sources = construct_endpoint(&base, &["api", "v1", "sources"])?;
+        let buckets = construct_endpoint(&base, &["api", "_private", "buckets"])?;
+        let users = construct_endpoint(&base, &["api", "_private", "users"])?;
+        let current_user = construct_endpoint(&base, &["auth", "user"])?;
+        let projects = construct_endpoint(&base, &["api", "_private", "projects"])?;
 
         Ok(Endpoints {
             base,
@@ -1099,14 +1090,14 @@ impl Endpoints {
     fn triggers(&self, dataset_name: &DatasetFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec!["api", "v1", "datasets", &dataset_name.0, "triggers"],
+            &["api", "v1", "datasets", &dataset_name.0, "triggers"],
         )
     }
 
     fn trigger_fetch(&self, trigger_name: &TriggerFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec![
+            &[
                 "api",
                 "v1",
                 "datasets",
@@ -1119,7 +1110,7 @@ impl Endpoints {
     fn trigger_advance(&self, trigger_name: &TriggerFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec![
+            &[
                 "api",
                 "v1",
                 "datasets",
@@ -1133,7 +1124,7 @@ impl Endpoints {
     fn trigger_reset(&self, trigger_name: &TriggerFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec![
+            &[
                 "api",
                 "v1",
                 "datasets",
@@ -1148,7 +1139,7 @@ impl Endpoints {
     fn trigger_exceptions(&self, trigger_name: &TriggerFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec![
+            &[
                 "api",
                 "v1",
                 "datasets",
@@ -1163,43 +1154,43 @@ impl Endpoints {
     fn recent_comments(&self, dataset_name: &DatasetFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec!["api", "_private", "datasets", &dataset_name.0, "recent"],
+            &["api", "_private", "datasets", &dataset_name.0, "recent"],
         )
     }
 
     fn statistics(&self, dataset_name: &DatasetFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec!["api", "_private", "datasets", &dataset_name.0, "statistics"],
+            &["api", "_private", "datasets", &dataset_name.0, "statistics"],
         )
     }
 
     fn user_by_id(&self, user_id: &UserId) -> Result<Url> {
-        construct_endpoint(&self.base, vec!["api", "_private", "users", &user_id.0])
+        construct_endpoint(&self.base, &["api", "_private", "users", &user_id.0])
     }
 
     fn source_by_id(&self, source_id: &SourceId) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec!["api", "v1", "sources", &format!("id:{}", source_id.0)],
+            &["api", "v1", "sources", &format!("id:{}", source_id.0)],
         )
     }
 
     fn source_by_name(&self, source_name: &SourceFullName) -> Result<Url> {
-        construct_endpoint(&self.base, vec!["api", "v1", "sources", &source_name.0])
+        construct_endpoint(&self.base, &["api", "v1", "sources", &source_name.0])
     }
 
     fn comments(&self, source_name: &SourceFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec!["api", "_private", "sources", &source_name.0, "comments"],
+            &["api", "_private", "sources", &source_name.0, "comments"],
         )
     }
 
     fn comment_by_id(&self, source_name: &SourceFullName, comment_id: &CommentId) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec![
+            &[
                 "api",
                 "v1",
                 "sources",
@@ -1213,21 +1204,21 @@ impl Endpoints {
     fn comments_v1(&self, source_name: &SourceFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec!["api", "v1", "sources", &source_name.0, "comments"],
+            &["api", "v1", "sources", &source_name.0, "comments"],
         )
     }
 
     fn sync_comments(&self, source_name: &SourceFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec!["api", "v1", "sources", &source_name.0, "sync"],
+            &["api", "v1", "sources", &source_name.0, "sync"],
         )
     }
 
     fn comment_audio(&self, source_id: &SourceId, comment_id: &CommentId) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec![
+            &[
                 "api",
                 "_private",
                 "sources",
@@ -1242,29 +1233,29 @@ impl Endpoints {
     fn put_emails(&self, bucket_name: &BucketFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec!["api", "_private", "buckets", &bucket_name.0, "emails"],
+            &["api", "_private", "buckets", &bucket_name.0, "emails"],
         )
     }
 
     fn post_user(&self, user_id: &UserId) -> Result<Url> {
-        construct_endpoint(&self.base, vec!["api", "_private", "users", &user_id.0])
+        construct_endpoint(&self.base, &["api", "_private", "users", &user_id.0])
     }
 
     fn dataset_by_id(&self, dataset_id: &DatasetId) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec!["api", "v1", "datasets", &format!("id:{}", dataset_id.0)],
+            &["api", "v1", "datasets", &format!("id:{}", dataset_id.0)],
         )
     }
 
     fn dataset_by_name(&self, dataset_name: &DatasetFullName) -> Result<Url> {
-        construct_endpoint(&self.base, vec!["api", "v1", "datasets", &dataset_name.0])
+        construct_endpoint(&self.base, &["api", "v1", "datasets", &dataset_name.0])
     }
 
     fn get_labellings(&self, dataset_name: &DatasetFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec!["api", "_private", "datasets", &dataset_name.0, "labellings"],
+            &["api", "_private", "datasets", &dataset_name.0, "labellings"],
         )
     }
 
@@ -1275,7 +1266,7 @@ impl Endpoints {
     ) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec![
+            &[
                 "api",
                 "v1",
                 "datasets",
@@ -1294,7 +1285,7 @@ impl Endpoints {
     ) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec![
+            &[
                 "api",
                 "_private",
                 "datasets",
@@ -1308,21 +1299,18 @@ impl Endpoints {
     fn bucket_by_id(&self, bucket_id: &BucketId) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec!["api", "_private", "buckets", &format!("id:{}", bucket_id.0)],
+            &["api", "_private", "buckets", &format!("id:{}", bucket_id.0)],
         )
     }
 
     fn bucket_by_name(&self, bucket_name: &BucketFullName) -> Result<Url> {
-        construct_endpoint(
-            &self.base,
-            vec!["api", "_private", "buckets", &bucket_name.0],
-        )
+        construct_endpoint(&self.base, &["api", "_private", "buckets", &bucket_name.0])
     }
 
     fn project_by_name(&self, project_name: &ProjectName) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            vec!["api", "_private", "projects", &project_name.0],
+            &["api", "_private", "projects", &project_name.0],
         )
     }
 }
