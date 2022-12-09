@@ -10,8 +10,8 @@ pub enum Error {
         message: String,
     },
 
-    #[error("Invalid endpoint `{}`", name)]
-    BadEndpoint { name: String },
+    #[error("Invalid endpoint: '{}'", endpoint)]
+    BadEndpoint { endpoint: url::Url },
 
     #[error("Bad token: {}", token)]
     BadToken { token: String },
@@ -69,12 +69,6 @@ pub enum Error {
     ReqwestError {
         message: String,
         source: reqwest::Error,
-    },
-
-    #[error("Url parsing error: {}", message)]
-    UrlParseError {
-        message: String,
-        source: url::ParseError,
     },
 
     #[error("An unknown error has occurred: {}", message)]

@@ -1,4 +1,5 @@
 # Unreleased
+- Removed semantic url joins to support deployments within a subdirectory
 
 ## Added
 

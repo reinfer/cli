@@ -1050,44 +1050,32 @@ struct Endpoints {
     projects: Url,
 }
 
+fn construct_endpoint(base: &Url, segments: &[&str]) -> Result<Url> {
+    let mut endpoint = base.clone();
+
+    let mut endpoint_segments = endpoint
+        .path_segments_mut()
+        .map_err(|_| Error::BadEndpoint {
+            endpoint: base.clone(),
+        })?;
+
+    for segment in segments {
+        endpoint_segments.push(segment);
+    }
+
+    drop(endpoint_segments);
+    Ok(endpoint)
+}
+
 impl Endpoints {
     pub fn new(base: Url) -> Result<Self> {
-        let datasets = base
-            .join("/api/v1/datasets")
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: "Could not build URL for dataset resources.".to_owned(),
-            })?;
-        let sources = base
-            .join("/api/v1/sources")
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: "Could not build URL for source resources.".to_owned(),
-            })?;
-        let buckets =
-            base.join("/api/_private/buckets")
-                .map_err(|source| Error::UrlParseError {
-                    source,
-                    message: "Could not build URL for bucket resources.".to_owned(),
-                })?;
-        let users = base
-            .join("/api/_private/users")
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: "Could not build URL for users resources.".to_owned(),
-            })?;
-        let current_user = base
-            .join("/auth/user")
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: "Could not build URL for users resources.".to_owned(),
-            })?;
-        let projects =
-            base.join("/api/_private/projects")
-                .map_err(|source| Error::UrlParseError {
-                    source,
-                    message: "Could not build URL for project resources.".to_owned(),
-                })?;
+        let datasets = construct_endpoint(&base, &["api", "v1", "datasets"])?;
+        let sources = construct_endpoint(&base, &["api", "v1", "sources"])?;
+        let buckets = construct_endpoint(&base, &["api", "_private", "buckets"])?;
+        let users = construct_endpoint(&base, &["api", "_private", "users"])?;
+        let current_user = construct_endpoint(&base, &["auth", "user"])?;
+        let projects = construct_endpoint(&base, &["api", "_private", "projects"])?;
+
         Ok(Endpoints {
             base,
             datasets,
@@ -1100,240 +1088,175 @@ impl Endpoints {
     }
 
     fn triggers(&self, dataset_name: &DatasetFullName) -> Result<Url> {
-        self.base
-            .join(&format!("/api/v1/datasets/{}/triggers", dataset_name.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: "Could not build URL to get trigger resources.".to_owned(),
-            })
+        construct_endpoint(
+            &self.base,
+            &["api", "v1", "datasets", &dataset_name.0, "triggers"],
+        )
     }
 
     fn trigger_fetch(&self, trigger_name: &TriggerFullName) -> Result<Url> {
-        self.base
-            .join(&format!(
-                "/api/v1/datasets/{}/triggers/{}/fetch",
-                trigger_name.dataset.0, trigger_name.trigger.0
-            ))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: "Could not build URL to fetch trigger results.".to_owned(),
-            })
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "v1",
+                "datasets",
+                &trigger_name.dataset.0,
+                &trigger_name.trigger.0,
+            ],
+        )
     }
 
     fn trigger_advance(&self, trigger_name: &TriggerFullName) -> Result<Url> {
-        self.base
-            .join(&format!(
-                "/api/v1/datasets/{}/triggers/{}/advance",
-                trigger_name.dataset.0, trigger_name.trigger.0
-            ))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: "Could not build URL to advance triggers.".to_owned(),
-            })
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "v1",
+                "datasets",
+                &trigger_name.dataset.0,
+                "triggers",
+                &trigger_name.trigger.0,
+            ],
+        )
     }
 
     fn trigger_reset(&self, trigger_name: &TriggerFullName) -> Result<Url> {
-        self.base
-            .join(&format!(
-                "/api/v1/datasets/{}/triggers/{}/reset",
-                trigger_name.dataset.0, trigger_name.trigger.0
-            ))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: "Could not build URL to reset triggers.".to_owned(),
-            })
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "v1",
+                "datasets",
+                &trigger_name.dataset.0,
+                "triggers",
+                &trigger_name.trigger.0,
+                "reset",
+            ],
+        )
     }
 
     fn trigger_exceptions(&self, trigger_name: &TriggerFullName) -> Result<Url> {
-        self.base
-            .join(&format!(
-                "/api/v1/datasets/{}/triggers/{}/exceptions",
-                trigger_name.dataset.0, trigger_name.trigger.0
-            ))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: "Could not build URL for trigger exceptions.".to_owned(),
-            })
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "v1",
+                "datasets",
+                &trigger_name.dataset.0,
+                "triggers",
+                &trigger_name.trigger.0,
+                "exceptions",
+            ],
+        )
     }
 
     fn recent_comments(&self, dataset_name: &DatasetFullName) -> Result<Url> {
-        self.base
-            .join(&format!("/api/_private/datasets/{}/recent", dataset_name.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: "Could not build URL for recent comments query.".to_owned(),
-            })
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "datasets", &dataset_name.0, "recent"],
+        )
     }
 
     fn statistics(&self, dataset_name: &DatasetFullName) -> Result<Url> {
-        self.base
-            .join(&format!(
-                "/api/_private/datasets/{}/statistics",
-                dataset_name.0
-            ))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: "Could not build URL for dataset statistics query.".to_owned(),
-            })
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "datasets", &dataset_name.0, "statistics"],
+        )
     }
 
     fn user_by_id(&self, user_id: &UserId) -> Result<Url> {
-        self.base
-            .join(&format!("/api/_private/users/{}", user_id.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build URL for source resource with id `{}`.",
-                    user_id.0
-                ),
-            })
+        construct_endpoint(&self.base, &["api", "_private", "users", &user_id.0])
     }
 
     fn source_by_id(&self, source_id: &SourceId) -> Result<Url> {
-        self.base
-            .join(&format!("/api/v1/sources/id:{}", source_id.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build URL for source resource with id `{}`.",
-                    source_id.0
-                ),
-            })
+        construct_endpoint(
+            &self.base,
+            &["api", "v1", "sources", &format!("id:{}", source_id.0)],
+        )
     }
 
     fn source_by_name(&self, source_name: &SourceFullName) -> Result<Url> {
-        self.base
-            .join(&format!("/api/v1/sources/{}", source_name.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build URL for source resource with name `{}`.",
-                    source_name.0
-                ),
-            })
+        construct_endpoint(&self.base, &["api", "v1", "sources", &source_name.0])
     }
 
     fn comments(&self, source_name: &SourceFullName) -> Result<Url> {
-        self.base
-            .join(&format!("/api/_private/sources/{}/comments", source_name.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build get comments URL for source `{}`.",
-                    source_name.0,
-                ),
-            })
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "sources", &source_name.0, "comments"],
+        )
     }
 
     fn comment_by_id(&self, source_name: &SourceFullName, comment_id: &CommentId) -> Result<Url> {
-        self.base
-            .join(&format!(
-                "/api/v1/sources/{}/comments/{}",
-                source_name.0, comment_id.0
-            ))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build get comment by id URL for source `{}`, comment `{}`.",
-                    source_name.0, comment_id.0,
-                ),
-            })
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "v1",
+                "sources",
+                &source_name.0,
+                "comments",
+                &comment_id.0,
+            ],
+        )
     }
 
     fn comments_v1(&self, source_name: &SourceFullName) -> Result<Url> {
-        self.base
-            .join(&format!("/api/v1/sources/{}/comments", source_name.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build get comments v1 URL for source `{}`.",
-                    source_name.0,
-                ),
-            })
+        construct_endpoint(
+            &self.base,
+            &["api", "v1", "sources", &source_name.0, "comments"],
+        )
     }
 
     fn sync_comments(&self, source_name: &SourceFullName) -> Result<Url> {
-        self.base
-            .join(&format!("/api/v1/sources/{}/sync", source_name.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!("Could not build sync URL for source `{}`.", source_name.0),
-            })
+        construct_endpoint(
+            &self.base,
+            &["api", "v1", "sources", &source_name.0, "sync"],
+        )
     }
 
     fn comment_audio(&self, source_id: &SourceId, comment_id: &CommentId) -> Result<Url> {
-        self.base
-            .join(&format!(
-                "/api/_private/sources/id:{}/comments/{}/audio",
-                source_id.0, comment_id.0
-            ))
-            .map_err(|source| Error::UrlParseError {
-                message: format!(
-                    "Could not build audio content URL for source id `{}` and comment id `{}`.",
-                    source_id.0, comment_id.0,
-                ),
-                source,
-            })
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "sources",
+                &format!("id:{}", source_id.0),
+                "comments",
+                &comment_id.0,
+                "audio",
+            ],
+        )
     }
 
     fn put_emails(&self, bucket_name: &BucketFullName) -> Result<Url> {
-        self.base
-            .join(&format!("/api/_private/buckets/{}/emails", bucket_name.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build put emails URL for bucket `{}`.",
-                    bucket_name,
-                ),
-            })
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "buckets", &bucket_name.0, "emails"],
+        )
     }
 
     fn post_user(&self, user_id: &UserId) -> Result<Url> {
-        self.base
-            .join(&format!("/api/_private/users/{}", user_id.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!("Could not build post user URL for user `{}`.", user_id.0,),
-            })
+        construct_endpoint(&self.base, &["api", "_private", "users", &user_id.0])
     }
 
     fn dataset_by_id(&self, dataset_id: &DatasetId) -> Result<Url> {
-        self.base
-            .join(&format!("/api/v1/datasets/id:{}", dataset_id.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build URL for dataset resource with id `{}`.",
-                    dataset_id.0
-                ),
-            })
+        construct_endpoint(
+            &self.base,
+            &["api", "v1", "datasets", &format!("id:{}", dataset_id.0)],
+        )
     }
 
     fn dataset_by_name(&self, dataset_name: &DatasetFullName) -> Result<Url> {
-        self.base
-            .join(&format!("/api/v1/datasets/{}", dataset_name.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build URL for dataset resource with name `{}`.",
-                    dataset_name.0
-                ),
-            })
+        construct_endpoint(&self.base, &["api", "v1", "datasets", &dataset_name.0])
     }
 
     fn get_labellings(&self, dataset_name: &DatasetFullName) -> Result<Url> {
-        self.base
-            .join(&format!(
-                "/api/_private/datasets/{}/labellings",
-                dataset_name.0
-            ))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build get labellings URL for dataset `{}`.",
-                    dataset_name.0,
-                ),
-            })
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "datasets", &dataset_name.0, "labellings"],
+        )
     }
 
     fn get_comment_predictions(
@@ -1341,18 +1264,18 @@ impl Endpoints {
         dataset_name: &DatasetFullName,
         model_version: &ModelVersion,
     ) -> Result<Url> {
-        self.base
-            .join(&format!(
-                "/api/v1/datasets/{}/labellers/{}/predict-comments",
-                dataset_name.0, model_version.0
-            ))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build get predictions URL for dataset `{}` and model version `{}`.",
-                    dataset_name.0, model_version.0
-                ),
-            })
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "v1",
+                "datasets",
+                &dataset_name.0,
+                "labellers",
+                &model_version.0.to_string(),
+                "predict-comments",
+            ],
+        )
     }
 
     fn post_labelling(
@@ -1360,54 +1283,35 @@ impl Endpoints {
         dataset_name: &DatasetFullName,
         comment_uid: &CommentUid,
     ) -> Result<Url> {
-        self.base
-            .join(&format!(
-                "/api/_private/datasets/{}/labellings/{}",
-                dataset_name.0, comment_uid.0,
-            ))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build get labellings URL for dataset `{}`.",
-                    dataset_name.0,
-                ),
-            })
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "datasets",
+                &dataset_name.0,
+                "labellings",
+                &comment_uid.0,
+            ],
+        )
     }
 
     fn bucket_by_id(&self, bucket_id: &BucketId) -> Result<Url> {
-        self.base
-            .join(&format!("/api/_private/buckets/id:{}", bucket_id.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build URL for bucket resource with id `{}`.",
-                    bucket_id.0
-                ),
-            })
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "buckets", &format!("id:{}", bucket_id.0)],
+        )
     }
 
     fn bucket_by_name(&self, bucket_name: &BucketFullName) -> Result<Url> {
-        self.base
-            .join(&format!("/api/_private/buckets/{}", bucket_name.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build URL for bucket resource with name `{}`.",
-                    bucket_name.0
-                ),
-            })
+        construct_endpoint(&self.base, &["api", "_private", "buckets", &bucket_name.0])
     }
 
     fn project_by_name(&self, project_name: &ProjectName) -> Result<Url> {
-        self.base
-            .join(&format!("/api/_private/projects/{}", project_name.0))
-            .map_err(|source| Error::UrlParseError {
-                source,
-                message: format!(
-                    "Could not build URL for project resource with name `{}`.",
-                    project_name.0
-                ),
-            })
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "projects", &project_name.0],
+        )
     }
 }
 
