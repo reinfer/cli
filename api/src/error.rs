@@ -72,10 +72,7 @@ pub enum Error {
     },
 
     #[error("Url parsing error: {}", message)]
-    UrlParseError {
-        message: String,
-        source: url::ParseError,
-    },
+    UrlParseError { message: String },
 
     #[error("An unknown error has occurred: {}", message)]
     Unknown {
