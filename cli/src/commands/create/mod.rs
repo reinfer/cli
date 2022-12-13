@@ -49,7 +49,7 @@ pub enum CreateArgs {
     Emails(CreateEmailsArgs),
 
     #[structopt(name = "user")]
-    /// Create a new user (note: no welcome email will be sent)
+    /// Create a new user (note: no welcome email will be sent by default)
     User(CreateUserArgs),
 
     #[structopt(name = "trigger-exception")]

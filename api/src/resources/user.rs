@@ -133,6 +133,9 @@ pub(crate) struct GetResponse {
     pub user: User,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub(crate) struct WelcomeEmailResponse {}
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(untagged)]
 pub enum ProjectPermission {

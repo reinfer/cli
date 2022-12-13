@@ -1,5 +1,6 @@
 # Unreleased
 - Removed semantic url joins to support deployments within a subdirectory
+- Add option to send welcome email on create user
 
 ## Added
 
