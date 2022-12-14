@@ -75,8 +75,8 @@ pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Resu
         client
             .send_welcome_email(user.id.clone())
             .context("Operation to send welcome email failed")?;
+        log::info!("Welcome email sent for user '{}'", user.username.0);
     }
-    log::info!("Welcome email sent for user '{}'", user.username.0);
 
     printer.print_resources(&[user])?;
     Ok(())
