@@ -28,6 +28,10 @@ pub struct CreateUserArgs {
     #[structopt(long = "project-permissions")]
     /// Project permissions, required if --project is used
     project_permissions_list: Vec<ProjectPermission>,
+
+    #[structopt(short = "w", long = "send-welcome-email")]
+    /// Send the user a welcome email
+    send_welcome_email: bool,
 }
 
 pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Result<()> {
@@ -37,6 +41,7 @@ pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Resu
         global_permissions,
         project,
         project_permissions_list,
+        send_welcome_email,
     } = args;
 
     let project_permissions = match (project, project_permissions_list) {
@@ -65,6 +70,14 @@ pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Resu
         user.email.0,
         user.id.0
     );
+
+    if *send_welcome_email {
+        client
+            .send_welcome_email(user.id.clone())
+            .context("Operation to send welcome email failed")?;
+        log::info!("Welcome email sent for user '{}'", user.username.0);
+    }
+
     printer.print_resources(&[user])?;
     Ok(())
 }

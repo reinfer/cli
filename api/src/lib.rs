@@ -53,6 +53,7 @@ use crate::resources::{
         CreateRequest as CreateUserRequest, CreateResponse as CreateUserResponse,
         GetAvailableResponse as GetAvailableUsersResponse,
         GetCurrentResponse as GetCurrentUserResponse, PostUserRequest, PostUserResponse,
+        WelcomeEmailResponse,
     },
     EmptySuccess, Response,
 };
@@ -570,6 +571,15 @@ impl Client {
                 CreateUserRequest { user },
             )?
             .user)
+    }
+
+    pub fn send_welcome_email(&self, user_id: UserId) -> Result<()> {
+        self.post::<_, _, WelcomeEmailResponse>(
+            self.endpoints.welcome_email(&user_id)?,
+            json!({}),
+            Retry::No,
+        )?;
+        Ok(())
     }
 
     pub fn get_statistics(&self, dataset_name: &DatasetFullName) -> Result<Statistics> {
@@ -1311,6 +1321,13 @@ impl Endpoints {
         construct_endpoint(
             &self.base,
             &["api", "_private", "projects", &project_name.0],
+        )
+    }
+
+    fn welcome_email(&self, user_id: &UserId) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "users", &user_id.0, "welcome-email"],
         )
     }
 }
