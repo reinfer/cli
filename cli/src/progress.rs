@@ -99,6 +99,7 @@ where
     progress_bar.set_style(
         ProgressStyle::default_bar()
             .template(&template_str)
+            .expect("invalid template string")
             .progress_chars("#>-"),
     );
 
