@@ -95,7 +95,7 @@ mod tests {
         let ok = mock("GET", "/").expect(1).create();
         assert!(
             handler
-                .with_retries(|| get(&format!("http://{}", server_address())))
+                .with_retries(|| get(format!("http://{}", server_address())))
                 .unwrap()
                 .status()
                 == 200
@@ -111,7 +111,7 @@ mod tests {
             handler.config.max_retry_count = i_retry;
             assert!(
                 handler
-                    .with_retries(|| get(&format!("http://{}", server_address())))
+                    .with_retries(|| get(format!("http://{}", server_address())))
                     .unwrap()
                     .status()
                     == 500
@@ -133,7 +133,7 @@ mod tests {
         let err = mock("GET", "/").with_status(500).expect(1).create();
         assert!(
             handler
-                .with_retries(|| get(&format!("http://{}", server_address())))
+                .with_retries(|| get(format!("http://{}", server_address())))
                 .unwrap()
                 .status()
                 == 500
@@ -144,7 +144,7 @@ mod tests {
         let ok = mock("GET", "/").expect(1).create();
         assert!(
             handler
-                .with_retries(|| get(&format!("http://{}", server_address())))
+                .with_retries(|| get(format!("http://{}", server_address())))
                 .unwrap()
                 .status()
                 == 200
@@ -160,7 +160,7 @@ mod tests {
             handler.config.max_retry_count = i_retry;
             assert!(
                 handler
-                    .with_retries(|| get(&format!("http://{}", server_address())))
+                    .with_retries(|| get(format!("http://{}", server_address())))
                     .unwrap()
                     .status()
                     == 500
@@ -189,7 +189,7 @@ mod tests {
         let client = Client::new();
         assert!(handler
             .with_retries(|| client
-                .get(&format!("http://{}", server_address()))
+                .get(format!("http://{}", server_address()))
                 .timeout(Duration::from_secs_f64(0.1))
                 .send()
                 .and_then(|r| {

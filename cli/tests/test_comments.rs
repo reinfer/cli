@@ -51,7 +51,7 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
 
     // Upload our test data
     let output = cli.run_with_stdin(
-        &([
+        ([
             "create",
             "comments",
             &format!("--source={}", source.identifier()),
