@@ -608,32 +608,44 @@ pub struct NewEntities {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct MoonFormCapture {
-    pub label: Label,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub fields: Vec<Entity>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct MoonFormLabelCaptures {
+    pub label: Label,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub captures: Vec<MoonFormCapture>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct MoonForm {
     pub group: LabelGroupName,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub assigned: Vec<MoonFormCapture>,
+    pub assigned: Vec<MoonFormLabelCaptures>,
     #[serde(skip_serializing_if = "should_skip_serializing_optional_vec", default)]
-    pub predicted: Option<Vec<MoonFormCapture>>,
+    pub predicted: Option<Vec<MoonFormLabelCaptures>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct NewMoonFormCapture {
-    pub label: Label,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub fields: Vec<NewEntity>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct NewMoonFormLabelCaptures {
+    pub label: Label,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub captures: Vec<NewMoonFormCapture>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct NewMoonForm {
     pub group: LabelGroupName,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub assigned: Vec<NewMoonFormCapture>,
+    pub assigned: Vec<NewMoonFormLabelCaptures>,
 }
 
 pub trait HasAnnotations {
