@@ -43,10 +43,10 @@ use crate::resources::{
         UpdateRequest as UpdateSourceRequest, UpdateResponse as UpdateSourceResponse,
     },
     statistics::GetResponse as GetStatisticsResponse,
-    trigger::{
-        AdvanceRequest as TriggerAdvanceRequest, FetchRequest as TriggerFetchRequest,
-        GetResponse as GetTriggersResponse, ResetRequest as TriggerResetRequest,
-        TagExceptionsRequest as TagTriggerExceptionsRequest,
+    stream::{
+        AdvanceRequest as StreamAdvanceRequest, FetchRequest as StreamFetchRequest,
+        GetResponse as GetStreamsResponse, ResetRequest as StreamResetRequest,
+        TagExceptionsRequest as TagStreamExceptionsRequest,
     },
     user::GetResponse as GetUserResponse,
     user::{
@@ -93,9 +93,9 @@ pub use crate::{
             Name as SourceName, NewSource, Source, SourceKind, UpdateSource,
         },
         statistics::Statistics,
-        trigger::{
-            Batch as TriggerBatch, FullName as TriggerFullName, SequenceId as TriggerSequenceId,
-            Trigger, TriggerException, TriggerExceptionMetadata,
+        stream::{
+            Batch as StreamBatch, FullName as StreamFullName, SequenceId as StreamSequenceId,
+            Stream, StreamException, StreamExceptionMetadata,
         },
         user::{
             Email, GlobalPermission, Id as UserId, Identifier as UserIdentifier,
@@ -528,10 +528,10 @@ impl Client {
             .predictions)
     }
 
-    pub fn get_triggers(&self, dataset_name: &DatasetFullName) -> Result<Vec<Trigger>> {
+    pub fn get_streams(&self, dataset_name: &DatasetFullName) -> Result<Vec<Stream>> {
         Ok(self
-            .get::<_, GetTriggersResponse>(self.endpoints.triggers(dataset_name)?)?
-            .triggers)
+            .get::<_, GetStreamsResponse>(self.endpoints.streams(dataset_name)?)?
+            .streams)
     }
 
     pub fn get_recent_comments(
@@ -639,39 +639,39 @@ impl Client {
         self.delete(self.endpoints.bucket_by_id(&bucket_id)?)
     }
 
-    pub fn fetch_trigger_comments(
+    pub fn fetch_stream_comments(
         &self,
-        trigger_name: &TriggerFullName,
+        stream_name: &StreamFullName,
         size: u32,
-    ) -> Result<TriggerBatch> {
+    ) -> Result<StreamBatch> {
         self.post(
-            self.endpoints.trigger_fetch(trigger_name)?,
-            TriggerFetchRequest { size },
+            self.endpoints.stream_fetch(stream_name)?,
+            StreamFetchRequest { size },
             Retry::No,
         )
     }
 
-    pub fn advance_trigger(
+    pub fn advance_stream(
         &self,
-        trigger_name: &TriggerFullName,
-        sequence_id: TriggerSequenceId,
+        stream_name: &StreamFullName,
+        sequence_id: StreamSequenceId,
     ) -> Result<()> {
         self.post::<_, _, serde::de::IgnoredAny>(
-            self.endpoints.trigger_advance(trigger_name)?,
-            TriggerAdvanceRequest { sequence_id },
+            self.endpoints.stream_advance(stream_name)?,
+            StreamAdvanceRequest { sequence_id },
             Retry::No,
         )?;
         Ok(())
     }
 
-    pub fn reset_trigger(
+    pub fn reset_stream(
         &self,
-        trigger_name: &TriggerFullName,
+        stream_name: &StreamFullName,
         to_comment_created_at: DateTime<Utc>,
     ) -> Result<()> {
         self.post::<_, _, serde::de::IgnoredAny>(
-            self.endpoints.trigger_reset(trigger_name)?,
-            TriggerResetRequest {
+            self.endpoints.stream_reset(stream_name)?,
+            StreamResetRequest {
                 to_comment_created_at,
             },
             Retry::No,
@@ -679,14 +679,14 @@ impl Client {
         Ok(())
     }
 
-    pub fn tag_trigger_exceptions(
+    pub fn tag_stream_exceptions(
         &self,
-        trigger_name: &TriggerFullName,
-        exceptions: &[TriggerException],
+        stream_name: &StreamFullName,
+        exceptions: &[StreamException],
     ) -> Result<()> {
         self.put::<_, _, serde::de::IgnoredAny>(
-            self.endpoints.trigger_exceptions(trigger_name)?,
-            TagTriggerExceptionsRequest { exceptions },
+            self.endpoints.stream_exceptions(stream_name)?,
+            TagStreamExceptionsRequest { exceptions },
         )?;
         Ok(())
     }
@@ -1097,65 +1097,65 @@ impl Endpoints {
         })
     }
 
-    fn triggers(&self, dataset_name: &DatasetFullName) -> Result<Url> {
+    fn streams(&self, dataset_name: &DatasetFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
-            &["api", "v1", "datasets", &dataset_name.0, "triggers"],
+            &["api", "v1", "datasets", &dataset_name.0, "streams"],
         )
     }
 
-    fn trigger_fetch(&self, trigger_name: &TriggerFullName) -> Result<Url> {
+    fn stream_fetch(&self, stream_name: &StreamFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
             &[
                 "api",
                 "v1",
                 "datasets",
-                &trigger_name.dataset.0,
-                &trigger_name.trigger.0,
+                &stream_name.dataset.0,
+                &stream_name.stream.0,
             ],
         )
     }
 
-    fn trigger_advance(&self, trigger_name: &TriggerFullName) -> Result<Url> {
+    fn stream_advance(&self, stream_name: &StreamFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
             &[
                 "api",
                 "v1",
                 "datasets",
-                &trigger_name.dataset.0,
-                "triggers",
-                &trigger_name.trigger.0,
+                &stream_name.dataset.0,
+                "streams",
+                &stream_name.stream.0,
             ],
         )
     }
 
-    fn trigger_reset(&self, trigger_name: &TriggerFullName) -> Result<Url> {
+    fn stream_reset(&self, stream_name: &StreamFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
             &[
                 "api",
                 "v1",
                 "datasets",
-                &trigger_name.dataset.0,
-                "triggers",
-                &trigger_name.trigger.0,
+                &stream_name.dataset.0,
+                "streams",
+                &stream_name.stream.0,
                 "reset",
             ],
         )
     }
 
-    fn trigger_exceptions(&self, trigger_name: &TriggerFullName) -> Result<Url> {
+    fn stream_exceptions(&self, stream_name: &StreamFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
             &[
                 "api",
                 "v1",
                 "datasets",
-                &trigger_name.dataset.0,
-                "triggers",
-                &trigger_name.trigger.0,
+                &stream_name.dataset.0,
+                "streams",
+                &stream_name.stream.0,
                 "exceptions",
             ],
         )

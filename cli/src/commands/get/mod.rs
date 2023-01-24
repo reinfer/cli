@@ -3,7 +3,7 @@ mod comments;
 mod datasets;
 mod projects;
 mod sources;
-mod triggers;
+mod streams;
 mod users;
 
 use anyhow::Result;
@@ -16,7 +16,7 @@ use self::{
     datasets::GetDatasetsArgs,
     projects::GetProjectsArgs,
     sources::GetSourcesArgs,
-    triggers::{GetTriggerCommentsArgs, GetTriggersArgs},
+    streams::{GetStreamCommentsArgs, GetStreamsArgs},
     users::GetUsersArgs,
 };
 use crate::printer::Printer;
@@ -47,13 +47,13 @@ pub enum GetArgs {
     /// List the available sources
     Sources(GetSourcesArgs),
 
-    #[structopt(name = "triggers")]
-    /// List the available triggers for a dataset
-    Triggers(GetTriggersArgs),
+    #[structopt(name = "streams")]
+    /// List the available streams for a dataset
+    Streams(GetStreamsArgs),
 
-    #[structopt(name = "trigger-comments")]
-    /// Fetch comments from a trigger
-    TriggerComments(GetTriggerCommentsArgs),
+    #[structopt(name = "stream-comments")]
+    /// Fetch comments from a stream
+    StreamComments(GetStreamCommentsArgs),
 
     #[structopt(name = "users")]
     /// List the available users
@@ -72,8 +72,8 @@ pub fn run(args: &GetArgs, client: Client, printer: &Printer) -> Result<()> {
         GetArgs::Datasets(args) => datasets::get(&client, args, printer),
         GetArgs::Projects(args) => projects::get(&client, args, printer),
         GetArgs::Sources(args) => sources::get(&client, args, printer),
-        GetArgs::Triggers(args) => triggers::get(&client, args, printer),
-        GetArgs::TriggerComments(args) => triggers::get_trigger_comments(&client, args),
+        GetArgs::Streams(args) => streams::get(&client, args, printer),
+        GetArgs::StreamComments(args) => streams::get_stream_comments(&client, args),
         GetArgs::Users(args) => users::get(&client, args, printer),
         GetArgs::CurrentUser => users::get_current_user(&client, printer),
     }

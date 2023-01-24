@@ -22,8 +22,8 @@ pub enum Error {
     #[error("Expected <owner>/<name> or a dataset id, got: {}", identifier)]
     BadDatasetIdentifier { identifier: String },
 
-    #[error("Expected <owner>/<dataset>/<trigger>: {}", identifier)]
-    BadTriggerName { identifier: String },
+    #[error("Expected <owner>/<dataset>/<stream>: {}", identifier)]
+    BadStreamName { identifier: String },
 
     #[error(
         "Expected a user id (usernames and emails are not supported), got: {}",

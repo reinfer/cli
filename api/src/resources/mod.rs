@@ -8,7 +8,7 @@ pub mod label_group;
 pub mod project;
 pub mod source;
 pub mod statistics;
-pub mod trigger;
+pub mod stream;
 pub mod user;
 
 use crate::error::{Error, Result};
