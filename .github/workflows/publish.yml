@@ -36,9 +36,12 @@ jobs:
         run: ./scripts/publish-install
         env:
           BUILD_PLATFORM: ${{ matrix.os }}
-      - uses: google-github-actions/setup-gcloud@main
+      - name: Authenticate gcloud
+        uses: google-github-actions/auth@v1
         with:
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
       - name: Publish Binaries
         run: ./cli/publish-binaries
         env:
