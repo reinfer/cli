@@ -117,7 +117,7 @@ pub fn run(
             table.printstd();
         }
         ConfigArgs::ListContexts { .. } => {
-            info!("No available contexts.");
+            info!("No available contexts");
         }
         ConfigArgs::AddContext {
             name,
@@ -139,17 +139,17 @@ pub fn run(
         ConfigArgs::UseContext { name } => {
             if !config.set_current_context(name) {
                 return Err(anyhow!(
-                    "No such context `{}` exists in `{}`.",
+                    "No such context `{}` exists in `{}`",
                     name,
                     config_path.as_ref().display(),
                 ));
             } else {
                 config::write_reinfer_config(config_path, &config)?;
-                info!("Switched to context `{}`.", name);
+                info!("Switched to context `{}`", name);
             }
         }
         ConfigArgs::CurrentContext => config.get_current_context().map_or_else(
-            || info!("There is no default context in use."),
+            || info!("There is no default context in use"),
             |current_context| println!("{}", current_context.name),
         ),
         ConfigArgs::GetToken { name } => match name.as_ref() {
@@ -158,10 +158,10 @@ pub fn run(
                     "{}",
                     config
                         .get_current_context()
-                        .ok_or_else(|| anyhow!("There is no default context in use."))?
+                        .ok_or_else(|| anyhow!("There is no default context in use"))?
                         .token
                         .as_ref()
-                        .ok_or_else(|| anyhow!("The default context has no stored token."))?
+                        .ok_or_else(|| anyhow!("The default context has no stored token"))?
                 );
             }
             Some(name) => {
@@ -169,10 +169,10 @@ pub fn run(
                     "{}",
                     config
                         .get_context(name)
-                        .ok_or_else(|| anyhow!("No such context `{}`.", name))?
+                        .ok_or_else(|| anyhow!("No such context `{}`", name))?
                         .token
                         .as_ref()
-                        .ok_or_else(|| anyhow!("The context `{}` has no stored token.", name))?
+                        .ok_or_else(|| anyhow!("The context `{}` has no stored token", name))?
                 );
             }
         },
@@ -181,13 +181,13 @@ pub fn run(
                 if config.delete_context(name) {
                     config::write_reinfer_config(&config_path, &config)?;
                     info!(
-                        "Deleted context `{}` from `{}`.",
+                        "Deleted context `{}` from `{}`",
                         name,
                         config_path.as_ref().display()
                     );
                 } else {
                     return Err(anyhow!(
-                        "No such context `{}` exists in `{}`.",
+                        "No such context `{}` exists in `{}`",
                         name,
                         config_path.as_ref().display()
                     ));
@@ -216,15 +216,15 @@ fn add_or_edit_context(
         if !name.is_empty() {
             break name;
         } else {
-            error!("Context name cannot be empty.");
+            error!("Context name cannot be empty");
         }
     };
 
     let existing_context = config.get_context(&name);
     if existing_context.is_some() {
-        info!("Context `{}` already exists, it will be modified.", name);
+        info!("Context `{}` already exists, it will be modified", name);
     } else {
-        info!("A new context `{}` will be created.", name);
+        info!("A new context `{}` will be created", name);
     }
 
     // Get API token (either argument or from stdin)
@@ -239,7 +239,7 @@ fn add_or_edit_context(
         ));
     } else {
         warn!(
-            "Be careful, API tokens are stored in cleartext in {}.",
+            "Be careful, API tokens are stored in cleartext in {}",
             config_path.as_ref().display()
         );
     }
@@ -281,16 +281,16 @@ fn add_or_edit_context(
     let update_existing = existing_context.is_some();
     let is_new_context = !config.set_context(context);
     if is_new_context && config.num_contexts() == 1 {
-        info!("Default context set to `{}`.", name);
+        info!("Default context set to `{}`", name);
         config.set_current_context(&name);
     }
 
     config::write_reinfer_config(config_path, &config)?;
 
     if update_existing {
-        info!("Context `{}` was updated.", name);
+        info!("Context `{}` was updated", name);
     } else {
-        info!("New context `{}` was created.", name);
+        info!("New context `{}` was created", name);
     }
 
     Ok(())

@@ -1,7 +1,10 @@
-use reqwest::{blocking::Response, Result};
-use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
-use std::thread::sleep;
-use std::time::Duration;
+use reqwest::{Response, Result};
+use std::{
+    future::Future,
+    sync::atomic::{AtomicBool, Ordering::SeqCst},
+    thread::sleep,
+    time::Duration,
+};
 
 /// Strategy to use if retrying .
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -42,11 +45,18 @@ impl Retrier {
         }
     }
 
-    pub fn with_retries(&self, send_request: impl Fn() -> Result<Response>) -> Result<Response> {
+    pub async fn with_retries<CallbackT, ResponseT>(
+        &self,
+        send_request: CallbackT,
+    ) -> Result<Response>
+    where
+        CallbackT: Fn() -> ResponseT,
+        ResponseT: Future<Output = Result<Response>>,
+    {
         if self.is_first_request.swap(false, SeqCst)
             && self.config.strategy == RetryStrategy::Automatic
         {
-            return send_request();
+            return send_request().await;
         }
 
         for i_retry in 0..self.config.max_retry_count {
@@ -59,7 +69,7 @@ impl Retrier {
                 }};
             }
 
-            match send_request() {
+            match send_request().await {
                 Ok(response) if response.status().is_server_error() => {
                     warn_and_sleep!(format!("{} for {}", response.status(), response.url()))
                 }
@@ -70,7 +80,7 @@ impl Retrier {
         }
 
         // On last retry don't handle the error, just propagate all errors.
-        send_request()
+        send_request().await
     }
 }
 
@@ -78,12 +88,12 @@ impl Retrier {
 mod tests {
     use super::{Retrier, RetryConfig, RetryStrategy};
     use mockito::{mock, server_address};
-    use reqwest::blocking::{get, Client};
+    use reqwest::{get, Client};
     use std::thread::sleep;
     use std::time::Duration;
 
-    #[test]
-    fn test_always_retry() {
+    #[tokio::test]
+    async fn test_always_retry() {
         let mut handler = Retrier::new(RetryConfig {
             strategy: RetryStrategy::Always,
             max_retry_count: 5,
@@ -95,7 +105,8 @@ mod tests {
         let ok = mock("GET", "/").expect(1).create();
         assert!(
             handler
-                .with_retries(|| get(format!("http://{}", server_address())))
+                .with_retries(|| async { get(&format!("http://{}", server_address())).await })
+                .await
                 .unwrap()
                 .status()
                 == 200
@@ -111,7 +122,8 @@ mod tests {
             handler.config.max_retry_count = i_retry;
             assert!(
                 handler
-                    .with_retries(|| get(format!("http://{}", server_address())))
+                    .with_retries(|| async { get(&format!("http://{}", server_address())).await })
+                    .await
                     .unwrap()
                     .status()
                     == 500
@@ -120,8 +132,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_automatic_retry() {
+    #[tokio::test]
+    async fn test_automatic_retry() {
         let mut handler = Retrier::new(RetryConfig {
             strategy: RetryStrategy::Automatic,
             max_retry_count: 5,
@@ -133,7 +145,8 @@ mod tests {
         let err = mock("GET", "/").with_status(500).expect(1).create();
         assert!(
             handler
-                .with_retries(|| get(format!("http://{}", server_address())))
+                .with_retries(|| async { get(&format!("http://{}", server_address())).await })
+                .await
                 .unwrap()
                 .status()
                 == 500
@@ -144,7 +157,8 @@ mod tests {
         let ok = mock("GET", "/").expect(1).create();
         assert!(
             handler
-                .with_retries(|| get(format!("http://{}", server_address())))
+                .with_retries(|| async { get(&format!("http://{}", server_address())).await })
+                .await
                 .unwrap()
                 .status()
                 == 200
@@ -160,7 +174,8 @@ mod tests {
             handler.config.max_retry_count = i_retry;
             assert!(
                 handler
-                    .with_retries(|| get(format!("http://{}", server_address())))
+                    .with_retries(|| async { get(&format!("http://{}", server_address())).await })
+                    .await
                     .unwrap()
                     .status()
                     == 500
@@ -169,8 +184,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_timeout_retry() {
+    #[tokio::test]
+    async fn test_timeout_retry() {
         let handler = Retrier::new(RetryConfig {
             strategy: RetryStrategy::Always,
             max_retry_count: 1,
@@ -188,15 +203,17 @@ mod tests {
             .create();
         let client = Client::new();
         assert!(handler
-            .with_retries(|| client
-                .get(format!("http://{}", server_address()))
-                .timeout(Duration::from_secs_f64(0.1))
-                .send()
-                .and_then(|r| {
-                    // This is a bit of a hack to force a timeout
-                    let _ = r.text()?;
-                    unreachable!()
-                }))
+            .with_retries(|| async {
+                let response = client
+                    .get(&format!("http://{}", server_address()))
+                    .timeout(Duration::from_secs_f64(0.1))
+                    .send()
+                    .await?;
+                // This is a bit of a hack to force a timeout
+                let _ = response.text().await?;
+                unreachable!()
+            })
+            .await
             .unwrap_err()
             .is_timeout());
         timeout.assert();

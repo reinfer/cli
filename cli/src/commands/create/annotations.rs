@@ -43,14 +43,16 @@ pub struct CreateAnnotationsArgs {
     use_moon_forms: bool,
 }
 
-pub fn create(client: &Client, args: &CreateAnnotationsArgs) -> Result<()> {
+pub async fn create(client: &Client, args: &CreateAnnotationsArgs) -> Result<()> {
     let source = client
         .get_source(args.source.clone())
+        .await
         .with_context(|| format!("Unable to get source {}", args.source))?;
     let source_name = source.full_name();
 
     let dataset = client
         .get_dataset(args.dataset.clone())
+        .await
         .with_context(|| format!("Unable to get dataset {}", args.dataset))?;
     let dataset_name = dataset.full_name();
 
@@ -87,7 +89,8 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs) -> Result<()> {
                 &statistics,
                 &dataset_name,
                 args.use_moon_forms,
-            )?;
+            )
+            .await?;
             if let Some(mut progress) = progress {
                 progress.done();
             }
@@ -107,7 +110,8 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs) -> Result<()> {
                 &statistics,
                 &dataset_name,
                 args.use_moon_forms,
-            )?;
+            )
+            .await?;
             statistics
         }
     };
@@ -120,7 +124,7 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs) -> Result<()> {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn upload_annotations_from_reader(
+async fn upload_annotations_from_reader(
     client: &Client,
     source: &Source,
     annotations: impl BufRead,
@@ -132,14 +136,12 @@ fn upload_annotations_from_reader(
         let new_comment = read_comment_result?;
         if new_comment.has_annotations() {
             let comment_uid = CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0));
+            let new_labellings = new_comment.labelling.map(Into::<Vec<NewLabelling>>::into);
             (if !use_moon_forms {
                 client.update_labelling(
                     dataset_name,
                     &comment_uid,
-                    new_comment
-                        .labelling
-                        .map(Into::<Vec<NewLabelling>>::into)
-                        .as_deref(),
+                    new_labellings.as_deref(),
                     new_comment.entities.as_ref(),
                     None,
                 )
@@ -152,6 +154,7 @@ fn upload_annotations_from_reader(
                     new_comment.moon_forms.as_deref(),
                 )
             })
+            .await
             .with_context(|| {
                 format!(
                     "Could not update labelling for comment `{}`",

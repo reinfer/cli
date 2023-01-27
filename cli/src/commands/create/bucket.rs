@@ -24,7 +24,7 @@ pub struct CreateBucketArgs {
     transform_tag: TransformTag,
 }
 
-pub fn create(client: &Client, args: &CreateBucketArgs, printer: &Printer) -> Result<()> {
+pub async fn create(client: &Client, args: &CreateBucketArgs, printer: &Printer) -> Result<()> {
     let CreateBucketArgs {
         name,
         title,
@@ -41,6 +41,7 @@ pub fn create(client: &Client, args: &CreateBucketArgs, printer: &Printer) -> Re
                 transform_tag,
             },
         )
+        .await
         .context("Operation to create a bucket has failed")?;
     info!(
         "New bucket `{}` [id: {}] created successfully",

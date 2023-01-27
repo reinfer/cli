@@ -64,17 +64,17 @@ pub enum GetArgs {
     CurrentUser,
 }
 
-pub fn run(args: &GetArgs, client: Client, printer: &Printer) -> Result<()> {
+pub async fn run(args: &GetArgs, client: Client, printer: &Printer) -> Result<()> {
     match args {
-        GetArgs::Buckets(args) => buckets::get(&client, args, printer),
-        GetArgs::Comment(args) => comments::get_single(&client, args),
-        GetArgs::Comments(args) => comments::get_many(&client, args),
-        GetArgs::Datasets(args) => datasets::get(&client, args, printer),
-        GetArgs::Projects(args) => projects::get(&client, args, printer),
-        GetArgs::Sources(args) => sources::get(&client, args, printer),
-        GetArgs::Triggers(args) => triggers::get(&client, args, printer),
-        GetArgs::TriggerComments(args) => triggers::get_trigger_comments(&client, args),
-        GetArgs::Users(args) => users::get(&client, args, printer),
-        GetArgs::CurrentUser => users::get_current_user(&client, printer),
+        GetArgs::Buckets(args) => buckets::get(&client, args, printer).await,
+        GetArgs::Comment(args) => comments::get_single(&client, args).await,
+        GetArgs::Comments(args) => comments::get_many(&client, args).await,
+        GetArgs::Datasets(args) => datasets::get(&client, args, printer).await,
+        GetArgs::Projects(args) => projects::get(&client, args, printer).await,
+        GetArgs::Sources(args) => sources::get(&client, args, printer).await,
+        GetArgs::Triggers(args) => triggers::get(&client, args, printer).await,
+        GetArgs::TriggerComments(args) => triggers::get_trigger_comments(&client, args).await,
+        GetArgs::Users(args) => users::get(&client, args, printer).await,
+        GetArgs::CurrentUser => users::get_current_user(&client, printer).await,
     }
 }

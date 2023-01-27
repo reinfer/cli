@@ -41,7 +41,7 @@ pub struct CreateSourceArgs {
     transform_tag: Option<TransformTag>,
 }
 
-pub fn create(client: &Client, args: &CreateSourceArgs, printer: &Printer) -> Result<()> {
+pub async fn create(client: &Client, args: &CreateSourceArgs, printer: &Printer) -> Result<()> {
     let CreateSourceArgs {
         name,
         title,
@@ -58,6 +58,7 @@ pub fn create(client: &Client, args: &CreateSourceArgs, printer: &Printer) -> Re
         Some(full_name @ BucketIdentifier::FullName(_)) => Some(
             client
                 .get_bucket(full_name)
+                .await
                 .context("Fetching bucket for id.")?
                 .id,
         ),
@@ -78,6 +79,7 @@ pub fn create(client: &Client, args: &CreateSourceArgs, printer: &Printer) -> Re
                 transform_tag: transform_tag.as_ref(),
             },
         )
+        .await
         .context("Operation to create a source has failed")?;
     info!(
         "New source `{}` [id: {}] created successfully",

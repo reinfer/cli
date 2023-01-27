@@ -57,18 +57,20 @@ pub enum CreateArgs {
     TriggerException(CreateTriggerExceptionArgs),
 }
 
-pub fn run(create_args: &CreateArgs, client: Client, printer: &Printer) -> Result<()> {
+pub async fn run(create_args: &CreateArgs, client: Client, printer: &Printer) -> Result<()> {
     match create_args {
-        CreateArgs::Bucket(bucket_args) => bucket::create(&client, bucket_args, printer),
-        CreateArgs::Source(source_args) => source::create(&client, source_args, printer),
-        CreateArgs::Dataset(dataset_args) => dataset::create(&client, dataset_args, printer),
-        CreateArgs::Project(project_args) => project::create(&client, project_args, printer),
-        CreateArgs::Comments(comments_args) => comments::create(&client, comments_args),
-        CreateArgs::Annotations(annotations_args) => annotations::create(&client, annotations_args),
-        CreateArgs::Emails(emails_args) => emails::create(&client, emails_args),
-        CreateArgs::User(user_args) => user::create(&client, user_args, printer),
+        CreateArgs::Bucket(bucket_args) => bucket::create(&client, bucket_args, printer).await,
+        CreateArgs::Source(source_args) => source::create(&client, source_args, printer).await,
+        CreateArgs::Dataset(dataset_args) => dataset::create(&client, dataset_args, printer).await,
+        CreateArgs::Project(project_args) => project::create(&client, project_args, printer).await,
+        CreateArgs::Comments(comments_args) => comments::create(&client, comments_args).await,
+        CreateArgs::Annotations(annotations_args) => {
+            annotations::create(&client, annotations_args).await
+        }
+        CreateArgs::Emails(emails_args) => emails::create(&client, emails_args).await,
+        CreateArgs::User(user_args) => user::create(&client, user_args, printer).await,
         CreateArgs::TriggerException(trigger_exception_args) => {
-            trigger_exception::create(&client, trigger_exception_args, printer)
+            trigger_exception::create(&client, trigger_exception_args, printer).await
         }
     }
 }

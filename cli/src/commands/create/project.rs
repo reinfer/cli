@@ -23,7 +23,7 @@ pub struct CreateProjectArgs {
     user_ids: Vec<UserId>,
 }
 
-pub fn create(client: &Client, args: &CreateProjectArgs, printer: &Printer) -> Result<()> {
+pub async fn create(client: &Client, args: &CreateProjectArgs, printer: &Printer) -> Result<()> {
     let CreateProjectArgs {
         name,
         title,
@@ -40,6 +40,7 @@ pub fn create(client: &Client, args: &CreateProjectArgs, printer: &Printer) -> R
             },
             user_ids,
         )
+        .await
         .context("Operation to create a project has failed")?;
     info!("New project `{}` created successfully", project.name.0,);
     printer.print_resources(&[project])?;

@@ -1,6 +1,7 @@
 use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use colored::Colorize;
+use futures::stream::{StreamExt, TryStreamExt};
 use reinfer_client::{
     AnnotatedComment, Client, CommentId, CommentsIterTimerange, DatasetFullName, DatasetIdentifier,
     Entities, HasAnnotations, LabelName, Labelling, ModelVersion, PredictedLabel, Source,
@@ -76,7 +77,7 @@ pub struct GetManyCommentsArgs {
     path: Option<PathBuf>,
 }
 
-pub fn get_single(client: &Client, args: &GetSingleCommentArgs) -> Result<()> {
+pub async fn get_single(client: &Client, args: &GetSingleCommentArgs) -> Result<()> {
     let GetSingleCommentArgs {
         source,
         comment_id,
@@ -95,8 +96,9 @@ pub fn get_single(client: &Client, args: &GetSingleCommentArgs) -> Result<()> {
     let mut writer: Box<dyn Write> = file.unwrap_or_else(|| Box::new(stdout.lock()));
     let source = client
         .get_source(source.to_owned())
+        .await
         .context("Operation to get source has failed.")?;
-    let comment = client.get_comment(&source.full_name(), comment_id)?;
+    let comment = client.get_comment(&source.full_name(), comment_id).await?;
     print_resources_as_json(
         std::iter::once(AnnotatedComment {
             comment,
@@ -109,7 +111,7 @@ pub fn get_single(client: &Client, args: &GetSingleCommentArgs) -> Result<()> {
     )
 }
 
-pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
+pub async fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
     let GetManyCommentsArgs {
         source,
         dataset,
@@ -162,7 +164,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
     };
 
     if let Some(file) = file {
-        download_comments(client, source.clone(), file, download_options)
+        download_comments(client, source.clone(), file, download_options).await
     } else {
         download_comments(
             client,
@@ -170,6 +172,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
             io::stdout().lock(),
             download_options,
         )
+        .await
     }
 }
 
@@ -183,7 +186,27 @@ struct CommentDownloadOptions {
     show_progress: bool,
 }
 
-fn download_comments(
+async fn make_progress(
+    client: &Client,
+    statistics: &Arc<Statistics>,
+    dataset_name: Option<&DatasetFullName>,
+) -> Result<Progress> {
+    Ok(get_comments_progress_bar(
+        if let Some(dataset_name) = dataset_name {
+            *client
+                .get_statistics(dataset_name)
+                .await
+                .context("Operation to get comment count has failed..")?
+                .num_comments as u64
+        } else {
+            0
+        },
+        statistics,
+        dataset_name.is_some(),
+    ))
+}
+
+async fn download_comments(
     client: &Client,
     source_identifier: SourceIdentifier,
     mut writer: impl Write,
@@ -191,30 +214,17 @@ fn download_comments(
 ) -> Result<()> {
     let source = client
         .get_source(source_identifier)
+        .await
         .context("Operation to get source has failed.")?;
     let statistics = Arc::new(Statistics::new());
-    let make_progress = |dataset_name: Option<&DatasetFullName>| -> Result<Progress> {
-        Ok(get_comments_progress_bar(
-            if let Some(dataset_name) = dataset_name {
-                *client
-                    .get_statistics(dataset_name)
-                    .context("Operation to get comment count has failed..")?
-                    .num_comments as u64
-            } else {
-                0
-            },
-            &statistics,
-            dataset_name.is_some(),
-        ))
-    };
-
     if let Some(dataset_identifier) = options.dataset_identifier {
         let dataset = client
             .get_dataset(dataset_identifier)
+            .await
             .context("Operation to get dataset has failed.")?;
         let dataset_name = dataset.full_name();
         let _progress = if options.show_progress {
-            Some(make_progress(Some(&dataset_name))?)
+            Some(make_progress(client, &statistics, Some(&dataset_name)).await?)
         } else {
             None
         };
@@ -227,7 +237,8 @@ fn download_comments(
                 &statistics,
                 options.include_predictions,
                 writer,
-            )?;
+            )
+            .await?;
         } else {
             get_comments_from_uids(
                 client,
@@ -238,20 +249,21 @@ fn download_comments(
                 options.model_version,
                 writer,
                 options.timerange,
-            )?;
+            )
+            .await?;
         }
     } else {
         let _progress = if options.show_progress {
-            Some(make_progress(None)?)
+            Some(make_progress(client, &statistics, None).await?)
         } else {
             None
         };
         client
-            .get_comments_iter(&source.full_name(), None, options.timerange)
+            .get_comments(&source.full_name(), None, options.timerange)
+            .map(|page| page.context("Operation to get comments has failed."))
             .try_for_each(|page| {
-                let page = page.context("Operation to get comments has failed.")?;
                 statistics.add_comments(page.len());
-                print_resources_as_json(
+                futures::future::ready(print_resources_as_json(
                     page.into_iter().map(|comment| AnnotatedComment {
                         comment,
                         labelling: None,
@@ -260,8 +272,9 @@ fn download_comments(
                         moon_forms: None,
                     }),
                     &mut writer,
-                )
-            })?;
+                ))
+            })
+            .await?;
     }
     log::info!(
         "Successfully downloaded {} comments [{} annotated].",
@@ -272,7 +285,7 @@ fn download_comments(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn get_comments_from_uids(
+async fn get_comments_from_uids(
     client: &Client,
     dataset_name: DatasetFullName,
     source: Source,
@@ -282,84 +295,42 @@ fn get_comments_from_uids(
     mut writer: impl Write,
     timerange: CommentsIterTimerange,
 ) -> Result<()> {
-    client
-        .get_comments_iter(&source.full_name(), None, timerange)
-        .try_for_each(|page| {
-            let page = page.context("Operation to get comments has failed.")?;
-            if page.is_empty() {
-                return Ok(());
-            }
+    let source_full_name = &source.full_name();
+    let comments = client.get_comments(source_full_name, None, timerange);
+    futures::pin_mut!(comments);
+    while let Some(page_result) = comments.next().await {
+        let page = page_result.context("Operation to get labellings has failed")?;
 
-            statistics.add_comments(page.len());
+        if page.is_empty() {
+            return Ok(());
+        }
 
-            if let Some(model_version) = &model_version {
-                let model_version = model_version
-                    .parse::<u32>()
-                    .context("Invalid model version")?;
-                let predictions = client
-                    .get_comment_predictions(
-                        &dataset_name,
-                        &ModelVersion(model_version),
-                        page.iter().map(|comment| &comment.uid),
-                    )
-                    .context("Operation to get predictions has failed.")?;
-                // since predict-comments endpoint doesn't return some fields,
-                // they are set to None or [] here
-                let comments =
-                    page.into_iter()
-                        .zip(predictions.into_iter())
-                        .map(|(comment, prediction)| AnnotatedComment {
-                            comment,
-                            labelling: Some(vec![Labelling {
-                                group: DEFAULT_LABEL_GROUP_NAME.clone(),
-                                assigned: Vec::new(),
-                                dismissed: Vec::new(),
-                                predicted: prediction.labels.map(|auto_threshold_labels| {
-                                    auto_threshold_labels
-                                        .iter()
-                                        .map(|auto_threshold_label| PredictedLabel {
-                                            name: LabelName(auto_threshold_label.name.join(" > ")),
-                                            sentiment: None,
-                                            probability: auto_threshold_label.probability,
-                                            auto_thresholds: Some(
-                                                auto_threshold_label.auto_thresholds.to_vec(),
-                                            ),
-                                        })
-                                        .collect()
-                                }),
-                            }]),
-                            entities: Some(Entities {
-                                assigned: Vec::new(),
-                                dismissed: Vec::new(),
-                                predicted: prediction.entities,
-                            }),
-                            thread_properties: None,
-                            moon_forms: None,
-                        });
-                print_resources_as_json(comments, &mut writer)
-            } else {
-                let annotations = client
-                    .get_labellings(&dataset_name, page.iter().map(|comment| &comment.uid))
-                    .context("Operation to get labellings has failed.")?;
-                let comments = page.into_iter().zip(annotations.into_iter()).map(
-                    |(comment, mut annotated)| {
-                        if !include_predictions {
-                            annotated = annotated.without_predictions();
-                        }
-                        annotated.comment = comment;
-                        if annotated.has_annotations() {
-                            statistics.add_annotated(1);
-                        }
-                        annotated
-                    },
-                );
-                print_resources_as_json(comments, &mut writer)
-            }
-        })?;
+        statistics.add_comments(page.len());
+        let annotations = client
+            .get_labellings(&dataset_name, page.iter().map(|comment| &comment.uid))
+            .await
+            .context("Operation to get annotations has failed")?;
+
+        let comments =
+            page.into_iter()
+                .zip(annotations.into_iter())
+                .map(|(comment, mut annotated)| {
+                    if !include_predictions {
+                        annotated = annotated.without_predictions();
+                    }
+                    annotated.comment = comment;
+                    if annotated.has_annotations() {
+                        statistics.add_annotated(1);
+                    }
+                    annotated
+                });
+        print_resources_as_json(comments, &mut writer)?;
+    }
+
     Ok(())
 }
 
-fn get_reviewed_comments_in_bulk(
+async fn get_reviewed_comments_in_bulk(
     client: &Client,
     dataset_name: DatasetFullName,
     source: Source,
@@ -367,21 +338,22 @@ fn get_reviewed_comments_in_bulk(
     include_predictions: bool,
     mut writer: impl Write,
 ) -> Result<()> {
-    client
-        .get_labellings_iter(&dataset_name, &source.id, include_predictions, None)
-        .try_for_each(|page| {
-            let page = page.context("Operation to get labellings has failed.")?;
-            statistics.add_comments(page.len());
-            statistics.add_annotated(page.len());
-            let comments = page.into_iter().map(|comment| {
-                if !include_predictions {
-                    comment.without_predictions()
-                } else {
-                    comment
-                }
-            });
-            print_resources_as_json(comments, &mut writer)
-        })?;
+    let comments = client.get_labellings_iter(&dataset_name, &source.id, include_predictions, None);
+    futures::pin_mut!(comments);
+    while let Some(page_result) = comments.next().await {
+        let page = page_result.context("Operation to get a comment page has failed")?;
+        statistics.add_comments(page.len());
+        statistics.add_annotated(page.len());
+
+        let comments = page.into_iter().map(|comment| {
+            if !include_predictions {
+                comment.without_predictions()
+            } else {
+                comment
+            }
+        });
+        print_resources_as_json(comments, &mut writer)?;
+    }
     Ok(())
 }
 

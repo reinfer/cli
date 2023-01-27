@@ -4,17 +4,16 @@ pub mod resources;
 pub mod retry;
 
 use chrono::{DateTime, Utc};
-use log::debug;
+use futures::Stream;
 use once_cell::sync::Lazy;
 use reqwest::{
-    blocking::{multipart::Form, Client as HttpClient, Response as HttpResponse},
     header::{self, HeaderMap, HeaderValue},
-    IntoUrl, Proxy, Result as ReqwestResult,
+    Client as HttpClient, IntoUrl, Response as HttpResponse, Result as ReqwestResult,
 };
 use resources::project::ForceDeleteProject;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{cell::Cell, fmt::Display, path::Path};
+use std::{cell::Cell, fmt::Display, future::Future};
 use url::Url;
 
 use crate::resources::{
@@ -104,13 +103,14 @@ pub use crate::{
     },
 };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Token(pub String);
 
 pub struct Config {
     pub endpoint: Url,
     pub token: Token,
     pub accept_invalid_certificates: bool,
+    #[cfg(feature = "native")]
     pub proxy: Option<Url>,
     /// Retry settings to use, if any. This will apply to all requests except for POST requests
     /// which are not idempotent (as they cannot be naively retried).
@@ -123,6 +123,7 @@ impl Default for Config {
             endpoint: DEFAULT_ENDPOINT.clone(),
             token: Token("".to_owned()),
             accept_invalid_certificates: false,
+            #[cfg(feature = "native")]
             proxy: None,
             retry_config: None,
         }
@@ -163,7 +164,22 @@ pub struct GetCommentsIterPageQuery<'a> {
 impl Client {
     /// Create a new API client.
     pub fn new(config: Config) -> Result<Client> {
-        let http_client = build_http_client(&config)?;
+        let http_client = {
+            let builder = HttpClient::builder();
+            #[cfg(feature = "native")]
+            let builder = {
+                let mut builder = builder
+                    .gzip(true)
+                    .danger_accept_invalid_certs(config.accept_invalid_certificates);
+                if let Some(proxy) = config.proxy.clone() {
+                    builder =
+                        builder.proxy(reqwest::Proxy::all(proxy).map_err(Error::BuildHttpClient)?);
+                }
+                builder
+            };
+            builder.build().map_err(Error::BuildHttpClient)?
+        };
+
         let headers = build_headers(&config)?;
         let endpoints = Endpoints::new(config.endpoint)?;
         let retrier = config.retry_config.map(Retrier::new);
@@ -176,38 +192,42 @@ impl Client {
     }
 
     /// List all visible sources.
-    pub fn get_sources(&self) -> Result<Vec<Source>> {
+    pub async fn get_sources(&self) -> Result<Vec<Source>> {
         Ok(self
-            .get::<_, GetAvailableSourcesResponse>(self.endpoints.sources.clone())?
+            .get::<_, GetAvailableSourcesResponse>(self.endpoints.sources.clone())
+            .await?
             .sources)
     }
 
     /// Get a source by either id or name.
-    pub fn get_user(&self, user: impl Into<UserIdentifier>) -> Result<User> {
+    pub async fn get_user(&self, user: impl Into<UserIdentifier>) -> Result<User> {
         Ok(match user.into() {
             UserIdentifier::Id(user_id) => {
-                self.get::<_, GetUserResponse>(self.endpoints.user_by_id(&user_id)?)?
+                self.get::<_, GetUserResponse>(self.endpoints.user_by_id(&user_id)?)
+                    .await?
                     .user
             }
         })
     }
 
     /// Get a source by either id or name.
-    pub fn get_source(&self, source: impl Into<SourceIdentifier>) -> Result<Source> {
+    pub async fn get_source(&self, source: impl Into<SourceIdentifier>) -> Result<Source> {
         Ok(match source.into() {
             SourceIdentifier::Id(source_id) => {
-                self.get::<_, GetSourceResponse>(self.endpoints.source_by_id(&source_id)?)?
+                self.get::<_, GetSourceResponse>(self.endpoints.source_by_id(&source_id)?)
+                    .await?
                     .source
             }
             SourceIdentifier::FullName(source_name) => {
-                self.get::<_, GetSourceResponse>(self.endpoints.source_by_name(&source_name)?)?
+                self.get::<_, GetSourceResponse>(self.endpoints.source_by_name(&source_name)?)
+                    .await?
                     .source
             }
         })
     }
 
     /// Create a new source.
-    pub fn create_source(
+    pub async fn create_source(
         &self,
         source_name: &SourceFullName,
         options: NewSource<'_>,
@@ -216,12 +236,13 @@ impl Client {
             .put::<_, _, CreateSourceResponse>(
                 self.endpoints.source_by_name(source_name)?,
                 CreateSourceRequest { source: options },
-            )?
+            )
+            .await?
             .source)
     }
 
     /// Update a source.
-    pub fn update_source(
+    pub async fn update_source(
         &self,
         source_name: &SourceFullName,
         options: UpdateSource<'_>,
@@ -231,43 +252,45 @@ impl Client {
                 self.endpoints.source_by_name(source_name)?,
                 UpdateSourceRequest { source: options },
                 Retry::Yes,
-            )?
+            )
+            .await?
             .source)
     }
 
     /// Delete a source.
-    pub fn delete_source(&self, source: impl Into<SourceIdentifier>) -> Result<()> {
+    pub async fn delete_source(&self, source: impl Into<SourceIdentifier>) -> Result<()> {
         let source_id = match source.into() {
             SourceIdentifier::Id(source_id) => source_id,
-            source @ SourceIdentifier::FullName(_) => self.get_source(source)?.id,
+            source @ SourceIdentifier::FullName(_) => self.get_source(source).await?.id,
         };
-        self.delete(self.endpoints.source_by_id(&source_id)?)
+        self.delete(self.endpoints.source_by_id(&source_id)?).await
     }
 
     /// Delete a user.
-    pub fn delete_user(&self, user: impl Into<UserIdentifier>) -> Result<()> {
+    pub async fn delete_user(&self, user: impl Into<UserIdentifier>) -> Result<()> {
         let UserIdentifier::Id(user_id) = user.into();
-        self.delete(self.endpoints.user_by_id(&user_id)?)
+        self.delete(self.endpoints.user_by_id(&user_id)?).await
     }
 
     /// Delete comments by id in a source.
-    pub fn delete_comments(
+    pub async fn delete_comments(
         &self,
         source: impl Into<SourceIdentifier>,
         comments: &[CommentId],
     ) -> Result<()> {
         let source_full_name = match source.into() {
-            source @ SourceIdentifier::Id(_) => self.get_source(source)?.full_name(),
+            source @ SourceIdentifier::Id(_) => self.get_source(source).await?.full_name(),
             SourceIdentifier::FullName(source_full_name) => source_full_name,
         };
         self.delete_query(
             self.endpoints.comments_v1(&source_full_name)?,
             Some(&id_list_query(comments.iter().map(|uid| &uid.0))),
         )
+        .await
     }
 
     /// Get a page of comments from a source.
-    pub fn get_comments_iter_page(
+    pub async fn get_comments_iter_page(
         &self,
         source_name: &SourceFullName,
         continuation: Option<&ContinuationKind>,
@@ -294,30 +317,67 @@ impl Client {
             limit,
         };
         self.get_query(self.endpoints.comments(source_name)?, Some(&query_params))
+            .await
     }
 
     /// Iterate through all comments in a source.
-    pub fn get_comments_iter<'a>(
+    pub fn get_comments<'a>(
         &'a self,
         source_name: &'a SourceFullName,
         page_size: Option<usize>,
         timerange: CommentsIterTimerange,
-    ) -> CommentsIter<'a> {
-        CommentsIter::new(self, source_name, page_size, timerange)
+    ) -> impl Stream<Item = Result<Vec<Comment>>> + 'a {
+        // Default number of comments per page to request from API.
+        const DEFAULT_PAGE_SIZE: usize = 64;
+
+        struct CommentCursor {
+            continuation: Option<ContinuationKind>,
+            page_size: usize,
+            to_timestamp: Option<DateTime<Utc>>,
+            done: bool,
+        }
+        let cursor = CommentCursor {
+            continuation: timerange.from.map(ContinuationKind::Timestamp),
+            page_size: page_size.unwrap_or(DEFAULT_PAGE_SIZE),
+            to_timestamp: timerange.to,
+            done: false,
+        };
+        futures::stream::unfold(cursor, |mut cursor| async {
+            if cursor.done {
+                return None;
+            }
+
+            let comments_page = self
+                .get_comments_iter_page(
+                    source_name,
+                    cursor.continuation.as_ref(),
+                    cursor.to_timestamp,
+                    cursor.page_size,
+                )
+                .await
+                .map(|page| {
+                    cursor.continuation = page.continuation.map(ContinuationKind::Continuation);
+                    cursor.done = cursor.continuation.is_none();
+                    page.comments
+                });
+
+            Some((comments_page, cursor))
+        })
     }
 
     /// Get a single comment by id.
-    pub fn get_comment<'a>(
+    pub async fn get_comment<'a>(
         &'a self,
         source_name: &'a SourceFullName,
         comment_id: &'a CommentId,
     ) -> Result<Comment> {
         Ok(self
-            .get::<_, GetCommentResponse>(self.endpoints.comment_by_id(source_name, comment_id)?)?
+            .get::<_, GetCommentResponse>(self.endpoints.comment_by_id(source_name, comment_id)?)
+            .await?
             .comment)
     }
 
-    pub fn put_comments(
+    pub async fn put_comments(
         &self,
         source_name: &SourceFullName,
         comments: &[NewComment],
@@ -326,9 +386,10 @@ impl Client {
             self.endpoints.comments(source_name)?,
             PutCommentsRequest { comments },
         )
+        .await
     }
 
-    pub fn sync_comments(
+    pub async fn sync_comments(
         &self,
         source_name: &SourceFullName,
         comments: &[NewComment],
@@ -338,9 +399,10 @@ impl Client {
             SyncCommentsRequest { comments },
             Retry::Yes,
         )
+        .await
     }
 
-    pub fn put_emails(
+    pub async fn put_emails(
         &self,
         bucket_name: &BucketFullName,
         emails: &[NewEmail],
@@ -349,34 +411,53 @@ impl Client {
             self.endpoints.put_emails(bucket_name)?,
             PutEmailsRequest { emails },
         )
+        .await
     }
 
-    pub fn post_user(&self, user_id: &UserId, user: UpdateUser) -> Result<PostUserResponse> {
+    pub async fn post_user(&self, user_id: &UserId, user: UpdateUser) -> Result<PostUserResponse> {
         self.post(
             self.endpoints.post_user(user_id)?,
             PostUserRequest { user: &user },
             Retry::Yes,
         )
+        .await
     }
 
-    pub fn put_comment_audio(
+    #[cfg(feature = "native")]
+    pub async fn put_comment_audio(
         &self,
         source_id: &SourceId,
         comment_id: &CommentId,
-        audio_path: impl AsRef<Path>,
+        audio_path: impl AsRef<std::path::Path>,
     ) -> Result<()> {
-        let form = Form::new()
-            .file("file", audio_path)
-            .map_err(|source| Error::Unknown {
-                message: "PUT comment audio operation failed".to_owned(),
-                source: source.into(),
-            })?;
+        use reqwest::multipart::{Form, Part};
+
+        let audio_part = {
+            let file_name: String = audio_path
+                .as_ref()
+                .file_name()
+                .map(std::ffi::OsStr::to_string_lossy)
+                .unwrap_or_else(|| "unknown".into())
+                .to_string(); // it's a Cow
+
+            let audio_content =
+                tokio::fs::read(audio_path)
+                    .await
+                    .map_err(|source| Error::Unknown {
+                        message: "Could not read audio file {audio_path}".to_owned(),
+                        source: source.into(),
+                    })?;
+
+            Part::bytes(audio_content).file_name(file_name)
+        };
+
         let http_response = self
             .http_client
             .put(self.endpoints.comment_audio(source_id, comment_id)?)
             .headers(self.headers.clone())
-            .multipart(form)
+            .multipart(Form::new().part("file", audio_part))
             .send()
+            .await
             .map_err(|source| Error::ReqwestError {
                 message: "PUT comment audio operation failed".to_owned(),
                 source,
@@ -384,35 +465,39 @@ impl Client {
         let status = http_response.status();
         http_response
             .json::<Response<EmptySuccess>>()
+            .await
             .map_err(Error::BadJsonResponse)?
             .into_result(status)?;
         Ok(())
     }
 
-    pub fn get_datasets(&self) -> Result<Vec<Dataset>> {
+    pub async fn get_datasets(&self) -> Result<Vec<Dataset>> {
         Ok(self
-            .get::<_, GetAvailableDatasetsResponse>(self.endpoints.datasets.clone())?
+            .get::<_, GetAvailableDatasetsResponse>(self.endpoints.datasets.clone())
+            .await?
             .datasets)
     }
 
-    pub fn get_dataset<IdentifierT>(&self, dataset: IdentifierT) -> Result<Dataset>
+    pub async fn get_dataset<IdentifierT>(&self, dataset: IdentifierT) -> Result<Dataset>
     where
         IdentifierT: Into<DatasetIdentifier>,
     {
         Ok(match dataset.into() {
             DatasetIdentifier::Id(dataset_id) => {
-                self.get::<_, GetDatasetResponse>(self.endpoints.dataset_by_id(&dataset_id)?)?
+                self.get::<_, GetDatasetResponse>(self.endpoints.dataset_by_id(&dataset_id)?)
+                    .await?
                     .dataset
             }
             DatasetIdentifier::FullName(dataset_name) => {
-                self.get::<_, GetDatasetResponse>(self.endpoints.dataset_by_name(&dataset_name)?)?
+                self.get::<_, GetDatasetResponse>(self.endpoints.dataset_by_name(&dataset_name)?)
+                    .await?
                     .dataset
             }
         })
     }
 
     /// Create a dataset.
-    pub fn create_dataset(
+    pub async fn create_dataset(
         &self,
         dataset_name: &DatasetFullName,
         options: NewDataset<'_>,
@@ -421,38 +506,48 @@ impl Client {
             .put::<_, _, CreateDatasetResponse>(
                 self.endpoints.dataset_by_name(dataset_name)?,
                 CreateDatasetRequest { dataset: options },
-            )?
+            )
+            .await?
             .dataset)
     }
 
     /// Update a dataset.
-    pub fn update_dataset(
+    pub async fn update_dataset(
         &self,
         dataset_name: &DatasetFullName,
         options: UpdateDataset<'_>,
     ) -> Result<Dataset> {
+        eprintln!(
+            "{:?}",
+            UpdateDatasetRequest {
+                dataset: options.clone()
+            }
+        );
+
         Ok(self
             .post::<_, _, UpdateDatasetResponse>(
                 self.endpoints.dataset_by_name(dataset_name)?,
                 UpdateDatasetRequest { dataset: options },
                 Retry::Yes,
-            )?
+            )
+            .await?
             .dataset)
     }
 
-    pub fn delete_dataset<IdentifierT>(&self, dataset: IdentifierT) -> Result<()>
+    pub async fn delete_dataset<IdentifierT>(&self, dataset: IdentifierT) -> Result<()>
     where
         IdentifierT: Into<DatasetIdentifier>,
     {
         let dataset_id = match dataset.into() {
             DatasetIdentifier::Id(dataset_id) => dataset_id,
-            dataset @ DatasetIdentifier::FullName(_) => self.get_dataset(dataset)?.id,
+            dataset @ DatasetIdentifier::FullName(_) => self.get_dataset(dataset).await?.id,
         };
         self.delete(self.endpoints.dataset_by_id(&dataset_id)?)
+            .await
     }
 
     /// Get labellings for a given a dataset and a list of comment UIDs.
-    pub fn get_labellings<'a>(
+    pub async fn get_labellings<'a>(
         &self,
         dataset_name: &DatasetFullName,
         comment_uids: impl Iterator<Item = &'a CommentUid>,
@@ -461,7 +556,8 @@ impl Client {
             .get_query::<_, _, GetAnnotationsResponse>(
                 self.endpoints.get_labellings(dataset_name)?,
                 Some(&id_list_query(comment_uids.into_iter().map(|id| &id.0))),
-            )?
+            )
+            .await?
             .results)
     }
 
@@ -472,12 +568,53 @@ impl Client {
         source_id: &'a SourceId,
         return_predictions: bool,
         limit: Option<usize>,
-    ) -> LabellingsIter<'a> {
-        LabellingsIter::new(self, dataset_name, source_id, return_predictions, limit)
+    ) -> impl Stream<Item = Result<Vec<AnnotatedComment>>> + 'a {
+        struct LabellingsCursor {
+            after: Option<GetLabellingsAfter>,
+            return_predictions: bool,
+            limit: Option<usize>,
+            done: bool,
+        }
+        let cursor = LabellingsCursor {
+            after: None,
+            return_predictions,
+            limit,
+            done: false,
+        };
+
+        futures::stream::unfold(cursor, |mut cursor| async {
+            if cursor.done {
+                return None;
+            }
+            let page_result = self
+                .get_labellings_in_bulk(
+                    dataset_name,
+                    GetLabellingsInBulk {
+                        source_id,
+                        return_predictions: &cursor.return_predictions,
+                        after: &cursor.after,
+                        limit: &cursor.limit,
+                    },
+                )
+                .await
+                .map(|page| {
+                    if cursor.after == page.after && !page.results.is_empty() {
+                        panic!("Labellings API did not increment pagination continuation");
+                    }
+
+                    cursor.after = page.after;
+                    if page.results.is_empty() {
+                        cursor.done = true;
+                    }
+
+                    page.results
+                });
+            Some((page_result, cursor))
+        })
     }
 
     /// Get reviewed comments in bulk
-    pub fn get_labellings_in_bulk(
+    pub async fn get_labellings_in_bulk(
         &self,
         dataset_name: &DatasetFullName,
         query_parameters: GetLabellingsInBulk<'_>,
@@ -486,10 +623,11 @@ impl Client {
             self.endpoints.get_labellings(dataset_name)?,
             Some(&query_parameters),
         )
+        .await
     }
 
     /// Update labellings for a given a dataset and comment UID.
-    pub fn update_labelling(
+    pub async fn update_labelling(
         &self,
         dataset_name: &DatasetFullName,
         comment_uid: &CommentUid,
@@ -506,10 +644,11 @@ impl Client {
             },
             Retry::Yes,
         )
+        .await
     }
 
     /// Get predictions for a given a dataset, a model version, and a list of comment UIDs.
-    pub fn get_comment_predictions<'a>(
+    pub async fn get_comment_predictions<'a>(
         &self,
         dataset_name: &DatasetFullName,
         model_version: &ModelVersion,
@@ -524,17 +663,19 @@ impl Client {
                     "uids": comment_uids.into_iter().map(|id| id.0.as_str()).collect::<Vec<_>>(),
                 }),
                 Retry::Yes,
-            )?
+            )
+            .await?
             .predictions)
     }
 
-    pub fn get_triggers(&self, dataset_name: &DatasetFullName) -> Result<Vec<Trigger>> {
+    pub async fn get_triggers(&self, dataset_name: &DatasetFullName) -> Result<Vec<Trigger>> {
         Ok(self
-            .get::<_, GetTriggersResponse>(self.endpoints.triggers(dataset_name)?)?
+            .get::<_, GetTriggersResponse>(self.endpoints.triggers(dataset_name)?)
+            .await?
             .triggers)
     }
 
-    pub fn get_recent_comments(
+    pub async fn get_recent_comments(
         &self,
         dataset_name: &DatasetFullName,
         filter: &CommentFilter,
@@ -550,50 +691,56 @@ impl Client {
             },
             Retry::No,
         )
+        .await
     }
 
-    pub fn get_current_user(&self) -> Result<User> {
+    pub async fn get_current_user(&self) -> Result<User> {
         Ok(self
-            .get::<_, GetCurrentUserResponse>(self.endpoints.current_user.clone())?
+            .get::<_, GetCurrentUserResponse>(self.endpoints.current_user.clone())
+            .await?
             .user)
     }
 
-    pub fn get_users(&self) -> Result<Vec<User>> {
+    pub async fn get_users(&self) -> Result<Vec<User>> {
         Ok(self
-            .get::<_, GetAvailableUsersResponse>(self.endpoints.users.clone())?
+            .get::<_, GetAvailableUsersResponse>(self.endpoints.users.clone())
+            .await?
             .users)
     }
 
-    pub fn create_user(&self, user: NewUser<'_>) -> Result<User> {
+    pub async fn create_user(&self, user: NewUser<'_>) -> Result<User> {
         Ok(self
             .put::<_, _, CreateUserResponse>(
                 self.endpoints.users.clone(),
                 CreateUserRequest { user },
-            )?
+            )
+            .await?
             .user)
     }
 
-    pub fn send_welcome_email(&self, user_id: UserId) -> Result<()> {
+    pub async fn send_welcome_email(&self, user_id: UserId) -> Result<()> {
         self.post::<_, _, WelcomeEmailResponse>(
             self.endpoints.welcome_email(&user_id)?,
             json!({}),
             Retry::No,
-        )?;
+        )
+        .await?;
         Ok(())
     }
 
-    pub fn get_statistics(&self, dataset_name: &DatasetFullName) -> Result<Statistics> {
+    pub async fn get_statistics(&self, dataset_name: &DatasetFullName) -> Result<Statistics> {
         Ok(self
             .post::<_, _, GetStatisticsResponse>(
                 self.endpoints.statistics(dataset_name)?,
                 json!({}),
                 Retry::No,
-            )?
+            )
+            .await?
             .statistics)
     }
 
     /// Create a new bucket.
-    pub fn create_bucket(
+    pub async fn create_bucket(
         &self,
         bucket_name: &BucketFullName,
         options: NewBucket<'_>,
@@ -602,44 +749,48 @@ impl Client {
             .put::<_, _, CreateBucketResponse>(
                 self.endpoints.bucket_by_name(bucket_name)?,
                 CreateBucketRequest { bucket: options },
-            )?
+            )
+            .await?
             .bucket)
     }
 
-    pub fn get_buckets(&self) -> Result<Vec<Bucket>> {
+    pub async fn get_buckets(&self) -> Result<Vec<Bucket>> {
         Ok(self
-            .get::<_, GetAvailableBucketsResponse>(self.endpoints.buckets.clone())?
+            .get::<_, GetAvailableBucketsResponse>(self.endpoints.buckets.clone())
+            .await?
             .buckets)
     }
 
-    pub fn get_bucket<IdentifierT>(&self, bucket: IdentifierT) -> Result<Bucket>
+    pub async fn get_bucket<IdentifierT>(&self, bucket: IdentifierT) -> Result<Bucket>
     where
         IdentifierT: Into<BucketIdentifier>,
     {
         Ok(match bucket.into() {
             BucketIdentifier::Id(bucket_id) => {
-                self.get::<_, GetBucketResponse>(self.endpoints.bucket_by_id(&bucket_id)?)?
+                self.get::<_, GetBucketResponse>(self.endpoints.bucket_by_id(&bucket_id)?)
+                    .await?
                     .bucket
             }
             BucketIdentifier::FullName(bucket_name) => {
-                self.get::<_, GetBucketResponse>(self.endpoints.bucket_by_name(&bucket_name)?)?
+                self.get::<_, GetBucketResponse>(self.endpoints.bucket_by_name(&bucket_name)?)
+                    .await?
                     .bucket
             }
         })
     }
 
-    pub fn delete_bucket<IdentifierT>(&self, bucket: IdentifierT) -> Result<()>
+    pub async fn delete_bucket<IdentifierT>(&self, bucket: IdentifierT) -> Result<()>
     where
         IdentifierT: Into<BucketIdentifier>,
     {
         let bucket_id = match bucket.into() {
             BucketIdentifier::Id(bucket_id) => bucket_id,
-            bucket @ BucketIdentifier::FullName(_) => self.get_bucket(bucket)?.id,
+            bucket @ BucketIdentifier::FullName(_) => self.get_bucket(bucket).await?.id,
         };
-        self.delete(self.endpoints.bucket_by_id(&bucket_id)?)
+        self.delete(self.endpoints.bucket_by_id(&bucket_id)?).await
     }
 
-    pub fn fetch_trigger_comments(
+    pub async fn fetch_trigger_comments(
         &self,
         trigger_name: &TriggerFullName,
         size: u32,
@@ -649,9 +800,10 @@ impl Client {
             TriggerFetchRequest { size },
             Retry::No,
         )
+        .await
     }
 
-    pub fn advance_trigger(
+    pub async fn advance_trigger(
         &self,
         trigger_name: &TriggerFullName,
         sequence_id: TriggerSequenceId,
@@ -660,11 +812,12 @@ impl Client {
             self.endpoints.trigger_advance(trigger_name)?,
             TriggerAdvanceRequest { sequence_id },
             Retry::No,
-        )?;
+        )
+        .await?;
         Ok(())
     }
 
-    pub fn reset_trigger(
+    pub async fn reset_trigger(
         &self,
         trigger_name: &TriggerFullName,
         to_comment_created_at: DateTime<Utc>,
@@ -675,40 +828,45 @@ impl Client {
                 to_comment_created_at,
             },
             Retry::No,
-        )?;
+        )
+        .await?;
         Ok(())
     }
 
-    pub fn tag_trigger_exceptions(
+    pub async fn tag_trigger_exceptions<'a>(
         &self,
         trigger_name: &TriggerFullName,
-        exceptions: &[TriggerException],
+        exceptions: &[TriggerException<'a>],
     ) -> Result<()> {
         self.put::<_, _, serde::de::IgnoredAny>(
             self.endpoints.trigger_exceptions(trigger_name)?,
             TagTriggerExceptionsRequest { exceptions },
-        )?;
+        )
+        .await?;
         Ok(())
     }
 
     /// Gets a project.
-    pub fn get_project(&self, project_name: &ProjectName) -> Result<Project> {
-        let response =
-            self.get::<_, GetProjectResponse>(self.endpoints.project_by_name(project_name)?)?;
+    pub async fn get_project(&self, project_name: &ProjectName) -> Result<Project> {
+        let response = self
+            .get::<_, GetProjectResponse>(self.endpoints.project_by_name(project_name)?)
+            .await?;
         Ok(response.project)
     }
 
     /// Gets all projects.
-    pub fn get_projects(&self) -> Result<Vec<Project>> {
-        let response = self.get::<_, GetProjectsResponse>(self.endpoints.projects.clone())?;
+    pub async fn get_projects(&self) -> Result<Vec<Project>> {
+        let response = self
+            .get::<_, GetProjectsResponse>(self.endpoints.projects.clone())
+            .await?;
         Ok(response.projects)
     }
 
     /// Creates a new project.
-    pub fn create_project(
+    pub async fn create_project<'a>(
         &self,
         project_name: &ProjectName,
-        options: NewProject,
+        options: NewProject<'a>,
         user_ids: &[UserId],
     ) -> Result<Project> {
         Ok(self
@@ -718,50 +876,53 @@ impl Client {
                     project: options,
                     user_ids,
                 },
-            )?
+            )
+            .await?
             .project)
     }
 
     /// Updates an existing project.
-    pub fn update_project(
+    pub async fn update_project<'request>(
         &self,
         project_name: &ProjectName,
-        options: UpdateProject,
+        options: UpdateProject<'request>,
     ) -> Result<Project> {
         Ok(self
             .post::<_, _, UpdateProjectResponse>(
                 self.endpoints.project_by_name(project_name)?,
                 UpdateProjectRequest { project: options },
                 Retry::Yes,
-            )?
+            )
+            .await?
             .project)
     }
 
     /// Deletes an existing project.
-    pub fn delete_project(
+    pub async fn delete_project(
         &self,
         project_name: &ProjectName,
         force_delete: ForceDeleteProject,
     ) -> Result<()> {
         let endpoint = self.endpoints.project_by_name(project_name)?;
         match force_delete {
-            ForceDeleteProject::No => self.delete(endpoint)?,
+            ForceDeleteProject::No => self.delete(endpoint).await?,
             ForceDeleteProject::Yes => {
-                self.delete_query(endpoint, Some(&json!({ "force": true })))?
+                self.delete_query(endpoint, Some(&json!({ "force": true })))
+                    .await?
             }
         };
         Ok(())
     }
 
-    fn get<LocationT, SuccessT>(&self, url: LocationT) -> Result<SuccessT>
+    async fn get<LocationT, SuccessT>(&self, url: LocationT) -> Result<SuccessT>
     where
         LocationT: IntoUrl + Display + Clone,
         for<'de> SuccessT: Deserialize<'de>,
     {
-        self.get_query::<LocationT, (), SuccessT>(url, None)
+        self.get_query::<LocationT, (), SuccessT>(url, None).await
     }
 
-    fn get_query<LocationT, QueryT, SuccessT>(
+    async fn get_query<LocationT, QueryT, SuccessT>(
         &self,
         url: LocationT,
         query: Option<&QueryT>,
@@ -771,7 +932,7 @@ impl Client {
         QueryT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
     {
-        debug!("Attempting GET `{}`", url);
+        log::debug!("Attempting GET `{}`", url);
         let http_response = self
             .with_retries(|| {
                 let mut request = self
@@ -783,6 +944,7 @@ impl Client {
                 }
                 request.send()
             })
+            .await
             .map_err(|source| Error::ReqwestError {
                 source,
                 message: "GET operation failed.".to_owned(),
@@ -790,23 +952,28 @@ impl Client {
         let status = http_response.status();
         http_response
             .json::<Response<SuccessT>>()
+            .await
             .map_err(Error::BadJsonResponse)?
             .into_result(status)
     }
 
-    fn delete<LocationT>(&self, url: LocationT) -> Result<()>
+    async fn delete<LocationT>(&self, url: LocationT) -> Result<()>
     where
         LocationT: IntoUrl + Display + Clone,
     {
-        self.delete_query::<LocationT, ()>(url, None)
+        self.delete_query::<LocationT, ()>(url, None).await
     }
 
-    fn delete_query<LocationT, QueryT>(&self, url: LocationT, query: Option<&QueryT>) -> Result<()>
+    async fn delete_query<LocationT, QueryT>(
+        &self,
+        url: LocationT,
+        query: Option<&QueryT>,
+    ) -> Result<()>
     where
         LocationT: IntoUrl + Display + Clone,
         QueryT: Serialize,
     {
-        debug!("Attempting DELETE `{}`", url);
+        log::debug!("Attempting DELETE `{}`", url);
 
         let attempts = Cell::new(0);
         let http_response = self
@@ -822,6 +989,7 @@ impl Client {
                 }
                 request.send()
             })
+            .await
             .map_err(|source| Error::ReqwestError {
                 source,
                 message: "DELETE operation failed.".to_owned(),
@@ -829,6 +997,7 @@ impl Client {
         let status = http_response.status();
         http_response
             .json::<Response<EmptySuccess>>()
+            .await
             .map_err(Error::BadJsonResponse)?
             .into_result(status)
             .map_or_else(
@@ -845,7 +1014,7 @@ impl Client {
             )
     }
 
-    fn post<LocationT, RequestT, SuccessT>(
+    async fn post<LocationT, RequestT, SuccessT>(
         &self,
         url: LocationT,
         request: RequestT,
@@ -856,7 +1025,7 @@ impl Client {
         RequestT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
     {
-        debug!("Attempting POST `{}`", url);
+        log::debug!("Attempting POST `{}`", url);
         let do_request = || {
             self.http_client
                 .post(url.clone())
@@ -865,8 +1034,8 @@ impl Client {
                 .send()
         };
         let result = match retry {
-            Retry::Yes => self.with_retries(do_request),
-            Retry::No => do_request(),
+            Retry::Yes => self.with_retries(do_request).await,
+            Retry::No => do_request().await,
         };
 
         let http_response = result.map_err(|source| Error::ReqwestError {
@@ -876,11 +1045,12 @@ impl Client {
         let status = http_response.status();
         http_response
             .json::<Response<SuccessT>>()
+            .await
             .map_err(Error::BadJsonResponse)?
             .into_result(status)
     }
 
-    fn put<LocationT, RequestT, SuccessT>(
+    async fn put<LocationT, RequestT, SuccessT>(
         &self,
         url: LocationT,
         request: RequestT,
@@ -890,7 +1060,7 @@ impl Client {
         RequestT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
     {
-        debug!("Attempting PUT `{}`", url);
+        log::debug!("Attempting PUT `{}`", url);
         let http_response = self
             .with_retries(|| {
                 self.http_client
@@ -899,6 +1069,7 @@ impl Client {
                     .json(&request)
                     .send()
             })
+            .await
             .map_err(|source| Error::ReqwestError {
                 source,
                 message: "PUT operation failed.".to_owned(),
@@ -906,147 +1077,42 @@ impl Client {
         let status = http_response.status();
         http_response
             .json::<Response<SuccessT>>()
+            .await
             .map_err(Error::BadJsonResponse)?
             .into_result(status)
     }
 
-    fn with_retries(
+    async fn with_retries<CallbackT, ResponseT>(
         &self,
-        send_request: impl Fn() -> ReqwestResult<HttpResponse>,
-    ) -> ReqwestResult<HttpResponse> {
+        send_request: CallbackT,
+    ) -> ReqwestResult<HttpResponse>
+    where
+        CallbackT: Fn() -> ResponseT,
+        ResponseT: Future<Output = ReqwestResult<HttpResponse>>,
+    {
         match &self.retrier {
-            Some(retrier) => retrier.with_retries(send_request),
-            None => send_request(),
+            Some(retrier) => retrier.with_retries(send_request).await,
+            None => send_request().await,
         }
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 enum Retry {
     Yes,
     No,
 }
 
+#[derive(Clone, Debug)]
 pub enum ContinuationKind {
     Timestamp(DateTime<Utc>),
     Continuation(Continuation),
 }
 
-pub struct CommentsIter<'a> {
-    client: &'a Client,
-    source_name: &'a SourceFullName,
-    continuation: Option<ContinuationKind>,
-    done: bool,
-    page_size: usize,
-    to_timestamp: Option<DateTime<Utc>>,
-}
-
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct CommentsIterTimerange {
     pub from: Option<DateTime<Utc>>,
     pub to: Option<DateTime<Utc>>,
-}
-impl<'a> CommentsIter<'a> {
-    // Default number of comments per page to request from API.
-    pub const DEFAULT_PAGE_SIZE: usize = 64;
-    // Maximum number of comments per page which can be requested from the API.
-    pub const MAX_PAGE_SIZE: usize = 256;
-
-    fn new(
-        client: &'a Client,
-        source_name: &'a SourceFullName,
-        page_size: Option<usize>,
-        timerange: CommentsIterTimerange,
-    ) -> Self {
-        let (from_timestamp, to_timestamp) = (timerange.from, timerange.to);
-        Self {
-            client,
-            source_name,
-            to_timestamp,
-            continuation: from_timestamp.map(ContinuationKind::Timestamp),
-            done: false,
-            page_size: page_size.unwrap_or(Self::DEFAULT_PAGE_SIZE),
-        }
-    }
-}
-
-impl<'a> Iterator for CommentsIter<'a> {
-    type Item = Result<Vec<Comment>>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.done {
-            return None;
-        }
-        let response = self.client.get_comments_iter_page(
-            self.source_name,
-            self.continuation.as_ref(),
-            self.to_timestamp,
-            self.page_size,
-        );
-        Some(response.map(|page| {
-            self.continuation = page.continuation.map(ContinuationKind::Continuation);
-            self.done = self.continuation.is_none();
-            page.comments
-        }))
-    }
-}
-
-pub struct LabellingsIter<'a> {
-    client: &'a Client,
-    dataset_name: &'a DatasetFullName,
-    source_id: &'a SourceId,
-    return_predictions: bool,
-    after: Option<GetLabellingsAfter>,
-    limit: Option<usize>,
-    done: bool,
-}
-
-impl<'a> LabellingsIter<'a> {
-    fn new(
-        client: &'a Client,
-        dataset_name: &'a DatasetFullName,
-        source_id: &'a SourceId,
-        return_predictions: bool,
-        limit: Option<usize>,
-    ) -> Self {
-        Self {
-            client,
-            dataset_name,
-            source_id,
-            return_predictions,
-            after: None,
-            limit,
-            done: false,
-        }
-    }
-}
-
-impl<'a> Iterator for LabellingsIter<'a> {
-    type Item = Result<Vec<AnnotatedComment>>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.done {
-            return None;
-        }
-        let response = self.client.get_labellings_in_bulk(
-            self.dataset_name,
-            GetLabellingsInBulk {
-                source_id: self.source_id,
-                return_predictions: &self.return_predictions,
-                after: &self.after,
-                limit: &self.limit,
-            },
-        );
-        Some(response.map(|page| {
-            if self.after == page.after && !page.results.is_empty() {
-                panic!("Labellings API did not increment pagination continuation");
-            }
-            self.after = page.after;
-            if page.results.is_empty() {
-                self.done = true;
-            }
-            page.results
-        }))
-    }
 }
 
 #[derive(Debug)]
@@ -1225,6 +1291,7 @@ impl Endpoints {
         )
     }
 
+    #[cfg(feature = "native")]
     fn comment_audio(&self, source_id: &SourceId, comment_id: &CommentId) -> Result<Url> {
         construct_endpoint(
             &self.base,
@@ -1332,16 +1399,6 @@ impl Endpoints {
     }
 }
 
-fn build_http_client(config: &Config) -> Result<HttpClient> {
-    let mut builder = HttpClient::builder()
-        .gzip(true)
-        .danger_accept_invalid_certs(config.accept_invalid_certificates);
-    if let Some(proxy) = config.proxy.clone() {
-        builder = builder.proxy(Proxy::all(proxy).map_err(Error::BuildHttpClient)?);
-    }
-    builder.build().map_err(Error::BuildHttpClient)
-}
-
 fn build_headers(config: &Config) -> Result<HeaderMap> {
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -1389,3 +1446,6 @@ mod tests {
         );
     }
 }
+
+/// Maximum number of comments per page which can be requested from the API.
+pub const MAX_PAGE_SIZE: usize = 256;

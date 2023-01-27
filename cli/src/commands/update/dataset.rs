@@ -1,11 +1,11 @@
 use crate::printer::Printer;
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::{Client, DatasetIdentifier, SourceId, SourceIdentifier, UpdateDataset};
+use reinfer_client::{Client, DatasetIdentifier, SourceIdentifier, UpdateDataset};
 use structopt::StructOpt;
 
 /// Update a dataset.
-#[derive(Debug, StructOpt)]
+#[derive(Clone, Debug, StructOpt)]
 pub struct UpdateDatasetArgs {
     #[structopt(name = "dataset")]
     /// Name or id of the dataset to delete
@@ -24,29 +24,30 @@ pub struct UpdateDatasetArgs {
     sources: Option<Vec<SourceIdentifier>>,
 }
 
-pub fn update(client: &Client, args: &UpdateDatasetArgs, printer: &Printer) -> Result<()> {
+pub async fn update(client: &Client, args: UpdateDatasetArgs, printer: &Printer) -> Result<()> {
     let UpdateDatasetArgs {
         dataset,
         title,
         description,
-        sources,
+        mut sources,
     } = args;
 
-    let source_ids = sources
-        .as_ref()
-        .map::<Result<Vec<SourceId>>, _>(|sources| {
-            sources
-                .iter()
-                .map(|source| Ok(client.get_source(source.clone())?.id))
-                .collect()
-        })
-        .transpose()
-        .context("Operation to get sources failed")?;
+    let source_ids = match sources.take() {
+        Some(sources) => Some(
+            futures::future::try_join_all(sources.into_iter().map(|identifier| async {
+                let source_id: Result<_> = Ok(client.get_source(identifier).await?.id);
+                source_id
+            }))
+            .await?,
+        ),
+        None => None,
+    };
 
     let dataset_full_name = match dataset {
         DatasetIdentifier::FullName(name) => name.to_owned(),
         dataset @ DatasetIdentifier::Id(_) => client
             .get_dataset(dataset.to_owned())
+            .await
             .context("Fetching dataset id.")?
             .full_name(),
     };
@@ -60,6 +61,7 @@ pub fn update(client: &Client, args: &UpdateDatasetArgs, printer: &Printer) -> R
                 description: description.as_deref(),
             },
         )
+        .await
         .context("Operation to update a dataset has failed.")?;
     info!(
         "Dataset `{}` [id: {}] updated successfully",

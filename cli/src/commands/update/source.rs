@@ -4,7 +4,7 @@ use log::info;
 use reinfer_client::{BucketIdentifier, Client, SourceIdentifier, TransformTag, UpdateSource};
 use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Clone, Debug, StructOpt)]
 pub struct UpdateSourceArgs {
     #[structopt(name = "source")]
     /// Id or full name of the source to update
@@ -31,7 +31,7 @@ pub struct UpdateSourceArgs {
     transform_tag: Option<TransformTag>,
 }
 
-pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Result<()> {
+pub async fn update(client: &Client, args: UpdateSourceArgs, printer: &Printer) -> Result<()> {
     let UpdateSourceArgs {
         source,
         title,
@@ -46,6 +46,7 @@ pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Re
         Some(full_name @ BucketIdentifier::FullName(_)) => Some(
             client
                 .get_bucket(full_name)
+                .await
                 .context("Fetching bucket for id.")?
                 .id,
         ),
@@ -56,6 +57,7 @@ pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Re
         SourceIdentifier::FullName(name) => name,
         source @ SourceIdentifier::Id(_) => client
             .get_source(source)
+            .await
             .context("Fetching source id.")?
             .full_name(),
     };
@@ -66,12 +68,13 @@ pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Re
             UpdateSource {
                 title: title.as_deref(),
                 description: description.as_deref(),
-                should_translate: *should_translate,
+                should_translate,
                 bucket_id,
                 sensitive_properties: None,
                 transform_tag: transform_tag.as_ref(),
             },
         )
+        .await
         .context("Operation to update a source has failed")?;
     info!(
         "Source `{}` [id: {}] updated successfully",

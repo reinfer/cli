@@ -14,6 +14,7 @@ use reinfer_client::{
 };
 use std::{fs, io, path::PathBuf, process};
 use structopt::{clap::Shell as ClapShell, StructOpt};
+use tokio::runtime::Builder as RuntimeBuilder;
 
 use crate::{
     args::{Args, Command, Shell},
@@ -22,7 +23,7 @@ use crate::{
     printer::Printer,
 };
 
-fn run(args: Args) -> Result<()> {
+async fn run(args: Args) -> Result<()> {
     let config_path = find_configuration(&args)?;
     let config = config::read_reinfer_config(&config_path)?;
     let printer = Printer::new(args.output);
@@ -41,16 +42,21 @@ fn run(args: Args) -> Result<()> {
             Ok(())
         }
         Command::Get { get_args } => {
-            get::run(get_args, client_from_args(&args, &config)?, &printer)
+            get::run(get_args, client_from_args(&args, &config)?, &printer).await
         }
         Command::Delete { delete_args } => {
-            delete::run(delete_args, client_from_args(&args, &config)?)
+            delete::run(delete_args, client_from_args(&args, &config)?).await
         }
         Command::Create { create_args } => {
-            create::run(create_args, client_from_args(&args, &config)?, &printer)
+            create::run(create_args, client_from_args(&args, &config)?, &printer).await
         }
         Command::Update { update_args } => {
-            update::run(update_args, client_from_args(&args, &config)?, &printer)
+            update::run(
+                update_args.clone(),
+                client_from_args(&args, &config)?,
+                &printer,
+            )
+            .await
         }
     }
 }
@@ -148,7 +154,12 @@ fn main() {
     let args = Args::from_args();
     utils::init_env_logger(args.verbose);
 
-    if let Err(error) = run(args) {
+    if let Err(error) = RuntimeBuilder::new_current_thread()
+        .enable_all()
+        .build()
+        .context("Could not create tokio runtime")
+        .and_then(|runtime| runtime.block_on(run(args)))
+    {
         error!("An error occurred:");
         for cause in error.chain() {
             error!(" |- {}", cause);

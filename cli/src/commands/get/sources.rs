@@ -12,15 +12,17 @@ pub struct GetSourcesArgs {
     source: Option<SourceIdentifier>,
 }
 
-pub fn get(client: &Client, args: &GetSourcesArgs, printer: &Printer) -> Result<()> {
+pub async fn get(client: &Client, args: &GetSourcesArgs, printer: &Printer) -> Result<()> {
     let GetSourcesArgs { source } = args;
     let sources = if let Some(source) = source {
         vec![client
             .get_source(source.clone())
+            .await
             .context("Operation to list sources has failed.")?]
     } else {
         let mut sources = client
             .get_sources()
+            .await
             .context("Operation to list sources has failed.")?;
         sources.sort_unstable_by(|lhs, rhs| {
             (&lhs.owner.0, &lhs.name.0).cmp(&(&rhs.owner.0, &rhs.name.0))
@@ -30,6 +32,7 @@ pub fn get(client: &Client, args: &GetSourcesArgs, printer: &Printer) -> Result<
 
     let buckets: HashMap<_, _> = client
         .get_buckets()
+        .await
         .context("Operation to list buckets has failed.")?
         .into_iter()
         .map(|bucket| (bucket.id.clone(), bucket))

@@ -31,20 +31,22 @@ pub struct GetTriggerCommentsArgs {
     individual_advance: bool,
 }
 
-pub fn get(client: &Client, args: &GetTriggersArgs, printer: &Printer) -> Result<()> {
+pub async fn get(client: &Client, args: &GetTriggersArgs, printer: &Printer) -> Result<()> {
     let GetTriggersArgs { dataset } = args;
     let dataset_name = client
         .get_dataset(dataset.clone())
+        .await
         .context("Operation to get dataset has failed.")?
         .full_name();
     let mut triggers = client
         .get_triggers(&dataset_name)
+        .await
         .context("Operation to list triggers has failed.")?;
     triggers.sort_unstable_by(|lhs, rhs| lhs.name.0.cmp(&rhs.name.0));
     printer.print_resources(&triggers)
 }
 
-pub fn get_trigger_comments(client: &Client, args: &GetTriggerCommentsArgs) -> Result<()> {
+pub async fn get_trigger_comments(client: &Client, args: &GetTriggerCommentsArgs) -> Result<()> {
     let GetTriggerCommentsArgs {
         trigger,
         size,
@@ -56,6 +58,7 @@ pub fn get_trigger_comments(client: &Client, args: &GetTriggerCommentsArgs) -> R
         Some(delay) => loop {
             let batch = client
                 .fetch_trigger_comments(trigger, *size)
+                .await
                 .context("Operation to fetch trigger comments failed.")?;
             if batch.results.is_empty() {
                 if batch.filtered == 0 {
@@ -63,6 +66,7 @@ pub fn get_trigger_comments(client: &Client, args: &GetTriggerCommentsArgs) -> R
                 } else {
                     client
                         .advance_trigger(trigger, batch.sequence_id)
+                        .await
                         .context("Operation to advance trigger for batch failed.")?;
                 }
                 continue;
@@ -75,18 +79,21 @@ pub fn get_trigger_comments(client: &Client, args: &GetTriggerCommentsArgs) -> R
                 if *individual_advance {
                     client
                         .advance_trigger(trigger, result.sequence_id)
+                        .await
                         .context("Operation to advance trigger for comment failed.")?;
                 }
             }
             if needs_final_advance {
                 client
                     .advance_trigger(trigger, batch.sequence_id)
+                    .await
                     .context("Operation to advance trigger for batch failed.")?;
             }
         },
         None => {
             let batch = client
                 .fetch_trigger_comments(trigger, *size)
+                .await
                 .context("Operation to fetch trigger comments failed.")?;
             print_resources_as_json(Some(&batch), io::stdout().lock())
         }

@@ -55,7 +55,7 @@ pub struct CreateDatasetArgs {
     copy_annotations_from: Option<String>,
 }
 
-pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> Result<()> {
+pub async fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> Result<()> {
     let CreateDatasetArgs {
         name,
         title,
@@ -75,6 +75,7 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
             source_ids.push(
                 client
                     .get_source(source.clone())
+                    .await
                     .context("Operation to get source has failed")?
                     .id,
             );
@@ -114,6 +115,7 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
                 copy_annotations_from: copy_annotations_from.as_deref(),
             },
         )
+        .await
         .context("Operation to create a dataset has failed.")?;
     info!(
         "New dataset `{}` [id: {}] created successfully",
