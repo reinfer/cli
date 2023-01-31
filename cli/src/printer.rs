@@ -1,6 +1,6 @@
 use colored::Colorize;
 use prettytable::{format, row, Row, Table};
-use reinfer_client::{Bucket, Dataset, Project, Source, Trigger, User};
+use reinfer_client::{Bucket, Dataset, Project, Source, Stream, User};
 use serde::{Serialize, Serializer};
 
 use anyhow::{anyhow, Context, Error, Result};
@@ -182,7 +182,7 @@ impl DisplayTable for PrintableSource {
     }
 }
 
-impl DisplayTable for Trigger {
+impl DisplayTable for Stream {
     fn to_table_headers() -> Row {
         row![bFg => "Name", "ID", "Updated (UTC)", "Title"]
     }

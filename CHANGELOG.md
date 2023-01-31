@@ -1,4 +1,5 @@
 # Unreleased
+- Rename "triggers" to "streams" following the rename in the API
 - Removed semantic url joins to support deployments within a subdirectory
 - Add option to send welcome email on create user
 

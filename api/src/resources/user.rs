@@ -172,17 +172,17 @@ pub enum ProjectPermission {
     #[serde(rename = "sources-read-sensitive")]
     SourcesReadSensitive,
 
-    #[serde(rename = "triggers-admin")]
-    TriggersAdmin,
+    #[serde(rename = "streams-admin")]
+    StreamsAdmin,
 
-    #[serde(rename = "triggers-consume")]
-    TriggersConsume,
+    #[serde(rename = "streams-consume")]
+    StreamsConsume,
 
-    #[serde(rename = "triggers-read")]
-    TriggersRead,
+    #[serde(rename = "streams-read")]
+    StreamsRead,
 
-    #[serde(rename = "triggers-write")]
-    TriggersWrite,
+    #[serde(rename = "streams-write")]
+    StreamsWrite,
 
     #[serde(rename = "users-read")]
     UsersRead,

@@ -23,7 +23,7 @@ pub struct SequenceId(pub String);
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct FullName {
     pub dataset: DatasetFullName,
-    pub trigger: Name,
+    pub stream: Name,
 }
 
 impl FromStr for FullName {
@@ -32,11 +32,11 @@ impl FromStr for FullName {
     fn from_str(string: &str) -> Result<Self> {
         let mut splits = string.split('/');
         match (splits.next(), splits.next(), splits.next(), splits.next()) {
-            (Some(owner), Some(dataset), Some(trigger_name), None) => Ok(FullName {
+            (Some(owner), Some(dataset), Some(stream_name), None) => Ok(FullName {
                 dataset: DatasetFullName(format!("{}/{}", owner, dataset)),
-                trigger: Name(trigger_name.to_owned()),
+                stream: Name(stream_name.to_owned()),
             }),
-            _ => Err(Error::BadTriggerName {
+            _ => Err(Error::BadStreamName {
                 identifier: string.into(),
             }),
         }
@@ -44,7 +44,7 @@ impl FromStr for FullName {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Trigger {
+pub struct Stream {
     pub id: Id,
     pub dataset_id: DatasetId,
     pub name: Name,
@@ -72,13 +72,13 @@ pub struct UserModelVersion(pub u64);
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Batch {
-    pub results: Vec<TriggerResult>,
+    pub results: Vec<StreamResult>,
     pub filtered: u32,
     pub sequence_id: SequenceId,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TriggerResult {
+pub struct StreamResult {
     pub comment: Comment,
     pub sequence_id: SequenceId,
     pub labels: Option<Vec<PredictedLabel>>,
@@ -87,7 +87,7 @@ pub struct TriggerResult {
 
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct GetResponse {
-    pub triggers: Vec<Trigger>,
+    pub streams: Vec<Stream>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -107,16 +107,16 @@ pub(crate) struct ResetRequest {
 
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct TagExceptionsRequest<'request> {
-    pub exceptions: &'request [TriggerException<'request>],
+    pub exceptions: &'request [StreamException<'request>],
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct TriggerException<'request> {
-    pub metadata: TriggerExceptionMetadata<'request>,
+pub struct StreamException<'request> {
+    pub metadata: StreamExceptionMetadata<'request>,
     pub uid: &'request CommentUid,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct TriggerExceptionMetadata<'request> {
+pub struct StreamExceptionMetadata<'request> {
     pub r#type: &'request String,
 }

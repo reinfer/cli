@@ -1,29 +1,29 @@
 use anyhow::{Context, Result};
-use reinfer_client::{Client, DatasetIdentifier, TriggerFullName};
+use reinfer_client::{Client, DatasetIdentifier, StreamFullName};
 use std::io;
 use structopt::StructOpt;
 
 use crate::printer::{print_resources_as_json, Printer};
 
 #[derive(Debug, StructOpt)]
-pub struct GetTriggersArgs {
+pub struct GetStreamsArgs {
     #[structopt(short = "d", long = "dataset")]
     /// The dataset name or id
     dataset: DatasetIdentifier,
 }
 
 #[derive(Debug, StructOpt)]
-pub struct GetTriggerCommentsArgs {
-    #[structopt(short = "t", long = "trigger")]
-    /// The full trigger name `<owner>/<dataset>/<trigger>`.
-    trigger: TriggerFullName,
+pub struct GetStreamCommentsArgs {
+    #[structopt(long = "stream")]
+    /// The full stream name `<owner>/<dataset>/<stream>`.
+    stream: StreamFullName,
 
-    #[structopt(short = "s", long = "size", default_value = "16")]
+    #[structopt(long = "size", default_value = "16")]
     /// The max number of comments to return per batch.
     size: u32,
 
-    #[structopt(short = "l", long = "listen")]
-    /// If set, the command will run forever polling every N seconds and advancing the trigger.
+    #[structopt(long = "listen")]
+    /// If set, the command will run forever polling every N seconds and advancing the stream.
     listen: Option<f64>,
 
     #[structopt(long = "individual-advance")]
@@ -31,22 +31,22 @@ pub struct GetTriggerCommentsArgs {
     individual_advance: bool,
 }
 
-pub fn get(client: &Client, args: &GetTriggersArgs, printer: &Printer) -> Result<()> {
-    let GetTriggersArgs { dataset } = args;
+pub fn get(client: &Client, args: &GetStreamsArgs, printer: &Printer) -> Result<()> {
+    let GetStreamsArgs { dataset } = args;
     let dataset_name = client
         .get_dataset(dataset.clone())
         .context("Operation to get dataset has failed.")?
         .full_name();
-    let mut triggers = client
-        .get_triggers(&dataset_name)
-        .context("Operation to list triggers has failed.")?;
-    triggers.sort_unstable_by(|lhs, rhs| lhs.name.0.cmp(&rhs.name.0));
-    printer.print_resources(&triggers)
+    let mut streams = client
+        .get_streams(&dataset_name)
+        .context("Operation to list streams has failed.")?;
+    streams.sort_unstable_by(|lhs, rhs| lhs.name.0.cmp(&rhs.name.0));
+    printer.print_resources(&streams)
 }
 
-pub fn get_trigger_comments(client: &Client, args: &GetTriggerCommentsArgs) -> Result<()> {
-    let GetTriggerCommentsArgs {
-        trigger,
+pub fn get_stream_comments(client: &Client, args: &GetStreamCommentsArgs) -> Result<()> {
+    let GetStreamCommentsArgs {
+        stream,
         size,
         listen,
         individual_advance,
@@ -55,15 +55,15 @@ pub fn get_trigger_comments(client: &Client, args: &GetTriggerCommentsArgs) -> R
     match listen {
         Some(delay) => loop {
             let batch = client
-                .fetch_trigger_comments(trigger, *size)
-                .context("Operation to fetch trigger comments failed.")?;
+                .fetch_stream_comments(stream, *size)
+                .context("Operation to fetch stream comments failed.")?;
             if batch.results.is_empty() {
                 if batch.filtered == 0 {
                     std::thread::sleep(std::time::Duration::from_secs_f64(*delay));
                 } else {
                     client
-                        .advance_trigger(trigger, batch.sequence_id)
-                        .context("Operation to advance trigger for batch failed.")?;
+                        .advance_stream(stream, batch.sequence_id)
+                        .context("Operation to advance stream for batch failed.")?;
                 }
                 continue;
             }
@@ -74,20 +74,20 @@ pub fn get_trigger_comments(client: &Client, args: &GetTriggerCommentsArgs) -> R
 
                 if *individual_advance {
                     client
-                        .advance_trigger(trigger, result.sequence_id)
-                        .context("Operation to advance trigger for comment failed.")?;
+                        .advance_stream(stream, result.sequence_id)
+                        .context("Operation to advance stream for comment failed.")?;
                 }
             }
             if needs_final_advance {
                 client
-                    .advance_trigger(trigger, batch.sequence_id)
-                    .context("Operation to advance trigger for batch failed.")?;
+                    .advance_stream(stream, batch.sequence_id)
+                    .context("Operation to advance stream for batch failed.")?;
             }
         },
         None => {
             let batch = client
-                .fetch_trigger_comments(trigger, *size)
-                .context("Operation to fetch trigger comments failed.")?;
+                .fetch_stream_comments(stream, *size)
+                .context("Operation to fetch stream comments failed.")?;
             print_resources_as_json(Some(&batch), io::stdout().lock())
         }
     }
