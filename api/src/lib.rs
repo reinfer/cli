@@ -81,8 +81,8 @@ pub use crate::{
         email::{Id as EmailId, Mailbox, MimeContent, NewEmail},
         entity_def::{EntityDef, Id as EntityDefId, Name as EntityName, NewEntityDef},
         label_def::{
-            LabelDef, LabelDefPretrained, Name as LabelName, NewLabelDef, NewLabelDefPretrained,
-            PretrainedId as LabelDefPretrainedId,
+            LabelDef, LabelDefPretrained, MoonFormFieldDef, Name as LabelName, NewLabelDef,
+            NewLabelDefPretrained, PretrainedId as LabelDefPretrainedId,
         },
         label_group::{
             LabelGroup, Name as LabelGroupName, NewLabelGroup, DEFAULT_LABEL_GROUP_NAME,
