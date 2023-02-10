@@ -83,10 +83,10 @@ fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
         utils::read_token_from_stdin()?.unwrap_or_default()
     });
 
-    let accept_invalid_certificates = args
-        .accept_invalid_certificates
-        .or_else(|| current_context.map(|context| context.accept_invalid_certificates))
-        .unwrap_or(false);
+    let accept_invalid_certificates = args.accept_invalid_certificates
+        || current_context
+            .map(|context| context.accept_invalid_certificates)
+            .unwrap_or(false);
 
     if accept_invalid_certificates {
         warn!(concat!(

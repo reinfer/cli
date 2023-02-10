@@ -36,8 +36,8 @@ pub struct Args {
     /// context, if any.
     pub endpoint: Option<Url>,
 
-    #[structopt(short = "k", long = "accept-invalid-certificates", parse(try_from_str))]
-    pub accept_invalid_certificates: Option<bool>,
+    #[structopt(short = "k", long = "accept-invalid-certificates")]
+    pub accept_invalid_certificates: bool,
 
     #[structopt(long = "token")]
     /// Specify what API token to use. Overrides the one from the current
