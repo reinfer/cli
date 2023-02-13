@@ -144,7 +144,7 @@ fn test_project_force_delete() {
     let project = TestProject::new();
 
     let name = project.name().to_owned();
-    let source_name = format!("{}/a-source", name);
+    let source_name = format!("{name}/a-source");
 
     cli.run(["create", "source", &source_name]);
 

@@ -9,7 +9,7 @@ use reinfer_client::{
 use std::{
     collections::HashSet,
     fs::File,
-    io::{self, BufRead, BufReader, Seek, SeekFrom},
+    io::{self, BufRead, BufReader, Seek},
     path::PathBuf,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -102,7 +102,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
                 );
                 check_no_duplicate_ids(&mut file)?;
 
-                file.seek(SeekFrom::Start(0)).with_context(|| {
+                file.rewind().with_context(|| {
                     "Unable to seek to file start after checking for duplicate ids"
                 })?;
             }
@@ -195,7 +195,7 @@ fn read_comments_iter<'a>(
 
         let read_result = comments
             .read_line(&mut line)
-            .with_context(|| format!("Could not read line {} from input stream", line_number));
+            .with_context(|| format!("Could not read line {line_number} from input stream"));
 
         match read_result {
             Ok(0) => return None,
@@ -209,10 +209,7 @@ fn read_comments_iter<'a>(
 
         Some(
             serde_json::from_str::<NewAnnotatedComment>(line.trim_end()).with_context(|| {
-                format!(
-                    "Could not parse comment at line {} from input stream",
-                    line_number,
-                )
+                format!("Could not parse comment at line {line_number} from input stream")
             }),
         )
     })

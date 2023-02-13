@@ -348,9 +348,8 @@ impl<'de> Visitor<'de> for PropertyMapVisitor {
                 values.insert(key, PropertyValue::Number(access.next_value()?));
             } else {
                 return Err(M::Error::custom(format!(
-                    "user property full name `{}` has invalid \
-                     type prefix",
-                    key
+                    "user property full name `{key}` has invalid \
+                     type prefix"
                 )));
             }
         }

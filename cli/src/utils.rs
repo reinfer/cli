@@ -46,7 +46,7 @@ pub fn read_from_stdin(message: &str, default: Option<&str>) -> Result<String> {
         LOG_PREFIX_INPUT.deref(),
         message,
         if let Some(value) = default {
-            format!(" [{}]", value)
+            format!(" [{value}]")
         } else {
             "".into()
         },

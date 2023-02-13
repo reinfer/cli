@@ -111,7 +111,7 @@ fn upload_emails_from_reader(
         line.clear();
         let bytes_read = emails
             .read_line(&mut line)
-            .with_context(|| format!("Could not read line {} from input stream", line_number))?;
+            .with_context(|| format!("Could not read line {line_number} from input stream"))?;
 
         if bytes_read == 0 {
             eof = true;
@@ -119,10 +119,7 @@ fn upload_emails_from_reader(
             statistics.add_bytes_read(bytes_read);
             let new_email =
                 serde_json::from_str::<NewEmail>(line.trim_end()).with_context(|| {
-                    format!(
-                        "Could not parse email at line {} from input stream",
-                        line_number,
-                    )
+                    format!("Could not parse email at line {line_number} from input stream")
                 })?;
             batch.push(new_email);
         }

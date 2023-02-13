@@ -183,9 +183,9 @@ fn delete_comments_in_period(
         source.full_name().0,
         match (timerange.from, timerange.to) {
             (None, None) => "".into(),
-            (Some(start), None) => format!(" after {}", start),
-            (None, Some(end)) => format!(" before {}", end),
-            (Some(start), Some(end)) => format!(" in range {} -> {}", start, end),
+            (Some(start), None) => format!(" after {start}"),
+            (None, Some(end)) => format!(" before {end}"),
+            (Some(start), Some(end)) => format!(" in range {start} -> {end}"),
         },
         include_annotated,
     );

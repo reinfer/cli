@@ -33,7 +33,7 @@ impl FromStr for FullName {
         let mut splits = string.split('/');
         match (splits.next(), splits.next(), splits.next(), splits.next()) {
             (Some(owner), Some(dataset), Some(stream_name), None) => Ok(FullName {
-                dataset: DatasetFullName(format!("{}/{}", owner, dataset)),
+                dataset: DatasetFullName(format!("{owner}/{dataset}")),
                 stream: Name(stream_name.to_owned()),
             }),
             _ => Err(Error::BadStreamName {

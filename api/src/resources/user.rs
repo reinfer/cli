@@ -221,7 +221,7 @@ impl FromStr for ProjectPermission {
     type Err = Error;
 
     fn from_str(string: &str) -> Result<Self> {
-        serde_json::de::from_str(&format!("\"{}\"", string)).map_err(|_| {
+        serde_json::de::from_str(&format!("\"{string}\"")).map_err(|_| {
             Error::BadProjectPermission {
                 permission: string.into(),
             }
@@ -260,10 +260,8 @@ impl FromStr for GlobalPermission {
     type Err = Error;
 
     fn from_str(string: &str) -> Result<Self> {
-        serde_json::de::from_str(&format!("\"{}\"", string)).map_err(|_| {
-            Error::BadGlobalPermission {
-                permission: string.into(),
-            }
+        serde_json::de::from_str(&format!("\"{string}\"")).map_err(|_| Error::BadGlobalPermission {
+            permission: string.into(),
         })
     }
 }

@@ -86,7 +86,7 @@ fn update_users_from_reader(
         line.clear();
         let bytes_read = users
             .read_line(&mut line)
-            .with_context(|| format!("Could not read line {} from input stream", line_number))?;
+            .with_context(|| format!("Could not read line {line_number} from input stream"))?;
 
         if bytes_read == 0 {
             return Ok(());
@@ -94,10 +94,7 @@ fn update_users_from_reader(
 
         statistics.add_bytes_read(bytes_read);
         let user_line = serde_json::from_str::<UserLine>(line.trim_end()).with_context(|| {
-            format!(
-                "Could not parse user at line {} from input stream",
-                line_number,
-            )
+            format!("Could not parse user at line {line_number} from input stream")
         })?;
 
         // Upload users
