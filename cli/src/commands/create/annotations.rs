@@ -204,7 +204,7 @@ fn read_annotations_iter<'a>(
 
         let read_result = annotations
             .read_line(&mut line)
-            .with_context(|| format!("Could not read line {} from input stream", line_number));
+            .with_context(|| format!("Could not read line {line_number} from input stream"));
 
         match read_result {
             Ok(0) => return None,
@@ -218,10 +218,7 @@ fn read_annotations_iter<'a>(
 
         Some(
             serde_json::from_str::<NewAnnotation>(line.trim_end()).with_context(|| {
-                format!(
-                    "Could not parse annotations at line {} from input stream",
-                    line_number,
-                )
+                format!("Could not parse annotations at line {line_number} from input stream")
             }),
         )
     })

@@ -24,16 +24,11 @@ where
     Ok(())
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Default, Debug)]
 pub enum OutputFormat {
     Json,
+    #[default]
     Table,
-}
-
-impl Default for OutputFormat {
-    fn default() -> Self {
-        OutputFormat::Table
-    }
 }
 
 impl FromStr for OutputFormat {
