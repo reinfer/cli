@@ -49,6 +49,9 @@ pub enum Error {
     #[error("Expected a valid bucket type, got: {}", bucket_type)]
     BadBucketType { bucket_type: String },
 
+    #[error("Expected a valid quota kind, got: {}", tenant_quota_kind)]
+    BadTenantQuotaKind { tenant_quota_kind: String },
+
     #[error("Could not parse JSON response.")]
     BadJsonResponse(#[source] reqwest::Error),
 

@@ -37,6 +37,7 @@ use crate::resources::{
         CreateProjectRequest, CreateProjectResponse, GetProjectResponse, GetProjectsResponse,
         UpdateProjectRequest, UpdateProjectResponse,
     },
+    quota::{CreateQuota, TenantQuotaKind},
     source::{
         CreateRequest as CreateSourceRequest, CreateResponse as CreateSourceResponse,
         GetAvailableResponse as GetAvailableSourcesResponse, GetResponse as GetSourceResponse,
@@ -48,6 +49,7 @@ use crate::resources::{
         GetResponse as GetStreamsResponse, ResetRequest as StreamResetRequest,
         TagExceptionsRequest as TagStreamExceptionsRequest,
     },
+    tenant_id::TenantId,
     user::GetResponse as GetUserResponse,
     user::{
         CreateRequest as CreateUserRequest, CreateResponse as CreateUserResponse,
@@ -242,6 +244,20 @@ impl Client {
             source @ SourceIdentifier::FullName(_) => self.get_source(source)?.id,
         };
         self.delete(self.endpoints.source_by_id(&source_id)?)
+    }
+
+    /// Set a quota
+    pub fn create_quota(
+        &self,
+        target_tenant_id: &TenantId,
+        tenant_quota_kind: TenantQuotaKind,
+        options: CreateQuota,
+    ) -> Result<()> {
+        self.post(
+            self.endpoints.quota(target_tenant_id, tenant_quota_kind)?,
+            options,
+            Retry::Yes,
+        )
     }
 
     /// Delete a user.
@@ -1188,6 +1204,19 @@ impl Endpoints {
 
     fn source_by_name(&self, source_name: &SourceFullName) -> Result<Url> {
         construct_endpoint(&self.base, &["api", "v1", "sources", &source_name.0])
+    }
+
+    fn quota(&self, tenant_id: &TenantId, tenant_quota_kind: TenantQuotaKind) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "quotas",
+                &tenant_id.to_string(),
+                &tenant_quota_kind.to_string(),
+            ],
+        )
     }
 
     fn comments(&self, source_name: &SourceFullName) -> Result<Url> {
