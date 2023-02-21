@@ -1,13 +1,13 @@
-# Unreleased
+# v0.12.2
 - Rename "triggers" to "streams" following the rename in the API
 - Removed semantic url joins to support deployments within a subdirectory
-- Add option to send welcome email on create user
 - Added functionality to use moon forms both in `LabelDef`s and in `AnnotatedComments`s
 
 ## Added
 
 - `re get comments` will now return auto-thresholds for predicted labels if provided with a `--model-version` parameter
 - `re update users` for bulk user permission updates
+- Option to send welcome email on create user
 
 # v0.12.1
 
