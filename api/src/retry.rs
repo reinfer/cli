@@ -1,7 +1,9 @@
-use reqwest::{blocking::Response, Result};
-use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
-use std::thread::sleep;
-use std::time::Duration;
+use reqwest::{blocking::Response, Result, StatusCode};
+use std::{
+    sync::atomic::{AtomicBool, Ordering::SeqCst},
+    thread::sleep,
+    time::Duration,
+};
 
 /// Strategy to use if retrying .
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -60,7 +62,7 @@ impl Retrier {
             }
 
             match send_request() {
-                Ok(response) if response.status().is_server_error() => {
+                Ok(response) if should_retry(&response) => {
                     warn_and_sleep!(format!("{} for {}", response.status(), response.url()))
                 }
                 Err(error) if error.is_timeout() => warn_and_sleep!(error),
@@ -72,6 +74,14 @@ impl Retrier {
         // On last retry don't handle the error, just propagate all errors.
         send_request()
     }
+}
+
+fn should_retry(response: &Response) -> bool {
+    // TODO(mcobzarenco): we retry conflicts as a workaround for comment
+    // creation / updates conflicting with the `loom` service that indexes
+    // threads objects concurrently. We will be fixing this properly in the
+    // backend, but as a workaround we will retry conflicts for now.
+    response.status().is_server_error() || response.status() == StatusCode::CONFLICT
 }
 
 #[cfg(test)]
@@ -200,5 +210,38 @@ mod tests {
             .unwrap_err()
             .is_timeout());
         timeout.assert();
+    }
+
+    #[test]
+    fn test_retry_conflicts() {
+        // TODO(mcobzarenco): we retry conflicts as a workaround for comment
+        // creation / updates conflicting with the `loom` service that indexes
+        // threads objects concurrently. We will be fixing this properly in the
+        // backend, but as a workaround we will retry conflicts for now.
+
+        let mut handler = Retrier::new(RetryConfig {
+            strategy: RetryStrategy::Always,
+            max_retry_count: 5,
+            base_wait: Duration::from_secs(0),
+            backoff_factor: 0.0,
+        });
+        let client = Client::builder().build().unwrap();
+
+        // Retries up to N times on timeout for non-first-requests.
+        for i_retry in 0..10 {
+            let err = mock("POST", "/")
+                .with_status(409)
+                .expect((i_retry + 1).into())
+                .create();
+            handler.config.max_retry_count = i_retry;
+            assert_eq!(
+                handler
+                    .with_retries(|| client.post(format!("http://{}", server_address())).send())
+                    .unwrap()
+                    .status(),
+                409
+            );
+            err.assert();
+        }
     }
 }
