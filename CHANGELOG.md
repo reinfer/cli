@@ -1,4 +1,13 @@
+# v0.12.3
+
+## Changed
+
+- Retry conflicts as a workaround for comment creation / updates generating
+  spurious conflicts. We will be fixing this properly in the backend, but as a
+  workaround we will retry conflicts for now.
+
 # v0.12.2
+
 - Rename "triggers" to "streams" following the rename in the API
 - Removed semantic url joins to support deployments within a subdirectory
 - Added functionality to use moon forms both in `LabelDef`s and in `AnnotatedComments`s
