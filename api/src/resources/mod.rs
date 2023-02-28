@@ -6,9 +6,11 @@ pub mod entity_def;
 pub mod label_def;
 pub mod label_group;
 pub mod project;
+pub mod quota;
 pub mod source;
 pub mod statistics;
 pub mod stream;
+pub mod tenant_id;
 pub mod user;
 
 use crate::error::{Error, Result};

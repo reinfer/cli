@@ -1,4 +1,11 @@
+# Unreleased
+
+## Added
+
+- `re create quota` to set a quota in a tenant
+
 # v0.12.2
+
 - Rename "triggers" to "streams" following the rename in the API
 - Removed semantic url joins to support deployments within a subdirectory
 - Added functionality to use moon forms both in `LabelDef`s and in `AnnotatedComments`s
