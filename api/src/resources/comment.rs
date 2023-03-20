@@ -369,6 +369,8 @@ pub struct AnnotatedComment {
     pub thread_properties: Option<ThreadProperties>,
     #[serde(skip_serializing_if = "should_skip_serializing_optional_vec", default)]
     pub moon_forms: Option<Vec<MoonForm>>,
+    #[serde(skip_serializing_if = "should_skip_serializing_optional_vec", default)]
+    pub label_properties: Option<Vec<LabelProperty>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -585,6 +587,34 @@ pub struct AutoThresholdLabel {
     pub name: Vec<String>,
     pub probability: NotNan<f64>,
     pub auto_thresholds: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct LabelProperty {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    pub value: NotNan<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub breakdown: Option<LabelPropertyBreakdown>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct LabelPropertyBreakdown {
+    pub label_contributions: Vec<LabelPropertyContribution>,
+    pub other_group_contributions: Vec<LabelPropertyGroupContribution>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct LabelPropertyContribution {
+    pub name: LabelName,
+    pub value: NotNan<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct LabelPropertyGroupContribution {
+    pub name: LabelGroupName,
+    pub value: NotNan<f64>,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]

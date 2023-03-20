@@ -1,3 +1,9 @@
+# Unreleased
+
+## Added
+
+- `re get comments` returns label properties
+
 # v0.12.3
 
 ## Added
