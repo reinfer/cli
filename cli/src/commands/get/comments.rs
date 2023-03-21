@@ -104,6 +104,7 @@ pub fn get_single(client: &Client, args: &GetSingleCommentArgs) -> Result<()> {
             entities: None,
             thread_properties: None,
             moon_forms: None,
+            label_properties: None,
         }),
         &mut writer,
     )
@@ -258,6 +259,7 @@ fn download_comments(
                         entities: None,
                         thread_properties: None,
                         moon_forms: None,
+                        label_properties: None,
                     }),
                     &mut writer,
                 )
@@ -335,6 +337,7 @@ fn get_comments_from_uids(
                             }),
                             thread_properties: None,
                             moon_forms: None,
+                            label_properties: None,
                         });
                 print_resources_as_json(comments, &mut writer)
             } else {
