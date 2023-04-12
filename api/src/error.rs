@@ -13,9 +13,6 @@ pub enum Error {
     #[error("Invalid endpoint: '{}'", endpoint)]
     BadEndpoint { endpoint: url::Url },
 
-    #[error("Invalid endpoint parameter: '{}'", parameter)]
-    BadEndpointParameter { parameter: String },
-
     #[error("Bad token: {}", token)]
     BadToken { token: String },
 
