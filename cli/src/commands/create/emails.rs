@@ -32,6 +32,10 @@ pub struct CreateEmailsArgs {
     #[structopt(long)]
     /// Don't display a progress bar (only applicable when --file is used).
     no_progress: bool,
+
+    #[structopt(short = "n", long = "no-charge")]
+    /// Whether to attempt to bypass billing (internal only)
+    no_charge: bool,
 }
 
 pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
@@ -63,7 +67,14 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
             } else {
                 Some(progress_bar(file_metadata.len(), &statistics))
             };
-            upload_emails_from_reader(client, &bucket, file, args.batch_size, &statistics)?;
+            upload_emails_from_reader(
+                client,
+                &bucket,
+                file,
+                args.batch_size,
+                &statistics,
+                args.no_charge,
+            )?;
             if let Some(mut progress) = progress {
                 progress.done();
             }
@@ -82,6 +93,7 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
                 BufReader::new(io::stdin()),
                 args.batch_size,
                 &statistics,
+                args.no_charge,
             )?;
             statistics
         }
@@ -101,6 +113,7 @@ fn upload_emails_from_reader(
     mut emails: impl BufRead,
     batch_size: usize,
     statistics: &Statistics,
+    no_charge: bool,
 ) -> Result<()> {
     assert!(batch_size > 0);
     let mut line_number = 1;
@@ -127,7 +140,7 @@ fn upload_emails_from_reader(
         if batch.len() == batch_size || (!batch.is_empty() && eof) {
             // Upload emails
             client
-                .put_emails(&bucket.full_name(), &batch)
+                .put_emails(&bucket.full_name(), &batch, no_charge)
                 .context("Could not upload batch of emails")?;
             statistics.add_emails(StatisticsUpdate {
                 uploaded: batch.len(),

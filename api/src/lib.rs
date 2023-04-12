@@ -337,9 +337,11 @@ impl Client {
         &self,
         source_name: &SourceFullName,
         comments: &[NewComment],
+        no_charge: bool,
     ) -> Result<PutCommentsResponse> {
         self.put(
-            self.endpoints.comments(source_name)?,
+            self.endpoints
+                .put_comments(source_name, Some(ConstructEndpointOptions { no_charge }))?,
             PutCommentsRequest { comments },
         )
     }
@@ -348,9 +350,11 @@ impl Client {
         &self,
         source_name: &SourceFullName,
         comments: &[NewComment],
+        no_charge: bool,
     ) -> Result<SyncCommentsResponse> {
         self.post(
-            self.endpoints.sync_comments(source_name)?,
+            self.endpoints
+                .sync_comments(source_name, Some(ConstructEndpointOptions { no_charge }))?,
             SyncCommentsRequest { comments },
             Retry::Yes,
         )
@@ -360,9 +364,11 @@ impl Client {
         &self,
         bucket_name: &BucketFullName,
         emails: &[NewEmail],
+        no_charge: bool,
     ) -> Result<PutEmailsResponse> {
         self.put(
-            self.endpoints.put_emails(bucket_name)?,
+            self.endpoints
+                .put_emails(bucket_name, Some(ConstructEndpointOptions { no_charge }))?,
             PutEmailsRequest { emails },
         )
     }
@@ -1076,7 +1082,16 @@ struct Endpoints {
     projects: Url,
 }
 
-fn construct_endpoint(base: &Url, segments: &[&str]) -> Result<Url> {
+#[derive(Debug)]
+struct ConstructEndpointOptions {
+    no_charge: bool,
+}
+
+fn construct_endpoint(
+    base: &Url,
+    segments: &[&str],
+    options: Option<ConstructEndpointOptions>,
+) -> Result<Url> {
     let mut endpoint = base.clone();
 
     let mut endpoint_segments = endpoint
@@ -1090,17 +1105,27 @@ fn construct_endpoint(base: &Url, segments: &[&str]) -> Result<Url> {
     }
 
     drop(endpoint_segments);
+
+    if let Some(options) = options {
+        let no_charge_parameter = format!("?no_charge={}", options.no_charge);
+        endpoint = endpoint
+            .join(&no_charge_parameter)
+            .map_err(|_| Error::BadEndpointParameter {
+                parameter: no_charge_parameter,
+            })?
+    }
+
     Ok(endpoint)
 }
 
 impl Endpoints {
     pub fn new(base: Url) -> Result<Self> {
-        let datasets = construct_endpoint(&base, &["api", "v1", "datasets"])?;
-        let sources = construct_endpoint(&base, &["api", "v1", "sources"])?;
-        let buckets = construct_endpoint(&base, &["api", "_private", "buckets"])?;
-        let users = construct_endpoint(&base, &["api", "_private", "users"])?;
-        let current_user = construct_endpoint(&base, &["auth", "user"])?;
-        let projects = construct_endpoint(&base, &["api", "_private", "projects"])?;
+        let datasets = construct_endpoint(&base, &["api", "v1", "datasets"], None)?;
+        let sources = construct_endpoint(&base, &["api", "v1", "sources"], None)?;
+        let buckets = construct_endpoint(&base, &["api", "_private", "buckets"], None)?;
+        let users = construct_endpoint(&base, &["api", "_private", "users"], None)?;
+        let current_user = construct_endpoint(&base, &["auth", "user"], None)?;
+        let projects = construct_endpoint(&base, &["api", "_private", "projects"], None)?;
 
         Ok(Endpoints {
             base,
@@ -1117,6 +1142,7 @@ impl Endpoints {
         construct_endpoint(
             &self.base,
             &["api", "v1", "datasets", &dataset_name.0, "streams"],
+            None,
         )
     }
 
@@ -1130,6 +1156,7 @@ impl Endpoints {
                 &stream_name.dataset.0,
                 &stream_name.stream.0,
             ],
+            None,
         )
     }
 
@@ -1144,6 +1171,7 @@ impl Endpoints {
                 "streams",
                 &stream_name.stream.0,
             ],
+            None,
         )
     }
 
@@ -1159,6 +1187,7 @@ impl Endpoints {
                 &stream_name.stream.0,
                 "reset",
             ],
+            None,
         )
     }
 
@@ -1174,6 +1203,7 @@ impl Endpoints {
                 &stream_name.stream.0,
                 "exceptions",
             ],
+            None,
         )
     }
 
@@ -1181,6 +1211,7 @@ impl Endpoints {
         construct_endpoint(
             &self.base,
             &["api", "_private", "datasets", &dataset_name.0, "recent"],
+            None,
         )
     }
 
@@ -1188,22 +1219,24 @@ impl Endpoints {
         construct_endpoint(
             &self.base,
             &["api", "_private", "datasets", &dataset_name.0, "statistics"],
+            None,
         )
     }
 
     fn user_by_id(&self, user_id: &UserId) -> Result<Url> {
-        construct_endpoint(&self.base, &["api", "_private", "users", &user_id.0])
+        construct_endpoint(&self.base, &["api", "_private", "users", &user_id.0], None)
     }
 
     fn source_by_id(&self, source_id: &SourceId) -> Result<Url> {
         construct_endpoint(
             &self.base,
             &["api", "v1", "sources", &format!("id:{}", source_id.0)],
+            None,
         )
     }
 
     fn source_by_name(&self, source_name: &SourceFullName) -> Result<Url> {
-        construct_endpoint(&self.base, &["api", "v1", "sources", &source_name.0])
+        construct_endpoint(&self.base, &["api", "v1", "sources", &source_name.0], None)
     }
 
     fn quota(&self, tenant_id: &TenantId, tenant_quota_kind: TenantQuotaKind) -> Result<Url> {
@@ -1216,6 +1249,19 @@ impl Endpoints {
                 &tenant_id.to_string(),
                 &tenant_quota_kind.to_string(),
             ],
+            None,
+        )
+    }
+
+    fn put_comments(
+        &self,
+        source_name: &SourceFullName,
+        options: Option<ConstructEndpointOptions>,
+    ) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "sources", &source_name.0, "comments"],
+            options,
         )
     }
 
@@ -1223,6 +1269,7 @@ impl Endpoints {
         construct_endpoint(
             &self.base,
             &["api", "_private", "sources", &source_name.0, "comments"],
+            None,
         )
     }
 
@@ -1237,6 +1284,7 @@ impl Endpoints {
                 "comments",
                 &comment_id.0,
             ],
+            None,
         )
     }
 
@@ -1244,13 +1292,19 @@ impl Endpoints {
         construct_endpoint(
             &self.base,
             &["api", "v1", "sources", &source_name.0, "comments"],
+            None,
         )
     }
 
-    fn sync_comments(&self, source_name: &SourceFullName) -> Result<Url> {
+    fn sync_comments(
+        &self,
+        source_name: &SourceFullName,
+        options: Option<ConstructEndpointOptions>,
+    ) -> Result<Url> {
         construct_endpoint(
             &self.base,
             &["api", "v1", "sources", &source_name.0, "sync"],
+            options,
         )
     }
 
@@ -1266,35 +1320,47 @@ impl Endpoints {
                 &comment_id.0,
                 "audio",
             ],
+            None,
         )
     }
 
-    fn put_emails(&self, bucket_name: &BucketFullName) -> Result<Url> {
+    fn put_emails(
+        &self,
+        bucket_name: &BucketFullName,
+        options: Option<ConstructEndpointOptions>,
+    ) -> Result<Url> {
         construct_endpoint(
             &self.base,
             &["api", "_private", "buckets", &bucket_name.0, "emails"],
+            options,
         )
     }
 
     fn post_user(&self, user_id: &UserId) -> Result<Url> {
-        construct_endpoint(&self.base, &["api", "_private", "users", &user_id.0])
+        construct_endpoint(&self.base, &["api", "_private", "users", &user_id.0], None)
     }
 
     fn dataset_by_id(&self, dataset_id: &DatasetId) -> Result<Url> {
         construct_endpoint(
             &self.base,
             &["api", "v1", "datasets", &format!("id:{}", dataset_id.0)],
+            None,
         )
     }
 
     fn dataset_by_name(&self, dataset_name: &DatasetFullName) -> Result<Url> {
-        construct_endpoint(&self.base, &["api", "v1", "datasets", &dataset_name.0])
+        construct_endpoint(
+            &self.base,
+            &["api", "v1", "datasets", &dataset_name.0],
+            None,
+        )
     }
 
     fn get_labellings(&self, dataset_name: &DatasetFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
             &["api", "_private", "datasets", &dataset_name.0, "labellings"],
+            None,
         )
     }
 
@@ -1314,6 +1380,7 @@ impl Endpoints {
                 &model_version.0.to_string(),
                 "predict-comments",
             ],
+            None,
         )
     }
 
@@ -1332,6 +1399,7 @@ impl Endpoints {
                 "labellings",
                 &comment_uid.0,
             ],
+            None,
         )
     }
 
@@ -1339,17 +1407,23 @@ impl Endpoints {
         construct_endpoint(
             &self.base,
             &["api", "_private", "buckets", &format!("id:{}", bucket_id.0)],
+            None,
         )
     }
 
     fn bucket_by_name(&self, bucket_name: &BucketFullName) -> Result<Url> {
-        construct_endpoint(&self.base, &["api", "_private", "buckets", &bucket_name.0])
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "buckets", &bucket_name.0],
+            None,
+        )
     }
 
     fn project_by_name(&self, project_name: &ProjectName) -> Result<Url> {
         construct_endpoint(
             &self.base,
             &["api", "_private", "projects", &project_name.0],
+            None,
         )
     }
 
@@ -1357,6 +1431,7 @@ impl Endpoints {
         construct_endpoint(
             &self.base,
             &["api", "_private", "users", &user_id.0, "welcome-email"],
+            None,
         )
     }
 }
@@ -1397,6 +1472,18 @@ pub static DEFAULT_ENDPOINT: Lazy<Url> =
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_construct_endpoint() {
+        let url = construct_endpoint(
+            &Url::parse("https://cloud.uipath.com/org/tenant/reinfer_").unwrap(),
+            &["api", "v1", "sources", "project", "source", "sync"],
+            Some(ConstructEndpointOptions { no_charge: true }),
+        )
+        .unwrap();
+
+        assert_eq!(url.to_string(), "https://cloud.uipath.com/org/tenant/reinfer_/api/v1/sources/project/source/sync?no_charge=true")
+    }
 
     #[test]
     fn test_id_list_query() {
