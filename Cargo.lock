@@ -1220,6 +1220,7 @@ name = "reinfer-client"
 version = "0.13.0"
 dependencies = [
  "chrono",
+ "http",
  "log",
  "matches",
  "mockito",

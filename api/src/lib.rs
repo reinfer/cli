@@ -4,6 +4,7 @@ pub mod resources;
 pub mod retry;
 
 use chrono::{DateTime, Utc};
+use http::Method;
 use log::debug;
 use once_cell::sync::Lazy;
 use reqwest::{
@@ -337,10 +338,14 @@ impl Client {
         &self,
         source_name: &SourceFullName,
         comments: &[NewComment],
+        no_charge: bool,
     ) -> Result<PutCommentsResponse> {
-        self.put(
-            self.endpoints.comments(source_name)?,
-            PutCommentsRequest { comments },
+        self.request(
+            Method::PUT,
+            self.endpoints.put_comments(source_name)?,
+            Some(PutCommentsRequest { comments }),
+            Some(NoChargeQuery { no_charge }),
+            Retry::No,
         )
     }
 
@@ -348,10 +353,13 @@ impl Client {
         &self,
         source_name: &SourceFullName,
         comments: &[NewComment],
+        no_charge: bool,
     ) -> Result<SyncCommentsResponse> {
-        self.post(
+        self.request(
+            Method::POST,
             self.endpoints.sync_comments(source_name)?,
-            SyncCommentsRequest { comments },
+            Some(SyncCommentsRequest { comments }),
+            Some(NoChargeQuery { no_charge }),
             Retry::Yes,
         )
     }
@@ -360,10 +368,14 @@ impl Client {
         &self,
         bucket_name: &BucketFullName,
         emails: &[NewEmail],
+        no_charge: bool,
     ) -> Result<PutEmailsResponse> {
-        self.put(
+        self.request(
+            Method::PUT,
             self.endpoints.put_emails(bucket_name)?,
-            PutEmailsRequest { emails },
+            Some(PutEmailsRequest { emails }),
+            Some(NoChargeQuery { no_charge }),
+            Retry::No,
         )
     }
 
@@ -774,7 +786,7 @@ impl Client {
         LocationT: IntoUrl + Display + Clone,
         for<'de> SuccessT: Deserialize<'de>,
     {
-        self.get_query::<LocationT, (), SuccessT>(url, None)
+        self.request(Method::GET, url, None::<()>, None::<()>, Retry::Yes)
     }
 
     fn get_query<LocationT, QueryT, SuccessT>(
@@ -787,27 +799,7 @@ impl Client {
         QueryT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
     {
-        debug!("Attempting GET `{}`", url);
-        let http_response = self
-            .with_retries(|| {
-                let mut request = self
-                    .http_client
-                    .get(url.clone())
-                    .headers(self.headers.clone());
-                if let Some(query) = query {
-                    request = request.query(query);
-                }
-                request.send()
-            })
-            .map_err(|source| Error::ReqwestError {
-                source,
-                message: "GET operation failed.".to_owned(),
-            })?;
-        let status = http_response.status();
-        http_response
-            .json::<Response<SuccessT>>()
-            .map_err(Error::BadJsonResponse)?
-            .into_result(status)
+        self.request(Method::GET, url, None::<()>, Some(query), Retry::Yes)
     }
 
     fn delete<LocationT>(&self, url: LocationT) -> Result<()>
@@ -872,28 +864,7 @@ impl Client {
         RequestT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
     {
-        debug!("Attempting POST `{}`", url);
-        let do_request = || {
-            self.http_client
-                .post(url.clone())
-                .headers(self.headers.clone())
-                .json(&request)
-                .send()
-        };
-        let result = match retry {
-            Retry::Yes => self.with_retries(do_request),
-            Retry::No => do_request(),
-        };
-
-        let http_response = result.map_err(|source| Error::ReqwestError {
-            source,
-            message: "POST operation failed.".to_owned(),
-        })?;
-        let status = http_response.status();
-        http_response
-            .json::<Response<SuccessT>>()
-            .map_err(Error::BadJsonResponse)?
-            .into_result(status)
+        self.request(Method::POST, url, Some(request), None::<()>, retry)
     }
 
     fn put<LocationT, RequestT, SuccessT>(
@@ -906,19 +877,49 @@ impl Client {
         RequestT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
     {
-        debug!("Attempting PUT `{}`", url);
-        let http_response = self
-            .with_retries(|| {
-                self.http_client
-                    .put(url.clone())
-                    .headers(self.headers.clone())
-                    .json(&request)
-                    .send()
-            })
-            .map_err(|source| Error::ReqwestError {
-                source,
-                message: "PUT operation failed.".to_owned(),
-            })?;
+        self.request(Method::PUT, url, Some(request), None::<()>, Retry::Yes)
+    }
+
+    fn request<LocationT, RequestT, SuccessT, QueryT>(
+        &self,
+        method: Method,
+        url: LocationT,
+        body: Option<RequestT>,
+        query: Option<QueryT>,
+        retry: Retry,
+    ) -> Result<SuccessT>
+    where
+        LocationT: IntoUrl + Display + Clone,
+        RequestT: Serialize,
+        QueryT: Serialize,
+        for<'de> SuccessT: Deserialize<'de>,
+    {
+        debug!("Attempting {} `{}`", method, url);
+        let do_request = || {
+            let request = self
+                .http_client
+                .request(method.clone(), url.clone())
+                .headers(self.headers.clone());
+            let request = match &query {
+                Some(query) => request.query(query),
+                None => request,
+            };
+            let request = match &body {
+                Some(body) => request.json(body),
+                None => request,
+            };
+            request.send()
+        };
+
+        let result = match retry {
+            Retry::Yes => self.with_retries(do_request),
+            Retry::No => do_request(),
+        };
+        let http_response = result.map_err(|source| Error::ReqwestError {
+            source,
+            message: format!("{} operation failed.", method),
+        })?;
+
         let status = http_response.status();
         http_response
             .json::<Response<SuccessT>>()
@@ -1076,6 +1077,11 @@ struct Endpoints {
     projects: Url,
 }
 
+#[derive(Debug, Serialize)]
+struct NoChargeQuery {
+    no_charge: bool,
+}
+
 fn construct_endpoint(base: &Url, segments: &[&str]) -> Result<Url> {
     let mut endpoint = base.clone();
 
@@ -1090,6 +1096,7 @@ fn construct_endpoint(base: &Url, segments: &[&str]) -> Result<Url> {
     }
 
     drop(endpoint_segments);
+
     Ok(endpoint)
 }
 
@@ -1216,6 +1223,13 @@ impl Endpoints {
                 &tenant_id.to_string(),
                 &tenant_quota_kind.to_string(),
             ],
+        )
+    }
+
+    fn put_comments(&self, source_name: &SourceFullName) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "sources", &source_name.0, "comments"],
         )
     }
 
@@ -1397,6 +1411,20 @@ pub static DEFAULT_ENDPOINT: Lazy<Url> =
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_construct_endpoint() {
+        let url = construct_endpoint(
+            &Url::parse("https://cloud.uipath.com/org/tenant/reinfer_").unwrap(),
+            &["api", "v1", "sources", "project", "source", "sync"],
+        )
+        .unwrap();
+
+        assert_eq!(
+            url.to_string(),
+            "https://cloud.uipath.com/org/tenant/reinfer_/api/v1/sources/project/source/sync"
+        )
+    }
 
     #[test]
     fn test_id_list_query() {

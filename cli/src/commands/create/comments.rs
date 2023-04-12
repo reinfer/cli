@@ -56,6 +56,10 @@ pub struct CreateCommentsArgs {
     /// Whether to use the moon_forms field when creating annotations
     /// for a comment.
     use_moon_forms: bool,
+
+    #[structopt(short = "n", long = "no-charge")]
+    /// Whether to attempt to bypass billing (internal only)
+    no_charge: bool,
 }
 
 pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
@@ -127,6 +131,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
                 args.overwrite,
                 args.allow_duplicates,
                 args.use_moon_forms,
+                args.no_charge,
             )?;
             if let Some(mut progress) = progress {
                 progress.done();
@@ -153,6 +158,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
                 args.overwrite,
                 args.allow_duplicates,
                 args.use_moon_forms,
+                args.no_charge,
             )?;
             statistics
         }
@@ -246,6 +252,7 @@ fn upload_batch(
     comments_to_sync: &[NewComment],
     annotations: &[Annotation],
     audio_paths: &[(CommentId, PathBuf)],
+    no_charge: bool,
 ) -> Result<()> {
     let mut uploaded = 0;
     let mut new = 0;
@@ -255,7 +262,7 @@ fn upload_batch(
     // Upload comments
     if !comments_to_put.is_empty() {
         client
-            .put_comments(&source.full_name(), comments_to_put)
+            .put_comments(&source.full_name(), comments_to_put, no_charge)
             .context("Could not put batch of comments")?;
 
         uploaded += comments_to_put.len();
@@ -263,7 +270,7 @@ fn upload_batch(
 
     if !comments_to_sync.is_empty() {
         let result = client
-            .sync_comments(&source.full_name(), comments_to_sync)
+            .sync_comments(&source.full_name(), comments_to_sync, no_charge)
             .context("Could not sync batch of comments")?;
 
         uploaded += comments_to_sync.len();
@@ -324,6 +331,7 @@ fn upload_comments_from_reader(
     overwrite: bool,
     allow_duplicates: bool,
     use_moon_forms: bool,
+    no_charge: bool,
 ) -> Result<()> {
     assert!(batch_size > 0);
 
@@ -383,6 +391,7 @@ fn upload_comments_from_reader(
                 &comments_to_sync,
                 &annotations,
                 &audio_paths,
+                no_charge,
             )?;
             comments_to_put.clear();
             comments_to_sync.clear();
@@ -401,6 +410,7 @@ fn upload_comments_from_reader(
             &comments_to_sync,
             &annotations,
             &audio_paths,
+            no_charge,
         )?;
     }
 
