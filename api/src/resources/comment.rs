@@ -12,7 +12,7 @@ use serde::{
     ser::{SerializeMap, Serializer},
     Deserialize, Serialize,
 };
-use serde_json::{json, Value as JsonValue};
+use serde_json::Value as JsonValue;
 use std::{
     collections::HashMap,
     fmt::{Formatter, Result as FmtResult},
@@ -47,19 +47,16 @@ impl FromStr for Uid {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct ThreadId(pub String);
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct CommentFilter(pub JsonValue);
-
-impl Default for CommentFilter {
-    fn default() -> Self {
-        Self::empty()
-    }
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CommentTimestampFilter {
+    pub minimum: DateTime<Utc>,
+    pub maximum: DateTime<Utc>,
 }
 
-impl CommentFilter {
-    pub fn empty() -> Self {
-        CommentFilter(json!({}))
-    }
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CommentFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timestamp: Option<CommentTimestampFilter>,
 }
 
 #[derive(Debug, Clone, Serialize)]

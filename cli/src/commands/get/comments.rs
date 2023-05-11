@@ -2,9 +2,9 @@ use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use colored::Colorize;
 use reinfer_client::{
-    AnnotatedComment, Client, CommentId, CommentsIterTimerange, DatasetFullName, DatasetIdentifier,
-    Entities, HasAnnotations, LabelName, Labelling, ModelVersion, PredictedLabel, Source,
-    SourceIdentifier, DEFAULT_LABEL_GROUP_NAME,
+    resources::dataset::StatisticsRequestParams, AnnotatedComment, Client, CommentId,
+    CommentsIterTimerange, DatasetFullName, DatasetIdentifier, Entities, HasAnnotations, LabelName,
+    Labelling, ModelVersion, PredictedLabel, Source, SourceIdentifier, DEFAULT_LABEL_GROUP_NAME,
 };
 use std::{
     fs::File,
@@ -198,7 +198,12 @@ fn download_comments(
         Ok(get_comments_progress_bar(
             if let Some(dataset_name) = dataset_name {
                 *client
-                    .get_statistics(dataset_name)
+                    .get_statistics(
+                        dataset_name,
+                        &StatisticsRequestParams {
+                            ..Default::default()
+                        },
+                    )
                     .context("Operation to get comment count has failed..")?
                     .num_comments as u64
             } else {

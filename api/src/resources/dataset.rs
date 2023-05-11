@@ -10,6 +10,7 @@ use crate::{
         source::Id as SourceId,
         user::Username,
     },
+    CommentFilter, LabelName,
 };
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -59,6 +60,47 @@ impl FromStr for FullName {
             })
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TimeResolution {
+    Day,
+    Week,
+    Month,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Attribute {
+    Labels,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum AttributeFilterEnum {
+    StringAnyOf { any_of: Vec<LabelName> },
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AttributeFilter {
+    pub attribute: Attribute,
+    pub filter: AttributeFilterEnum,
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct StatisticsRequestParams {
+    pub label_property_timeseries: bool,
+
+    pub label_timeseries: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time_resolution: Option<TimeResolution>,
+
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
+    pub attribute_filters: Vec<AttributeFilter>,
+
+    pub comment_filter: CommentFilter,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
@@ -184,4 +226,55 @@ pub(crate) struct UpdateRequest<'request> {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct UpdateResponse {
     pub dataset: Dataset,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::resources::comment::CommentTimestampFilter;
+
+    use super::*;
+    use chrono::TimeZone;
+    use serde_json::json;
+
+    #[test]
+    pub fn test_serialize_statistics_request_params_default() {
+        let params = StatisticsRequestParams {
+            ..Default::default()
+        };
+
+        assert_eq!(
+            json!(params).to_string(),
+            "{\"comment_filter\":{},\"label_property_timeseries\":false,\"label_timeseries\":false}"
+        )
+    }
+
+    #[test]
+    pub fn test_serialize_statistics_request_params() {
+        let params = StatisticsRequestParams {
+            attribute_filters: vec![AttributeFilter {
+                attribute: Attribute::Labels,
+                filter: AttributeFilterEnum::StringAnyOf {
+                    any_of: vec![LabelName("label Name".to_string())],
+                },
+            }],
+            label_property_timeseries: true,
+            label_timeseries: true,
+            time_resolution: Some(TimeResolution::Day),
+            comment_filter: CommentFilter {
+                timestamp: Some(CommentTimestampFilter {
+                    minimum: chrono::Utc
+                        .with_ymd_and_hms(2019, 3, 17, 16, 43, 0)
+                        .unwrap(),
+                    maximum: chrono::Utc
+                        .with_ymd_and_hms(2020, 3, 17, 13, 33, 15)
+                        .unwrap(),
+                }),
+            },
+        };
+
+        assert_eq!(
+            json!(params).to_string(),
+            r#"{"attribute_filters":[{"attribute":"labels","filter":{"any_of":["label Name"],"kind":"string_any_of"}}],"comment_filter":{"timestamp":{"maximum":"2020-03-17T13:33:15Z","minimum":"2019-03-17T16:43:00Z"}},"label_property_timeseries":true,"label_timeseries":true,"time_resolution":"day"}"#
+        )
+    }
 }

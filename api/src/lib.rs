@@ -12,7 +12,7 @@ use reqwest::{
     header::{self, HeaderMap, HeaderValue},
     IntoUrl, Proxy, Result as ReqwestResult,
 };
-use resources::project::ForceDeleteProject;
+use resources::{dataset::StatisticsRequestParams, project::ForceDeleteProject};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{cell::Cell, fmt::Display, path::Path};
@@ -610,11 +610,15 @@ impl Client {
         Ok(())
     }
 
-    pub fn get_statistics(&self, dataset_name: &DatasetFullName) -> Result<Statistics> {
+    pub fn get_statistics(
+        &self,
+        dataset_name: &DatasetFullName,
+        params: &StatisticsRequestParams,
+    ) -> Result<Statistics> {
         Ok(self
             .post::<_, _, GetStatisticsResponse>(
                 self.endpoints.statistics(dataset_name)?,
-                json!({}),
+                json!(params),
                 Retry::No,
             )?
             .statistics)
