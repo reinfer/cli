@@ -609,11 +609,11 @@ impl Client {
         dataset_name: &DatasetFullName,
         params: &QueryRequestParams,
     ) -> Result<QueryResponse> {
-        Ok(self.post::<_, _, QueryResponse>(
+        self.post::<_, _, QueryResponse>(
             self.endpoints.query_dataset(dataset_name)?,
             serde_json::to_value(params).expect("query params serialization error"),
             Retry::Yes,
-        )?)
+        )
     }
 
     pub fn send_welcome_email(&self, user_id: UserId) -> Result<()> {
@@ -936,7 +936,7 @@ impl Client {
         };
         let http_response = result.map_err(|source| Error::ReqwestError {
             source,
-            message: format!("{} operation failed.", method),
+            message: format!("{method} operation failed."),
         })?;
 
         let status = http_response.status();
