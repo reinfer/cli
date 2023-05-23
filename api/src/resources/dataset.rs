@@ -234,7 +234,6 @@ mod tests {
 
     use super::*;
     use chrono::TimeZone;
-    use serde_json::json;
 
     #[test]
     pub fn test_serialize_statistics_request_params_default() {
@@ -270,8 +269,8 @@ mod tests {
         };
 
         assert_eq!(
-            json!(params).to_string(),
-            r#"{"attribute_filters":[{"attribute":"labels","filter":{"any_of":["label Name"],"kind":"string_any_of"}}],"comment_filter":{"timestamp":{"maximum":"2020-03-17T13:33:15Z","minimum":"2019-03-17T16:43:00Z"}},"label_property_timeseries":true,"label_timeseries":true,"time_resolution":"day"}"#
+            serde_json::to_string(&params).unwrap(),
+            r#"{"attribute_filters":[{"attribute":"labels","filter":{"kind":"string_any_of","any_of":["label Name"]}}],"comment_filter":{"timestamp":{"minimum":"2019-03-17T16:43:00Z","maximum":"2020-03-17T13:33:15Z"}},"label_property_timeseries":true,"label_timeseries":true,"time_resolution":"day"}"#
         )
     }
 }
