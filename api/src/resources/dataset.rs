@@ -90,17 +90,17 @@ pub struct AttributeFilter {
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct StatisticsRequestParams {
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
+    pub attribute_filters: Vec<AttributeFilter>,
+
+    pub comment_filter: CommentFilter,
+
     pub label_property_timeseries: bool,
 
     pub label_timeseries: bool,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time_resolution: Option<TimeResolution>,
-
-    #[serde(skip_serializing_if = "<[_]>::is_empty")]
-    pub attribute_filters: Vec<AttributeFilter>,
-
-    pub comment_filter: CommentFilter,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
@@ -238,12 +238,9 @@ mod tests {
 
     #[test]
     pub fn test_serialize_statistics_request_params_default() {
-        let params = StatisticsRequestParams {
-            ..Default::default()
-        };
-
+        let params = StatisticsRequestParams::default();
         assert_eq!(
-            json!(params).to_string(),
+            serde_json::to_string(&params).unwrap(),
             "{\"comment_filter\":{},\"label_property_timeseries\":false,\"label_timeseries\":false}"
         )
     }

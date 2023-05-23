@@ -618,7 +618,7 @@ impl Client {
         Ok(self
             .post::<_, _, GetStatisticsResponse>(
                 self.endpoints.statistics(dataset_name)?,
-                json!(params),
+                serde_json::to_value(params).expect("statistics params serialization error"),
                 Retry::No,
             )?
             .statistics)
