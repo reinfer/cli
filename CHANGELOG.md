@@ -5,6 +5,7 @@
 - Add `no-charge` flag to create comment/email commands
 - Add comment and label filters to `get_statistics`
 - Add timeseries to `get_statistics`
+- Add `query_dataset` to api
 
 
 ## Added

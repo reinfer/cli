@@ -10,7 +10,7 @@ use crate::{
         source::Id as SourceId,
         user::Username,
     },
-    CommentFilter, LabelName,
+    AnnotatedComment, CommentFilter, Continuation, LabelName,
 };
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -101,6 +101,31 @@ pub struct StatisticsRequestParams {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time_resolution: Option<TimeResolution>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum OrderEnum {
+    ByLabel { label: String },
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct QueryRequestParams {
+    pub attribute_filters: Vec<AttributeFilter>,
+
+    pub continuation: Option<Continuation>,
+
+    pub filter: CommentFilter,
+
+    pub limit: usize,
+
+    pub order: OrderEnum,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct QueryResponse {
+    pub continuation: Option<Continuation>,
+    pub results: Vec<AnnotatedComment>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
@@ -236,6 +261,41 @@ mod tests {
     use chrono::TimeZone;
 
     #[test]
+    pub fn test_serialize_query_params() {
+        let params = QueryRequestParams {
+            filter: CommentFilter {
+                timestamp: Some(CommentTimestampFilter {
+                    maximum: Some(
+                        chrono::Utc
+                            .with_ymd_and_hms(2023, 5, 19, 23, 59, 59)
+                            .unwrap(),
+                    ),
+                    minimum: None,
+                }),
+                reviewed: Some(crate::resources::comment::ReviewedFilterEnum::OnlyUnreviewed),
+            },
+            attribute_filters: vec![AttributeFilter {
+                attribute: Attribute::Labels,
+                filter: AttributeFilterEnum::StringAnyOf {
+                    any_of: vec![LabelName("Access Management".to_string())],
+                },
+            }],
+            continuation: Some(Continuation(
+                "36498883b7f4c2c12cc364be0a44d806-8abb3088feffef3f".to_string(),
+            )),
+            limit: 20,
+            order: OrderEnum::ByLabel {
+                label: "Access Management".to_string(),
+            },
+        };
+
+        assert_eq!(
+            serde_json::to_string(&params).unwrap(),
+            r#"{"attribute_filters":[{"attribute":"labels","filter":{"kind":"string_any_of","any_of":["Access Management"]}}],"continuation":"36498883b7f4c2c12cc364be0a44d806-8abb3088feffef3f","filter":{"reviewed":"only_unreviewed","timestamp":{"maximum":"2023-05-19T23:59:59Z"}},"limit":20,"order":{"kind":"by_label","label":"Access Management"}}"#
+        );
+    }
+
+    #[test]
     pub fn test_serialize_statistics_request_params_default() {
         let params = StatisticsRequestParams::default();
         assert_eq!(
@@ -257,13 +317,18 @@ mod tests {
             label_timeseries: true,
             time_resolution: Some(TimeResolution::Day),
             comment_filter: CommentFilter {
+                reviewed: None,
                 timestamp: Some(CommentTimestampFilter {
-                    minimum: chrono::Utc
-                        .with_ymd_and_hms(2019, 3, 17, 16, 43, 0)
-                        .unwrap(),
-                    maximum: chrono::Utc
-                        .with_ymd_and_hms(2020, 3, 17, 13, 33, 15)
-                        .unwrap(),
+                    minimum: Some(
+                        chrono::Utc
+                            .with_ymd_and_hms(2019, 3, 17, 16, 43, 0)
+                            .unwrap(),
+                    ),
+                    maximum: Some(
+                        chrono::Utc
+                            .with_ymd_and_hms(2020, 3, 17, 13, 33, 15)
+                            .unwrap(),
+                    ),
                 }),
             },
         };
