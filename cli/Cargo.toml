@@ -20,7 +20,7 @@ name = "tests"
 anyhow = "1.0.66"
 chrono = "0.4.22"
 colored = "2.0.0"
-dirs = "4.0.0"
+dirs = "5.0.1"
 env_logger = "0.10.0"
 indicatif = "0.17.0"
 log = { version = "0.4.17", default-features = false, features = ["release_max_level_info"] }
