@@ -49,12 +49,25 @@ pub struct ThreadId(pub String);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CommentTimestampFilter {
-    pub minimum: DateTime<Utc>,
-    pub maximum: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minimum: Option<DateTime<Utc>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maximum: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReviewedFilterEnum {
+    OnlyReviewed,
+    OnlyUnreviewed,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CommentFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reviewed: Option<ReviewedFilterEnum>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timestamp: Option<CommentTimestampFilter>,
 }

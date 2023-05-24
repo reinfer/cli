@@ -12,7 +12,10 @@ use reqwest::{
     header::{self, HeaderMap, HeaderValue},
     IntoUrl, Proxy, Result as ReqwestResult,
 };
-use resources::{dataset::StatisticsRequestParams, project::ForceDeleteProject};
+use resources::{
+    dataset::{QueryRequestParams, QueryResponse, StatisticsRequestParams},
+    project::ForceDeleteProject,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{cell::Cell, fmt::Display, path::Path};
@@ -601,6 +604,18 @@ impl Client {
             .user)
     }
 
+    pub fn query_dataset(
+        &self,
+        dataset_name: &DatasetFullName,
+        params: &QueryRequestParams,
+    ) -> Result<QueryResponse> {
+        self.post::<_, _, QueryResponse>(
+            self.endpoints.query_dataset(dataset_name)?,
+            serde_json::to_value(params).expect("query params serialization error"),
+            Retry::Yes,
+        )
+    }
+
     pub fn send_welcome_email(&self, user_id: UserId) -> Result<()> {
         self.post::<_, _, WelcomeEmailResponse>(
             self.endpoints.welcome_email(&user_id)?,
@@ -921,7 +936,7 @@ impl Client {
         };
         let http_response = result.map_err(|source| Error::ReqwestError {
             source,
-            message: format!("{} operation failed.", method),
+            message: format!("{method} operation failed."),
         })?;
 
         let status = http_response.status();
@@ -1122,6 +1137,13 @@ impl Endpoints {
             current_user,
             projects,
         })
+    }
+
+    fn query_dataset(&self, dataset_name: &DatasetFullName) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "datasets", &dataset_name.0, "query"],
+        )
     }
 
     fn streams(&self, dataset_name: &DatasetFullName) -> Result<Url> {
