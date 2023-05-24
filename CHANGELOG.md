@@ -1,5 +1,8 @@
 # Unreleased
 
+## v0.13.2
+- Skip serialization of continuation on `None`
+
 ## v0.13.1
 
 - Add `no-charge` flag to create comment/email commands
