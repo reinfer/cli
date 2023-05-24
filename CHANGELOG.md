@@ -1,6 +1,6 @@
 # Unreleased
 
-## Added
+## v0.13.1
 
 - Add `no-charge` flag to create comment/email commands
 - Add comment and label filters to `get_statistics`
