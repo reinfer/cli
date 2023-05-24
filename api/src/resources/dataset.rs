@@ -113,6 +113,7 @@ pub enum OrderEnum {
 pub struct QueryRequestParams {
     pub attribute_filters: Vec<AttributeFilter>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub continuation: Option<Continuation>,
 
     pub filter: CommentFilter,
