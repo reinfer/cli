@@ -1,4 +1,5 @@
 # Unreleased
+- Add recent as an option for the query api
 
 ## v0.13.2
 - Skip serialization of continuation on `None`

@@ -107,6 +107,7 @@ pub struct StatisticsRequestParams {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum OrderEnum {
     ByLabel { label: String },
+    Recent,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -262,7 +263,40 @@ mod tests {
     use chrono::TimeZone;
 
     #[test]
-    pub fn test_serialize_query_params() {
+    pub fn test_serialize_query_params_recent() {
+        let params = QueryRequestParams {
+            filter: CommentFilter {
+                timestamp: Some(CommentTimestampFilter {
+                    maximum: Some(
+                        chrono::Utc
+                            .with_ymd_and_hms(2023, 5, 19, 23, 59, 59)
+                            .unwrap(),
+                    ),
+                    minimum: None,
+                }),
+                reviewed: Some(crate::resources::comment::ReviewedFilterEnum::OnlyUnreviewed),
+            },
+            attribute_filters: vec![AttributeFilter {
+                attribute: Attribute::Labels,
+                filter: AttributeFilterEnum::StringAnyOf {
+                    any_of: vec![LabelName("Access Management".to_string())],
+                },
+            }],
+            continuation: Some(Continuation(
+                "36498883b7f4c2c12cc364be0a44d806-8abb3088feffef3f".to_string(),
+            )),
+            limit: 20,
+            order: OrderEnum::Recent,
+        };
+
+        assert_eq!(
+            serde_json::to_string(&params).unwrap(),
+            r#"{"attribute_filters":[{"attribute":"labels","filter":{"kind":"string_any_of","any_of":["Access Management"]}}],"continuation":"36498883b7f4c2c12cc364be0a44d806-8abb3088feffef3f","filter":{"reviewed":"only_unreviewed","timestamp":{"maximum":"2023-05-19T23:59:59Z"}},"limit":20,"order":{"kind":"recent"}}"#
+        );
+    }
+
+    #[test]
+    pub fn test_serialize_query_params_by_label() {
         let params = QueryRequestParams {
             filter: CommentFilter {
                 timestamp: Some(CommentTimestampFilter {
