@@ -1,3 +1,6 @@
+## v0.13.4
+- Add user property filters to the query api
+
 ## v0.13.3
 - Add recent as an option for the query api
 
