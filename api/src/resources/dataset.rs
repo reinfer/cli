@@ -112,6 +112,7 @@ pub enum OrderEnum {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct QueryRequestParams {
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
     pub attribute_filters: Vec<AttributeFilter>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -257,15 +258,20 @@ pub(crate) struct UpdateResponse {
 
 #[cfg(test)]
 mod tests {
-    use crate::resources::comment::CommentTimestampFilter;
+    use crate::resources::comment::{
+        CommentTimestampFilter, UserPropertiesFilter, UserPropertyFilterKind,
+    };
 
     use super::*;
+    use crate::PropertyValue;
     use chrono::TimeZone;
+    use std::collections::HashMap;
 
     #[test]
     pub fn test_serialize_query_params_recent() {
         let params = QueryRequestParams {
             filter: CommentFilter {
+                user_properties: None,
                 timestamp: Some(CommentTimestampFilter {
                     maximum: Some(
                         chrono::Utc
@@ -299,6 +305,7 @@ mod tests {
     pub fn test_serialize_query_params_by_label() {
         let params = QueryRequestParams {
             filter: CommentFilter {
+                user_properties: None,
                 timestamp: Some(CommentTimestampFilter {
                     maximum: Some(
                         chrono::Utc
@@ -352,6 +359,7 @@ mod tests {
             label_timeseries: true,
             time_resolution: Some(TimeResolution::Day),
             comment_filter: CommentFilter {
+                user_properties: None,
                 reviewed: None,
                 timestamp: Some(CommentTimestampFilter {
                     minimum: Some(
@@ -372,5 +380,32 @@ mod tests {
             serde_json::to_string(&params).unwrap(),
             r#"{"attribute_filters":[{"attribute":"labels","filter":{"kind":"string_any_of","any_of":["label Name"]}}],"comment_filter":{"timestamp":{"minimum":"2019-03-17T16:43:00Z","maximum":"2020-03-17T13:33:15Z"}},"label_property_timeseries":true,"label_timeseries":true,"time_resolution":"day"}"#
         )
+    }
+
+    #[test]
+    pub fn test_serialize_user_properties_request_params() {
+        let user_property_filter = UserPropertiesFilter(HashMap::from([(
+            "string:Generation Tag".to_string(),
+            UserPropertyFilterKind::OneOf(vec![PropertyValue::String(
+                "72b01fe7-ef2e-481e-934d-bc2fe0ca9b06".to_string(),
+            )]),
+        )]));
+
+        let params = QueryRequestParams {
+            attribute_filters: Vec::new(),
+            continuation: None,
+            limit: 20,
+            order: OrderEnum::Recent,
+            filter: CommentFilter {
+                reviewed: None,
+                timestamp: None,
+                user_properties: Some(user_property_filter),
+            },
+        };
+
+        assert_eq!(
+            serde_json::to_string(&params).unwrap(),
+            r#"{"filter":{"user_properties":{"string:Generation Tag":{"one_of":["72b01fe7-ef2e-481e-934d-bc2fe0ca9b06"]}}},"limit":20,"order":{"kind":"recent"}}"#
+        );
     }
 }
