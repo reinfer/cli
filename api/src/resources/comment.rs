@@ -63,8 +63,10 @@ pub enum ReviewedFilterEnum {
     OnlyUnreviewed,
 }
 
+type UserPropertyName = String;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserPropertiesFilter(pub HashMap<String, UserPropertyFilterKind>);
+pub struct UserPropertiesFilter(pub HashMap<UserPropertyName, UserPropertyFilterKind>);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
