@@ -63,6 +63,15 @@ pub enum ReviewedFilterEnum {
     OnlyUnreviewed,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserPropertiesFilter(pub HashMap<String, UserPropertyFilterKind>);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UserPropertyFilterKind {
+    OneOf(Vec<PropertyValue>),
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CommentFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -70,6 +79,9 @@ pub struct CommentFilter {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timestamp: Option<CommentTimestampFilter>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_properties: Option<UserPropertiesFilter>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -245,7 +257,8 @@ pub struct AttachmentMetadata {
 #[derive(Debug, Clone, PartialEq, Default, Eq)]
 pub struct PropertyMap(HashMap<String, PropertyValue>);
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum PropertyValue {
     String(String),
     Number(NotNan<f64>),
