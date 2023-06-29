@@ -22,7 +22,7 @@ pub fn ensure_uip_user_consents_to_ai_unit_charge(base_url: &Url) -> Result<()> 
         .with_prompt(
             r#"🚨⚠️ 👉 CAUTION 👈⚠️ 🚨
 
-The operation you are about to perform will charge AI units."
+The operation you are about to perform will charge AI units.
 
 Do you want to continue?"#,
         )
