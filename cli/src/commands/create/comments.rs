@@ -1,4 +1,7 @@
-use crate::progress::{Options as ProgressOptions, Progress};
+use crate::{
+    commands::ensure_uip_user_consents_to_ai_unit_charge,
+    progress::{Options as ProgressOptions, Progress},
+};
 use anyhow::{anyhow, ensure, Context, Result};
 use colored::Colorize;
 use log::{debug, info};
@@ -60,12 +63,21 @@ pub struct CreateCommentsArgs {
     #[structopt(short = "n", long = "no-charge")]
     /// Whether to attempt to bypass billing (internal only)
     no_charge: bool,
+
+    #[structopt(short = "y", long = "yes")]
+    /// Consent to ai unit charge. Suppresses confirmation prompt.
+    consent_to_ai_unit_charge: bool,
 }
 
 pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
+    if !args.no_charge && !args.consent_to_ai_unit_charge {
+        ensure_uip_user_consents_to_ai_unit_charge(client.get_base_url())?;
+    }
+
     let source = client
         .get_source(args.source.clone())
         .with_context(|| format!("Unable to get source {}", args.source))?;
+
     let source_name = source.full_name();
 
     let dataset_name = match args.dataset.as_ref() {

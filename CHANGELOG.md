@@ -1,3 +1,7 @@
+## Unreleased
+- Add a warning for UiPath cloud users when an operation will charge ai units
+
+
 ## v0.13.4
 - Add user property filters to the query api
 
