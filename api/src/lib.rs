@@ -181,6 +181,11 @@ impl Client {
         })
     }
 
+    /// Get the base url for the client
+    pub fn base_url(&self) -> &Url {
+        &self.endpoints.base
+    }
+
     /// List all visible sources.
     pub fn get_sources(&self) -> Result<Vec<Source>> {
         Ok(self
