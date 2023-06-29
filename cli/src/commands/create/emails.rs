@@ -42,12 +42,12 @@ pub struct CreateEmailsArgs {
 
     #[structopt(short = "y", long = "yes")]
     /// Consent to ai unit charge. Suppresses confirmation prompt.
-    consent_to_ai_unit_charge: bool,
+    yes: bool,
 }
 
 pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
-    if !args.no_charge && !args.consent_to_ai_unit_charge {
-        ensure_uip_user_consents_to_ai_unit_charge(client.get_base_url())?;
+    if !args.no_charge && !args.yes {
+        ensure_uip_user_consents_to_ai_unit_charge(client.base_url())?;
     }
 
     let bucket = client

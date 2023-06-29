@@ -182,7 +182,7 @@ impl Client {
     }
 
     /// Get the base url for the client
-    pub fn get_base_url(&self) -> &Url {
+    pub fn base_url(&self) -> &Url {
         &self.endpoints.base
     }
 
