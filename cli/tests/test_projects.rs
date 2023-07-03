@@ -18,17 +18,27 @@ impl TestProject {
 
         let user = cli.user();
 
-        let output = cli.run(
+        cli.run(
             ["create", "project", &name, "--user-ids", &user.id.0]
                 .iter()
                 .chain(args),
         );
 
-        // Creating projects is complex and can sometimes cause race conditions, sleeping after
-        // creating should hopefully reduce the probability of that.
-        std::thread::sleep(std::time::Duration::from_millis(200));
+        // Creating projects is complex and can sometimes cause race conditions,
+        // So we loop until the project is created, or we time out.
+        let start_time = std::time::Instant::now();
+        loop {
+            let output = cli.run(["get", "projects", &name]);
+            if output.contains(&name) {
+                break;
+            }
 
-        assert!(output.contains(&name));
+            if start_time.elapsed().as_secs() > 10 {
+                panic!("Timed out waiting for project to be created");
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
 
         Self { name }
     }
