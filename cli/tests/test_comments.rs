@@ -1,7 +1,7 @@
 use crate::{TestCli, TestDataset, TestSource};
 use chrono::DateTime;
 use pretty_assertions::assert_eq;
-use reinfer_client::{AnnotatedComment, NewAnnotatedComment};
+use reinfer_client::{AnnotatedComment, Comment, NewAnnotatedComment, NewComment};
 
 #[test]
 fn test_comments_lifecycle_basic() {
@@ -65,6 +65,26 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
 
     let output = cli.run(["get", "comments", source.identifier()]);
     assert_eq!(output.lines().count(), annotated_comments.len());
+
+    // Assert that all output comments have the same content as the input comments
+    let mut output_comments: Vec<Comment> = output
+        .lines()
+        .map(|line| serde_json::from_str(line).expect("invalid comment"))
+        .map(|annotated_comment: AnnotatedComment| annotated_comment.comment)
+        .collect();
+    output_comments.sort_by(|a, b| a.id.cmp(&b.id));
+
+    let mut input_comments = annotated_comments
+        .iter()
+        .map(|annotated_comment| annotated_comment.comment.clone())
+        .collect::<Vec<NewComment>>();
+    input_comments.sort_by(|a, b| a.id.cmp(&b.id));
+
+    for (input_comment, output_comment) in input_comments.iter().zip(output_comments.iter()) {
+        assert_eq!(input_comment.id, output_comment.id);
+        assert_eq!(input_comment.messages, output_comment.messages);
+        assert_eq!(input_comment.timestamp, output_comment.timestamp);
+    }
 
     // Test getting a comment by id to check the content matches
     let test_comment = annotated_comments.get(0).unwrap().comment.clone();
