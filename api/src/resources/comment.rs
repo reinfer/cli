@@ -22,7 +22,7 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Id(pub String);
 
 impl FromStr for Id {
@@ -224,6 +224,10 @@ pub struct MessageBody {
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub translated_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text_markup: Option<JsonValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub translated_from_markup: Option<JsonValue>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]

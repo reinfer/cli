@@ -1,3 +1,6 @@
+## Unreleased
+- Add support for markup on comments
+
 ## v0.14.0
 - Add a warning for UiPath cloud users when an operation will charge ai units
 

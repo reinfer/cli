@@ -1,2 +1,2 @@
-{"comment":{"id":"1","timestamp":"2018-10-25T00:00:00Z","messages":[{"body":{"text":"Comment 1."}}]}}
+{"comment":{"id":"1","timestamp":"2018-10-25T00:00:00Z","messages":[{"body":{"text":"Comment 1.", "text_markup": [{"children": [{"break_kind": "hr", "kind": "break"}], "kind": "paragraph", "paragraph_kind": "article"}]}}]}}
 {"comment":{"id":"2","timestamp":"2018-10-25T00:00:00Z","messages":[{"body":{"text":"Comment 2"}}]}}

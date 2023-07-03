@@ -164,6 +164,12 @@ pub struct GetCommentsIterPageQuery<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub after: Option<&'a Continuation>,
     pub limit: usize,
+    pub include_markup: bool,
+}
+
+#[derive(Serialize)]
+pub struct GetCommentQuery {
+    pub include_markup: bool,
 }
 
 impl Client {
@@ -317,6 +323,7 @@ impl Client {
             to_timestamp,
             after,
             limit,
+            include_markup: true,
         };
         self.get_query(self.endpoints.comments(source_name)?, Some(&query_params))
     }
@@ -337,8 +344,14 @@ impl Client {
         source_name: &'a SourceFullName,
         comment_id: &'a CommentId,
     ) -> Result<Comment> {
+        let query_params = GetCommentQuery {
+            include_markup: true,
+        };
         Ok(self
-            .get::<_, GetCommentResponse>(self.endpoints.comment_by_id(source_name, comment_id)?)?
+            .get_query::<_, _, GetCommentResponse>(
+                self.endpoints.comment_by_id(source_name, comment_id)?,
+                Some(&query_params),
+            )?
             .comment)
     }
 
