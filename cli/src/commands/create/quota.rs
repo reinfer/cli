@@ -26,7 +26,7 @@ pub struct CreateQuotaArgs {
 
     #[structopt(long = "limit")]
     /// New value of the quota to set
-    hard_limit: u32,
+    hard_limit: u64,
 }
 
 pub fn create(client: &Client, args: &CreateQuotaArgs) -> Result<()> {
