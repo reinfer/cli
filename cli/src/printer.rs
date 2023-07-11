@@ -1,6 +1,7 @@
 use colored::Colorize;
+use num_format::{Locale, ToFormattedString};
 use prettytable::{format, row, Row, Table};
-use reinfer_client::{Bucket, Dataset, Project, Source, Stream, User};
+use reinfer_client::{resources::quota::Quota, Bucket, Dataset, Project, Source, Stream, User};
 use serde::{Serialize, Serializer};
 
 use anyhow::{anyhow, Context, Error, Result};
@@ -71,6 +72,19 @@ impl DisplayTable for Bucket {
                 Some(transform_tag) => transform_tag.0.as_str().into(),
                 None => "missing".dimmed(),
             }
+        ]
+    }
+}
+
+impl DisplayTable for Quota {
+    fn to_table_headers() -> Row {
+        row![bFg => "Kind", "Hard Limit"]
+    }
+
+    fn to_table_row(&self) -> Row {
+        row![
+            self.quota_kind,
+            self.hard_limit.to_formatted_string(&Locale::en)
         ]
     }
 }

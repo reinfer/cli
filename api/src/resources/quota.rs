@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::{fmt::Display, str::FromStr};
 
@@ -23,6 +23,7 @@ pub enum TenantQuotaKind {
     Buckets,
     Projects,
     PinnedModels,
+    ExtractionPredictions,
 }
 
 impl FromStr for TenantQuotaKind {
@@ -48,6 +49,7 @@ impl FromStr for TenantQuotaKind {
             "buckets" => TenantQuotaKind::Buckets,
             "projects" => TenantQuotaKind::Projects,
             "pinned_models" => TenantQuotaKind::PinnedModels,
+            "extraction_predictions" => TenantQuotaKind::ExtractionPredictions,
             _ => {
                 return Err(Error::BadTenantQuotaKind {
                     tenant_quota_kind: string.to_string(),
@@ -82,6 +84,7 @@ impl Display for TenantQuotaKind {
                 TenantQuotaKind::Buckets => "buckets",
                 TenantQuotaKind::Projects => "projects",
                 TenantQuotaKind::PinnedModels => "pinned_models",
+                TenantQuotaKind::ExtractionPredictions => "extraction_predictions",
             }
         )
     }
@@ -90,6 +93,17 @@ impl Display for TenantQuotaKind {
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
 pub struct CreateQuota {
     pub hard_limit: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Copy)]
+pub struct Quota {
+    pub hard_limit: u32,
+    pub quota_kind: TenantQuotaKind,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub(crate) struct GetQuotasResponse {
+    pub quotas: Vec<Quota>,
 }
 
 #[cfg(test)]
