@@ -1,5 +1,5 @@
+use super::thousands::Thousands;
 use colored::Colorize;
-use num_format::{Locale, ToFormattedString};
 use prettytable::{format, row, Row, Table};
 use reinfer_client::{resources::quota::Quota, Bucket, Dataset, Project, Source, Stream, User};
 use serde::{Serialize, Serializer};
@@ -82,10 +82,7 @@ impl DisplayTable for Quota {
     }
 
     fn to_table_row(&self) -> Row {
-        row![
-            self.quota_kind,
-            self.hard_limit.to_formatted_string(&Locale::en)
-        ]
+        row![self.quota_kind, Thousands(self.hard_limit)]
     }
 }
 

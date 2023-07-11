@@ -4,6 +4,7 @@ mod commands;
 mod config;
 mod printer;
 mod progress;
+mod thousands;
 mod utils;
 
 use anyhow::{anyhow, Context, Result};
