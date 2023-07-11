@@ -2,6 +2,7 @@ mod buckets;
 mod comments;
 mod datasets;
 mod projects;
+mod quota;
 mod sources;
 mod streams;
 mod users;
@@ -62,6 +63,10 @@ pub enum GetArgs {
     #[structopt(name = "current-user")]
     /// Get the user associated with the API token in use
     CurrentUser,
+
+    #[structopt(name = "quotas")]
+    /// List all quotas for current tenant
+    Quotas,
 }
 
 pub fn run(args: &GetArgs, client: Client, printer: &Printer) -> Result<()> {
@@ -76,5 +81,6 @@ pub fn run(args: &GetArgs, client: Client, printer: &Printer) -> Result<()> {
         GetArgs::StreamComments(args) => streams::get_stream_comments(&client, args),
         GetArgs::Users(args) => users::get(&client, args, printer),
         GetArgs::CurrentUser => users::get_current_user(&client, printer),
+        GetArgs::Quotas => quota::get(&client, printer),
     }
 }

@@ -15,6 +15,7 @@ use reqwest::{
 use resources::{
     dataset::{QueryRequestParams, QueryResponse, StatisticsRequestParams},
     project::ForceDeleteProject,
+    quota::{GetQuotasResponse, Quota},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -273,6 +274,13 @@ impl Client {
             options,
             Retry::Yes,
         )
+    }
+
+    /// Get quotas for current tenant
+    pub fn get_quotas(&self) -> Result<Vec<Quota>> {
+        Ok(self
+            .get::<_, GetQuotasResponse>(self.endpoints.quotas()?)?
+            .quotas)
     }
 
     /// Delete a user.
@@ -1255,6 +1263,10 @@ impl Endpoints {
 
     fn source_by_name(&self, source_name: &SourceFullName) -> Result<Url> {
         construct_endpoint(&self.base, &["api", "v1", "sources", &source_name.0])
+    }
+
+    fn quotas(&self) -> Result<Url> {
+        construct_endpoint(&self.base, &["api", "_private", "quotas"])
     }
 
     fn quota(&self, tenant_id: &TenantId, tenant_quota_kind: TenantQuotaKind) -> Result<Url> {
