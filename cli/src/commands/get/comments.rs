@@ -2,9 +2,14 @@ use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use colored::Colorize;
 use reinfer_client::{
-    AnnotatedComment, Client, CommentId, CommentsIterTimerange, DatasetFullName, DatasetIdentifier,
-    Entities, HasAnnotations, LabelName, Labelling, ModelVersion, PredictedLabel, Source,
-    SourceIdentifier, DEFAULT_LABEL_GROUP_NAME,
+    resources::{
+        comment::{CommentTimestampFilter, ReviewedFilterEnum},
+        dataset::StatisticsRequestParams as DatasetStatisticsRequestParams,
+        source::StatisticsRequestParams as SourceStatisticsRequestParams,
+    },
+    AnnotatedComment, Client, CommentFilter, CommentId, CommentsIterTimerange, DatasetFullName,
+    DatasetIdentifier, Entities, HasAnnotations, LabelName, Labelling, ModelVersion,
+    PredictedLabel, Source, SourceIdentifier, DEFAULT_LABEL_GROUP_NAME,
 };
 use std::{
     fs::File,
@@ -194,15 +199,42 @@ fn download_comments(
         .get_source(source_identifier)
         .context("Operation to get source has failed.")?;
     let statistics = Arc::new(Statistics::new());
+
     let make_progress = |dataset_name: Option<&DatasetFullName>| -> Result<Progress> {
+        let comment_filter = CommentFilter {
+            timestamp: Some(CommentTimestampFilter {
+                minimum: options.timerange.from,
+                maximum: options.timerange.to,
+            }),
+            sources: vec![source.id.clone()],
+            reviewed: if options.reviewed_only {
+                Some(ReviewedFilterEnum::OnlyReviewed)
+            } else {
+                None
+            },
+            ..Default::default()
+        };
+
         Ok(get_comments_progress_bar(
             if let Some(dataset_name) = dataset_name {
                 *client
-                    .get_statistics(dataset_name, &Default::default())
-                    .context("Operation to get comment count has failed..")?
+                    .get_dataset_statistics(
+                        dataset_name,
+                        &DatasetStatisticsRequestParams {
+                            comment_filter,
+                            ..Default::default()
+                        },
+                    )
+                    .context("Operation to get dataset comment count has failed..")?
                     .num_comments as u64
             } else {
-                0
+                *client
+                    .get_source_statistics(
+                        &source.full_name(),
+                        &SourceStatisticsRequestParams { comment_filter },
+                    )
+                    .context("Operation to get source comment count has failed..")?
+                    .num_comments as u64
             },
             &statistics,
             dataset_name.is_some(),

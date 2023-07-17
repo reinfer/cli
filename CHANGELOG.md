@@ -1,5 +1,6 @@
 ## Unreleased
 - Add command to list quotas for current tenant
+- Show correct statistics when downloading comments
 
 ## v0.15.0
 - Add support for markup on comments

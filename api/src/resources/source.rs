@@ -11,7 +11,13 @@ use crate::{
     resources::bucket::Id as BucketId,
     resources::bucket::TransformTag,
     resources::user::Username,
+    CommentFilter,
 };
+
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct StatisticsRequestParams {
+    pub comment_filter: CommentFilter,
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Source {

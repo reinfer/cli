@@ -281,6 +281,7 @@ mod tests {
                     minimum: None,
                 }),
                 reviewed: Some(crate::resources::comment::ReviewedFilterEnum::OnlyUnreviewed),
+                ..Default::default()
             },
             attribute_filters: vec![AttributeFilter {
                 attribute: Attribute::Labels,
@@ -315,6 +316,7 @@ mod tests {
                     minimum: None,
                 }),
                 reviewed: Some(crate::resources::comment::ReviewedFilterEnum::OnlyUnreviewed),
+                ..Default::default()
             },
             attribute_filters: vec![AttributeFilter {
                 attribute: Attribute::Labels,
@@ -373,6 +375,7 @@ mod tests {
                             .unwrap(),
                     ),
                 }),
+                ..Default::default()
             },
         };
 
@@ -400,6 +403,7 @@ mod tests {
                 reviewed: None,
                 timestamp: None,
                 user_properties: Some(user_property_filter),
+                ..Default::default()
             },
         };
 
