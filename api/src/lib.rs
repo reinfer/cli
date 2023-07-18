@@ -13,9 +13,13 @@ use reqwest::{
     IntoUrl, Proxy, Result as ReqwestResult,
 };
 use resources::{
-    dataset::{QueryRequestParams, QueryResponse, StatisticsRequestParams},
+    dataset::{
+        QueryRequestParams, QueryResponse,
+        StatisticsRequestParams as DatasetStatisticsRequestParams,
+    },
     project::ForceDeleteProject,
     quota::{GetQuotasResponse, Quota},
+    source::StatisticsRequestParams as SourceStatisticsRequestParams,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -651,15 +655,30 @@ impl Client {
         Ok(())
     }
 
-    pub fn get_statistics(
+    pub fn get_dataset_statistics(
         &self,
         dataset_name: &DatasetFullName,
-        params: &StatisticsRequestParams,
+        params: &DatasetStatisticsRequestParams,
     ) -> Result<Statistics> {
         Ok(self
             .post::<_, _, GetStatisticsResponse>(
-                self.endpoints.statistics(dataset_name)?,
-                serde_json::to_value(params).expect("statistics params serialization error"),
+                self.endpoints.dataset_statistics(dataset_name)?,
+                serde_json::to_value(params)
+                    .expect("dataset statistics params serialization error"),
+                Retry::No,
+            )?
+            .statistics)
+    }
+
+    pub fn get_source_statistics(
+        &self,
+        source_name: &SourceFullName,
+        params: &SourceStatisticsRequestParams,
+    ) -> Result<Statistics> {
+        Ok(self
+            .post::<_, _, GetStatisticsResponse>(
+                self.endpoints.source_statistics(source_name)?,
+                serde_json::to_value(params).expect("source statistics params serialization error"),
                 Retry::No,
             )?
             .statistics)
@@ -1243,10 +1262,17 @@ impl Endpoints {
         )
     }
 
-    fn statistics(&self, dataset_name: &DatasetFullName) -> Result<Url> {
+    fn dataset_statistics(&self, dataset_name: &DatasetFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
             &["api", "_private", "datasets", &dataset_name.0, "statistics"],
+        )
+    }
+
+    fn source_statistics(&self, source_name: &SourceFullName) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &["api", "v1", "sources", &source_name.0, "statistics"],
         )
     }
 

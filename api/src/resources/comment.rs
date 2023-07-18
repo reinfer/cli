@@ -4,6 +4,7 @@ use crate::{
     resources::label_def::Name as LabelName,
     resources::label_group::Name as LabelGroupName,
     resources::label_group::DEFAULT_LABEL_GROUP_NAME,
+    SourceId,
 };
 use chrono::{DateTime, Utc};
 use ordered_float::NotNan;
@@ -84,6 +85,9 @@ pub struct CommentFilter {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_properties: Option<UserPropertiesFilter>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub sources: Vec<SourceId>,
 }
 
 #[derive(Debug, Clone, Serialize)]
