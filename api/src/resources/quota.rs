@@ -92,12 +92,12 @@ impl Display for TenantQuotaKind {
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
 pub struct CreateQuota {
-    pub hard_limit: u32,
+    pub hard_limit: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Copy)]
 pub struct Quota {
-    pub hard_limit: u32,
+    pub hard_limit: u64,
     pub quota_kind: TenantQuotaKind,
 }
 
