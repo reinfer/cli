@@ -17,6 +17,7 @@ use resources::{
         QueryRequestParams, QueryResponse,
         StatisticsRequestParams as DatasetStatisticsRequestParams,
     },
+    documents::{Document, SyncRawEmailsRequest, SyncRawEmailsResponse},
     project::ForceDeleteProject,
     quota::{GetQuotasResponse, Quota},
     source::StatisticsRequestParams as SourceStatisticsRequestParams,
@@ -392,6 +393,27 @@ impl Client {
             Method::POST,
             self.endpoints.sync_comments(source_name)?,
             Some(SyncCommentsRequest { comments }),
+            Some(NoChargeQuery { no_charge }),
+            Retry::Yes,
+        )
+    }
+
+    pub fn sync_raw_emails(
+        &self,
+        source_name: &SourceFullName,
+        documents: &[Document],
+        transform_tag: &TransformTag,
+        include_comments: bool,
+        no_charge: bool,
+    ) -> Result<SyncRawEmailsResponse> {
+        self.request(
+            Method::POST,
+            self.endpoints.sync_comments_raw_emails(source_name)?,
+            Some(SyncRawEmailsRequest {
+                documents,
+                transform_tag,
+                include_comments,
+            }),
             Some(NoChargeQuery { no_charge }),
             Retry::Yes,
         )
@@ -1347,6 +1369,13 @@ impl Endpoints {
         construct_endpoint(
             &self.base,
             &["api", "v1", "sources", &source_name.0, "sync"],
+        )
+    }
+
+    fn sync_comments_raw_emails(&self, source_name: &SourceFullName) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &["api", "v1", "sources", &source_name.0, "sync-raw-emails"],
         )
     }
 

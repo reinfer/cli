@@ -1,6 +1,7 @@
 pub mod bucket;
 pub mod comment;
 pub mod dataset;
+pub mod documents;
 pub mod email;
 pub mod entity_def;
 pub mod label_def;
