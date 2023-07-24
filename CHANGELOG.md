@@ -1,4 +1,4 @@
-## Unreleased
+## v0.16.0
 - Add command to list quotas for current tenant
 - Show correct statistics when downloading comments
 - Add `sync-raw-emails` to api
