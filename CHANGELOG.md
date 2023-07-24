@@ -1,3 +1,6 @@
+## Unreleased
+- Add attachments to `sync-raw-email`
+
 ## v0.16.0
 - Add command to list quotas for current tenant
 - Show correct statistics when downloading comments
