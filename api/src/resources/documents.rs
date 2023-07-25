@@ -3,6 +3,8 @@ use std::collections::{BTreeMap, HashMap};
 use crate::{NewComment, PropertyMap, TransformTag};
 use serde::{Deserialize, Serialize, Serializer};
 
+use super::email::AttachmentMetadata;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Document {
     pub raw_email: RawEmail,
@@ -13,6 +15,7 @@ pub struct Document {
 pub struct RawEmail {
     pub body: RawEmailBody,
     pub headers: RawEmailHeaders,
+    pub attachments: Vec<AttachmentMetadata>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -65,6 +68,18 @@ mod tests {
     pub fn test_document_serialize_plain_body_raw_headers() {
         let document = Document {
             raw_email: RawEmail {
+                attachments: vec![
+                    AttachmentMetadata {
+                        name: "hello.pdf".to_string(),
+                        size: 1000,
+                        content_type: "pdf".to_string(),
+                    },
+                    AttachmentMetadata {
+                        name: "world.csv".to_string(),
+                        size: 9999,
+                        content_type: "csv".to_string(),
+                    },
+                ],
                 body: RawEmailBody::Plain("Hello world".to_string()),
                 headers: RawEmailHeaders::Raw(
                     r#"Subject: This is the subject
@@ -76,7 +91,7 @@ From: sender@example.com"#
             user_properties: PropertyMap::new(),
         };
 
-        let expected_document = "{\"raw_email\":{\"body\":{\"plain\":\"Hello world\"},\"headers\":{\"raw\":\"Subject: This is the subject\\nTo: user@example.com\\nFrom: sender@example.com\"}},\"user_properties\":{}}";
+        let expected_document = "{\"raw_email\":{\"body\":{\"plain\":\"Hello world\"},\"headers\":{\"raw\":\"Subject: This is the subject\\nTo: user@example.com\\nFrom: sender@example.com\"},\"attachments\":[{\"name\":\"hello.pdf\",\"size\":1000,\"content_type\":\"pdf\"},{\"name\":\"world.csv\",\"size\":9999,\"content_type\":\"csv\"}]},\"user_properties\":{}}";
 
         assert_eq!(
             serde_json::to_string(&document).expect("Document serialization error"),
@@ -105,13 +120,14 @@ From: sender@example.com"#
             raw_email: RawEmail {
                 body: RawEmailBody::Html("<b>Hello world</b>".to_string()),
                 headers: RawEmailHeaders::Parsed(parsed_headers),
+                attachments: Vec::new(),
             },
             user_properties: PropertyMap::new(),
         };
 
         assert_eq!(
             serde_json::to_string(&document).expect("Document serialization error"),
-            "{\"raw_email\":{\"body\":{\"html\":\"<b>Hello world</b>\"},\"headers\":{\"parsed\":{\"Date\":\"Thu, 09 Jan 2020 16:34:45 +0000\",\"From\":\"alice@company.com\",\"Message-ID\":\"abcdef@company.com\",\"References\":\"<01234@company.com> <56789@company.com>\",\"Subject\":\"Figures Request\",\"To\":\"bob@organisation.org\"}}},\"user_properties\":{}}"
+            "{\"raw_email\":{\"body\":{\"html\":\"<b>Hello world</b>\"},\"headers\":{\"parsed\":{\"Date\":\"Thu, 09 Jan 2020 16:34:45 +0000\",\"From\":\"alice@company.com\",\"Message-ID\":\"abcdef@company.com\",\"References\":\"<01234@company.com> <56789@company.com>\",\"Subject\":\"Figures Request\",\"To\":\"bob@organisation.org\"}},\"attachments\":[]},\"user_properties\":{}}"
         )
     }
 }
