@@ -1,4 +1,4 @@
-## Unreleased
+## v0.16.1
 - Add attachments to `sync-raw-email`
 
 ## v0.16.0
