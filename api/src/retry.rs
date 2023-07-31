@@ -63,7 +63,7 @@ impl Retrier {
                 Ok(response) if response.status().is_server_error() => {
                     warn_and_sleep!(format!("{} for {}", response.status(), response.url()))
                 }
-                Err(error) if error.is_timeout() => warn_and_sleep!(error),
+                Err(error) if error.is_timeout() || error.is_connect() => warn_and_sleep!(error),
                 // If anything else, just return it immediately
                 result => return result,
             }
