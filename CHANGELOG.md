@@ -1,4 +1,4 @@
-## Unreleasd
+## Unreleased
 
 - Always retry on connection issues
 
