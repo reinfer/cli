@@ -1,3 +1,7 @@
+## Unreleased
+
+- Always retry on connection issues
+
 ## v0.16.1
 - Add attachments to `sync-raw-email`
 

@@ -104,7 +104,7 @@ fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
     // Retry everything but the very first request.
     // Retry wait schedule is [5s, 10s, 20s, fail]. (Plus the time for each attempt to timeout.)
     let retry_config = RetryConfig {
-        strategy: RetryStrategy::Automatic,
+        strategy: RetryStrategy::Always,
         max_retry_count: 3,
         base_wait: std::time::Duration::from_secs_f64(5.0),
         backoff_factor: 2.0,
