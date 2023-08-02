@@ -1,6 +1,6 @@
 ## Unreleased
-
 - Always retry on connection issues
+- Upload annotations in parallel
 
 ## v0.16.1
 - Add attachments to `sync-raw-email`

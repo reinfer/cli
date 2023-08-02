@@ -1,14 +1,20 @@
 use crate::{
-    commands::ensure_uip_user_consents_to_ai_unit_charge,
+    commands::{
+        create::annotations::{
+            upload_batch_of_annotations, AnnotationStatistic, CommentIdComment, NewAnnotation,
+        },
+        ensure_uip_user_consents_to_ai_unit_charge,
+    },
     progress::{Options as ProgressOptions, Progress},
 };
 use anyhow::{anyhow, ensure, Context, Result};
 use colored::Colorize;
 use log::{debug, info};
 use reinfer_client::{
-    Client, CommentId, CommentUid, DatasetFullName, DatasetIdentifier, NewAnnotatedComment,
-    NewComment, NewEntities, NewLabelling, NewMoonForm, Source, SourceIdentifier,
+    Client, CommentId, DatasetFullName, DatasetIdentifier, NewAnnotatedComment, NewComment, Source,
+    SourceIdentifier,
 };
+use scoped_threadpool::Pool;
 use std::{
     collections::HashSet,
     fs::File,
@@ -19,6 +25,7 @@ use std::{
         Arc,
     },
 };
+
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -69,7 +76,7 @@ pub struct CreateCommentsArgs {
     yes: bool,
 }
 
-pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
+pub fn create(client: &Client, args: &CreateCommentsArgs, pool: &mut Pool) -> Result<()> {
     if !args.no_charge && !args.yes {
         ensure_uip_user_consents_to_ai_unit_charge(client.base_url())?;
     }
@@ -144,6 +151,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
                 args.allow_duplicates,
                 args.use_moon_forms,
                 args.no_charge,
+                pool,
             )?;
             if let Some(mut progress) = progress {
                 progress.done();
@@ -171,6 +179,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs) -> Result<()> {
                 args.allow_duplicates,
                 args.use_moon_forms,
                 args.no_charge,
+                pool,
             )?;
             statistics
         }
@@ -247,22 +256,13 @@ fn check_no_duplicate_ids(comments: impl BufRead) -> Result<()> {
     Ok(())
 }
 
-type Annotation = (
-    CommentUid,
-    Option<Vec<NewLabelling>>,
-    Option<NewEntities>,
-    Option<Vec<NewMoonForm>>,
-);
-
 #[allow(clippy::too_many_arguments)]
-fn upload_batch(
+fn upload_batch_of_comments(
     client: &Client,
     source: &Source,
-    dataset_name: Option<&DatasetFullName>,
     statistics: &Statistics,
     comments_to_put: &[NewComment],
     comments_to_sync: &[NewComment],
-    annotations: &[Annotation],
     audio_paths: &[(CommentId, PathBuf)],
     no_charge: bool,
 ) -> Result<()> {
@@ -298,24 +298,6 @@ fn upload_batch(
         unchanged,
     });
 
-    // Upload annotations
-    if let Some(dataset_name) = dataset_name.as_ref() {
-        for (comment_uid, labelling, entities, moon_forms) in annotations.iter() {
-            client
-                .update_labelling(
-                    dataset_name,
-                    comment_uid,
-                    labelling.as_deref(),
-                    entities.as_ref(),
-                    moon_forms.as_deref(),
-                )
-                .with_context(|| {
-                    format!("Could not update labelling for comment `{}`", comment_uid.0,)
-                })?;
-            statistics.add_annotation();
-        }
-    }
-
     // Upload audio
     for (comment_id, audio_path) in audio_paths.iter() {
         client
@@ -344,6 +326,7 @@ fn upload_comments_from_reader(
     allow_duplicates: bool,
     use_moon_forms: bool,
     no_charge: bool,
+    pool: &mut Pool,
 ) -> Result<()> {
     assert!(batch_size > 0);
 
@@ -367,19 +350,23 @@ fn upload_comments_from_reader(
 
         if dataset_name.is_some() && new_comment.has_annotations() {
             if !use_moon_forms {
-                annotations.push((
-                    CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0)),
-                    new_comment.labelling.map(Into::into),
-                    new_comment.entities,
-                    None,
-                ));
+                annotations.push(NewAnnotation {
+                    comment: CommentIdComment {
+                        id: new_comment.comment.id.clone(),
+                    },
+                    labelling: new_comment.labelling.map(Into::into),
+                    entities: new_comment.entities,
+                    moon_forms: None,
+                });
             } else {
-                annotations.push((
-                    CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0)),
-                    None,
-                    None,
-                    new_comment.moon_forms.map(Into::into),
-                ));
+                annotations.push(NewAnnotation {
+                    comment: CommentIdComment {
+                        id: new_comment.comment.id.clone(),
+                    },
+                    labelling: None,
+                    entities: None,
+                    moon_forms: new_comment.moon_forms.map(Into::into),
+                });
             };
         }
 
@@ -394,38 +381,62 @@ fn upload_comments_from_reader(
         }
 
         if (comments_to_put.len() + comments_to_sync.len()) >= batch_size {
-            upload_batch(
+            upload_batch_of_comments(
                 client,
                 source,
-                dataset_name,
                 statistics,
                 &comments_to_put,
                 &comments_to_sync,
-                &annotations,
                 &audio_paths,
                 no_charge,
             )?;
+
             comments_to_put.clear();
             comments_to_sync.clear();
-            annotations.clear();
             audio_paths.clear();
+        }
+
+        if let Some(dataset_name) = dataset_name {
+            if annotations.len() >= batch_size {
+                upload_batch_of_annotations(
+                    &annotations,
+                    client,
+                    source,
+                    statistics,
+                    dataset_name,
+                    use_moon_forms,
+                    pool,
+                )?;
+                annotations.clear()
+            }
         }
     }
 
     if !comments_to_put.is_empty() || !comments_to_sync.is_empty() {
-        upload_batch(
+        upload_batch_of_comments(
             client,
             source,
-            dataset_name,
             statistics,
             &comments_to_put,
             &comments_to_sync,
-            &annotations,
             &audio_paths,
             no_charge,
         )?;
     }
 
+    if let Some(dataset_name) = dataset_name {
+        if !annotations.is_empty() {
+            upload_batch_of_annotations(
+                &annotations,
+                client,
+                source,
+                statistics,
+                dataset_name,
+                use_moon_forms,
+                pool,
+            )?;
+        }
+    }
     Ok(())
 }
 
@@ -445,6 +456,12 @@ pub struct Statistics {
     updated: AtomicUsize,
     unchanged: AtomicUsize,
     annotations: AtomicUsize,
+}
+
+impl AnnotationStatistic for Statistics {
+    fn add_annotation(&self) {
+        self.annotations.fetch_add(1, Ordering::SeqCst);
+    }
 }
 
 impl Statistics {
@@ -470,11 +487,6 @@ impl Statistics {
         self.new.fetch_add(update.new, Ordering::SeqCst);
         self.updated.fetch_add(update.updated, Ordering::SeqCst);
         self.unchanged.fetch_add(update.unchanged, Ordering::SeqCst);
-    }
-
-    #[inline]
-    fn add_annotation(&self) {
-        self.annotations.fetch_add(1, Ordering::SeqCst);
     }
 
     #[inline]
