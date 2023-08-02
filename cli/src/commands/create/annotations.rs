@@ -7,7 +7,9 @@ use reinfer_client::{
     Client, CommentId, CommentUid, DatasetFullName, DatasetIdentifier, NewEntities, NewLabelling,
     NewMoonForm, Source, SourceIdentifier,
 };
+use scoped_threadpool::Pool;
 use serde::{Deserialize, Serialize};
+use std::sync::mpsc::channel;
 use std::{
     fs::File,
     io::{self, BufRead, BufReader},
@@ -41,9 +43,13 @@ pub struct CreateAnnotationsArgs {
     /// Whether to use the moon_forms field when creating annotations
     /// for a comment.
     use_moon_forms: bool,
+
+    #[structopt(long = "batch-size", default_value = "128")]
+    /// Number of comments to batch in a single request.
+    batch_size: usize,
 }
 
-pub fn create(client: &Client, args: &CreateAnnotationsArgs) -> Result<()> {
+pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) -> Result<()> {
     let source = client
         .get_source(args.source.clone())
         .with_context(|| format!("Unable to get source {}", args.source))?;
@@ -87,6 +93,8 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs) -> Result<()> {
                 &statistics,
                 &dataset_name,
                 args.use_moon_forms,
+                args.batch_size,
+                pool,
             )?;
             if let Some(mut progress) = progress {
                 progress.done();
@@ -107,6 +115,8 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs) -> Result<()> {
                 &statistics,
                 &dataset_name,
                 args.use_moon_forms,
+                args.batch_size,
+                pool,
             )?;
             statistics
         }
@@ -119,6 +129,73 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs) -> Result<()> {
     Ok(())
 }
 
+pub trait AnnotationStatistic {
+    fn add_annotation(&self);
+}
+
+pub fn upload_batch_of_annotations(
+    annotations_to_upload: &[NewAnnotation],
+    client: &Client,
+    source: &Source,
+    statistics: &(impl AnnotationStatistic + std::marker::Sync),
+    dataset_name: &DatasetFullName,
+    use_moon_forms: bool,
+    pool: &mut Pool,
+) -> Result<()> {
+    let (error_sender, error_receiver) = channel();
+
+    pool.scoped(|scope| {
+        annotations_to_upload.iter().for_each(|new_comment| {
+            let error_sender = error_sender.clone();
+
+            scope.execute(move || {
+                let comment_uid =
+                    CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0));
+
+                let result = (if !use_moon_forms {
+                    client.update_labelling(
+                        dataset_name,
+                        &comment_uid,
+                        new_comment
+                            .labelling
+                            .clone()
+                            .map(Into::<Vec<NewLabelling>>::into)
+                            .as_deref(),
+                        new_comment.entities.as_ref(),
+                        None,
+                    )
+                } else {
+                    client.update_labelling(
+                        dataset_name,
+                        &comment_uid,
+                        None,
+                        None,
+                        new_comment.moon_forms.as_deref(),
+                    )
+                })
+                .with_context(|| {
+                    format!(
+                        "Could not update labelling for comment `{}`",
+                        &comment_uid.0
+                    )
+                });
+
+                if let Err(error) = result {
+                    error_sender.send(error).expect("Could not send error");
+                }
+
+                statistics.add_annotation();
+            });
+        })
+    });
+
+    if let Ok(error) = error_receiver.try_recv() {
+        Err(error)
+    } else {
+        Ok(())
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn upload_annotations_from_reader(
     client: &Client,
@@ -127,39 +204,41 @@ fn upload_annotations_from_reader(
     statistics: &Statistics,
     dataset_name: &DatasetFullName,
     use_moon_forms: bool,
+    batch_size: usize,
+    pool: &mut Pool,
 ) -> Result<()> {
+    let mut annotations_to_upload = Vec::new();
+
     for read_comment_result in read_annotations_iter(annotations, Some(statistics)) {
         let new_comment = read_comment_result?;
         if new_comment.has_annotations() {
-            let comment_uid = CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0));
-            (if !use_moon_forms {
-                client.update_labelling(
+            annotations_to_upload.push(new_comment);
+
+            if annotations_to_upload.len() >= batch_size {
+                upload_batch_of_annotations(
+                    &annotations_to_upload,
+                    client,
+                    source,
+                    statistics,
                     dataset_name,
-                    &comment_uid,
-                    new_comment
-                        .labelling
-                        .map(Into::<Vec<NewLabelling>>::into)
-                        .as_deref(),
-                    new_comment.entities.as_ref(),
-                    None,
-                )
-            } else {
-                client.update_labelling(
-                    dataset_name,
-                    &comment_uid,
-                    None,
-                    None,
-                    new_comment.moon_forms.as_deref(),
-                )
-            })
-            .with_context(|| {
-                format!(
-                    "Could not update labelling for comment `{}`",
-                    &comment_uid.0
-                )
-            })?;
-            statistics.add_annotation();
+                    use_moon_forms,
+                    pool,
+                )?;
+                annotations_to_upload.clear()
+            }
         }
+    }
+
+    if !annotations_to_upload.is_empty() {
+        upload_batch_of_annotations(
+            &annotations_to_upload,
+            client,
+            source,
+            statistics,
+            dataset_name,
+            use_moon_forms,
+            pool,
+        )?;
     }
 
     Ok(())
@@ -169,12 +248,12 @@ fn upload_annotations_from_reader(
 /// via the api, while still matching the structure of the NewComment struct.  This makes the jsonl
 /// files downloaded via `re` compatible with the `re create annotations` command.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-struct CommentIdComment {
-    id: CommentId,
+pub struct CommentIdComment {
+    pub id: CommentId,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-struct NewAnnotation {
+pub struct NewAnnotation {
     pub comment: CommentIdComment,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub labelling: Option<EitherLabelling>,
@@ -230,6 +309,12 @@ pub struct Statistics {
     annotations: AtomicUsize,
 }
 
+impl AnnotationStatistic for Statistics {
+    fn add_annotation(&self) {
+        self.annotations.fetch_add(1, Ordering::SeqCst);
+    }
+}
+
 impl Statistics {
     fn new() -> Self {
         Self {
@@ -241,11 +326,6 @@ impl Statistics {
     #[inline]
     fn add_bytes_read(&self, bytes_read: usize) {
         self.bytes_read.fetch_add(bytes_read, Ordering::SeqCst);
-    }
-
-    #[inline]
-    fn add_annotation(&self) {
-        self.annotations.fetch_add(1, Ordering::SeqCst);
     }
 
     #[inline]
