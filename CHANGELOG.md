@@ -1,4 +1,4 @@
-## Unreleased
+## v0.17.0
 - Always retry on connection issues
 - Upload annotations in parallel
 
