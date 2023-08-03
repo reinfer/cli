@@ -261,9 +261,9 @@ fn upload_batch_of_comments(
     client: &Client,
     source: &Source,
     statistics: &Statistics,
-    comments_to_put: &[NewComment],
-    comments_to_sync: &[NewComment],
-    audio_paths: &[(CommentId, PathBuf)],
+    comments_to_put: &mut Vec<NewComment>,
+    comments_to_sync: &mut Vec<NewComment>,
+    audio_paths: &mut Vec<(CommentId, PathBuf)>,
     no_charge: bool,
 ) -> Result<()> {
     let mut uploaded = 0;
@@ -310,6 +310,9 @@ fn upload_batch_of_comments(
                 )
             })?;
     }
+    comments_to_put.clear();
+    comments_to_sync.clear();
+    audio_paths.clear();
 
     Ok(())
 }
@@ -385,21 +388,27 @@ fn upload_comments_from_reader(
                 client,
                 source,
                 statistics,
-                &comments_to_put,
-                &comments_to_sync,
-                &audio_paths,
+                &mut comments_to_put,
+                &mut comments_to_sync,
+                &mut audio_paths,
                 no_charge,
             )?;
-
-            comments_to_put.clear();
-            comments_to_sync.clear();
-            audio_paths.clear();
         }
 
         if let Some(dataset_name) = dataset_name {
             if annotations.len() >= batch_size {
+                upload_batch_of_comments(
+                    client,
+                    source,
+                    statistics,
+                    &mut comments_to_put,
+                    &mut comments_to_sync,
+                    &mut audio_paths,
+                    no_charge,
+                )?;
+
                 upload_batch_of_annotations(
-                    &annotations,
+                    &mut annotations,
                     client,
                     source,
                     statistics,
@@ -407,7 +416,6 @@ fn upload_comments_from_reader(
                     use_moon_forms,
                     pool,
                 )?;
-                annotations.clear()
             }
         }
     }
@@ -417,9 +425,9 @@ fn upload_comments_from_reader(
             client,
             source,
             statistics,
-            &comments_to_put,
-            &comments_to_sync,
-            &audio_paths,
+            &mut comments_to_put,
+            &mut comments_to_sync,
+            &mut audio_paths,
             no_charge,
         )?;
     }
@@ -427,7 +435,7 @@ fn upload_comments_from_reader(
     if let Some(dataset_name) = dataset_name {
         if !annotations.is_empty() {
             upload_batch_of_annotations(
-                &annotations,
+                &mut annotations,
                 client,
                 source,
                 statistics,
