@@ -1,4 +1,4 @@
-## Unreleased
+## v0.17.1
 - Support markup in signatures
 - Fix bug where annotations may have been uploaded before comments, causing a failure
 
