@@ -408,7 +408,7 @@ fn upload_comments_from_reader(
                 )?;
 
                 upload_batch_of_annotations(
-                    &annotations,
+                    &mut annotations,
                     client,
                     source,
                     statistics,
@@ -416,7 +416,6 @@ fn upload_comments_from_reader(
                     use_moon_forms,
                     pool,
                 )?;
-                annotations.clear()
             }
         }
     }
@@ -436,7 +435,7 @@ fn upload_comments_from_reader(
     if let Some(dataset_name) = dataset_name {
         if !annotations.is_empty() {
             upload_batch_of_annotations(
-                &annotations,
+                &mut annotations,
                 client,
                 source,
                 statistics,

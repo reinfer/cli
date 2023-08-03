@@ -134,7 +134,7 @@ pub trait AnnotationStatistic {
 }
 
 pub fn upload_batch_of_annotations(
-    annotations_to_upload: &[NewAnnotation],
+    annotations_to_upload: &mut Vec<NewAnnotation>,
     client: &Client,
     source: &Source,
     statistics: &(impl AnnotationStatistic + std::marker::Sync),
@@ -192,6 +192,7 @@ pub fn upload_batch_of_annotations(
     if let Ok(error) = error_receiver.try_recv() {
         Err(error)
     } else {
+        annotations_to_upload.clear();
         Ok(())
     }
 }
@@ -216,7 +217,7 @@ fn upload_annotations_from_reader(
 
             if annotations_to_upload.len() >= batch_size {
                 upload_batch_of_annotations(
-                    &annotations_to_upload,
+                    &mut annotations_to_upload,
                     client,
                     source,
                     statistics,
@@ -224,14 +225,13 @@ fn upload_annotations_from_reader(
                     use_moon_forms,
                     pool,
                 )?;
-                annotations_to_upload.clear()
             }
         }
     }
 
     if !annotations_to_upload.is_empty() {
         upload_batch_of_annotations(
-            &annotations_to_upload,
+            &mut annotations_to_upload,
             client,
             source,
             statistics,
