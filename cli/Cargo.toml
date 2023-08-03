@@ -1,6 +1,6 @@
 [package]
 name = "reinfer-cli"
-version = "0.17.0"
+version = "0.17.1"
 description = "Command line interface for Re:infer, the conversational data intelligence platform"
 homepage = "https://github.com/reinfer/cli"
 readme = "README.md"
@@ -22,7 +22,7 @@ chrono = "0.4.22"
 colored = "2.0.0"
 dirs = "4.0.0"
 env_logger = "0.10.0"
-indicatif = "0.17.0"
+indicatif = "0.17.1"
 log = { version = "0.4.17", default-features = false, features = ["release_max_level_info"] }
 maplit = "1.0.2"
 once_cell = "1.16.0"
