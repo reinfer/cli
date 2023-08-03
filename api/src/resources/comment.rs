@@ -246,6 +246,10 @@ pub struct MessageSignature {
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub translated_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text_markup: Option<JsonValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub translated_from_markup: Option<JsonValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
