@@ -1,4 +1,4 @@
-## Unreleased
+## v0.17.2
 - Retry TOO_MANY_REQUESTS
 
 ## v0.17.1
