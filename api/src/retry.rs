@@ -1,3 +1,4 @@
+use http::StatusCode;
 use reqwest::{blocking::Response, Result};
 use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 use std::thread::sleep;
@@ -42,6 +43,10 @@ impl Retrier {
         }
     }
 
+    fn should_retry(status: StatusCode) -> bool {
+        status.is_server_error() || status == StatusCode::TOO_MANY_REQUESTS
+    }
+
     pub fn with_retries(&self, send_request: impl Fn() -> Result<Response>) -> Result<Response> {
         if self.is_first_request.swap(false, SeqCst)
             && self.config.strategy == RetryStrategy::Automatic
@@ -60,7 +65,7 @@ impl Retrier {
             }
 
             match send_request() {
-                Ok(response) if response.status().is_server_error() => {
+                Ok(response) if Self::should_retry(response.status()) => {
                     warn_and_sleep!(format!("{} for {}", response.status(), response.url()))
                 }
                 Err(error) if error.is_timeout() || error.is_connect() => warn_and_sleep!(error),
