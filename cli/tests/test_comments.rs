@@ -271,13 +271,13 @@ fn test_delete_comments_in_range() {
 }
 
 fn get_comments_with_delay(cli: &TestCli, command: [&str; 5], expected_count: usize) -> String {
-    let mut result = cli.run(command.clone());
-    for _ in 0..10 {
+    let mut result = cli.run(command);
+    for _ in 0..60 {
         if result.lines().count() == expected_count {
             break;
         } else {
             thread::sleep(Duration::from_secs(1));
-            result = cli.run(command.clone());
+            result = cli.run(command);
         }
     }
 
