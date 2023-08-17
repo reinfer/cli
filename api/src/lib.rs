@@ -341,6 +341,15 @@ impl Client {
         self.get_query(self.endpoints.comments(source_name)?, Some(&query_params))
     }
 
+    /// Iterate through all comments for a given dataset query.
+    pub fn get_dataset_query_iter<'a>(
+        &'a self,
+        dataset_name: &'a DatasetFullName,
+        params: &'a mut QueryRequestParams,
+    ) -> DatasetQueryIter<'a> {
+        DatasetQueryIter::new(self, dataset_name, params)
+    }
+
     /// Iterate through all comments in a source.
     pub fn get_comments_iter<'a>(
         &'a self,
@@ -1027,6 +1036,45 @@ impl Client {
 enum Retry {
     Yes,
     No,
+}
+
+pub struct DatasetQueryIter<'a> {
+    client: &'a Client,
+    dataset_name: &'a DatasetFullName,
+    done: bool,
+    params: &'a mut QueryRequestParams,
+}
+
+impl<'a> DatasetQueryIter<'a> {
+    fn new(
+        client: &'a Client,
+        dataset_name: &'a DatasetFullName,
+        params: &'a mut QueryRequestParams,
+    ) -> Self {
+        Self {
+            client,
+            dataset_name,
+            done: false,
+            params,
+        }
+    }
+}
+
+impl<'a> Iterator for DatasetQueryIter<'a> {
+    type Item = Result<Vec<AnnotatedComment>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+
+        let response = self.client.query_dataset(self.dataset_name, self.params);
+        Some(response.map(|page| {
+            self.params.continuation = page.continuation;
+            self.done = self.params.continuation.is_none();
+            page.results
+        }))
+    }
 }
 
 pub enum ContinuationKind {

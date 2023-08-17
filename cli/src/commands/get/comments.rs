@@ -1,10 +1,16 @@
 use anyhow::{bail, Context, Result};
+
 use chrono::{DateTime, Utc};
 use colored::Colorize;
+use log::info;
+use regex::Regex;
 use reinfer_client::{
     resources::{
         comment::{CommentTimestampFilter, ReviewedFilterEnum},
-        dataset::StatisticsRequestParams as DatasetStatisticsRequestParams,
+        dataset::{
+            Attribute, AttributeFilter, AttributeFilterEnum, OrderEnum, QueryRequestParams,
+            StatisticsRequestParams as DatasetStatisticsRequestParams,
+        },
         source::StatisticsRequestParams as SourceStatisticsRequestParams,
     },
     AnnotatedComment, Client, CommentFilter, CommentId, CommentsIterTimerange, DatasetFullName,
@@ -79,6 +85,10 @@ pub struct GetManyCommentsArgs {
     #[structopt(short = "f", long = "file", parse(from_os_str))]
     /// Path where to write comments as JSON. If not specified, stdout will be used.
     path: Option<PathBuf>,
+
+    #[structopt(short = "l", long = "label-filter")]
+    /// Regex filter to select which labels you want to download predictions for
+    label_filter: Option<Regex>,
 }
 
 pub fn get_single(client: &Client, args: &GetSingleCommentArgs) -> Result<()> {
@@ -126,6 +136,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         from_timestamp,
         to_timestamp,
         path,
+        label_filter,
     } = args;
 
     let by_timerange = from_timestamp.is_some() || to_timestamp.is_some();
@@ -146,6 +157,14 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         bail!("Cannot get predictions when `dataset` is not provided.")
     }
 
+    if label_filter.is_some() && dataset.is_none() {
+        bail!("Cannot use a label filter when `dataset` is not provided.")
+    }
+
+    if label_filter.is_some() && reviewed_only {
+        bail!("The `reviewed_only` and `label_filter` options are mutually exclusive.")
+    }
+
     let file = match path {
         Some(path) => Some(
             File::create(path)
@@ -155,16 +174,26 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         None => None,
     };
 
+    let mut label_attribute_filter: Option<AttributeFilter> = None;
+    if let (Some(dataset_id), Some(filter)) = (dataset, label_filter) {
+        label_attribute_filter = get_label_attribute_filter(client, dataset_id.clone(), filter)?;
+        // Exit early if no labels match label filter
+        if label_attribute_filter.is_none() {
+            return Ok(());
+        }
+    }
+
     let download_options = CommentDownloadOptions {
         dataset_identifier: dataset.clone(),
         include_predictions: include_predictions.unwrap_or(false),
-        model_version: model_version.clone(),
+        model_version: *model_version,
         reviewed_only,
         timerange: CommentsIterTimerange {
             from: *from_timestamp,
             to: *to_timestamp,
         },
         show_progress: !no_progress,
+        label_attribute_filter,
     };
 
     if let Some(file) = file {
@@ -179,7 +208,41 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
     }
 }
 
-#[derive(Default)]
+fn get_label_attribute_filter(
+    client: &Client,
+    dataset_id: DatasetIdentifier,
+    filter: &Regex,
+) -> Result<Option<AttributeFilter>> {
+    let dataset = client.get_dataset(dataset_id)?;
+
+    let label_names: Vec<LabelName> = dataset
+        .label_defs
+        .into_iter()
+        .filter(|label_def| filter.is_match(&label_def.name.0))
+        .map(|label_def| label_def.name)
+        .collect();
+
+    if label_names.is_empty() {
+        info!("No label names matching the filter '{}'", filter);
+        Ok(None)
+    } else {
+        info!(
+            "Filtering on label(s):\n- {}",
+            label_names
+                .iter()
+                .map(|label_name| label_name.0.clone())
+                .collect::<Vec<String>>()
+                .join("\n- ")
+        );
+        Ok(Some(AttributeFilter {
+            attribute: Attribute::Labels,
+            filter: AttributeFilterEnum::StringAnyOf {
+                any_of: label_names,
+            },
+        }))
+    }
+}
+
 struct CommentDownloadOptions {
     dataset_identifier: Option<DatasetIdentifier>,
     include_predictions: bool,
@@ -187,6 +250,19 @@ struct CommentDownloadOptions {
     reviewed_only: bool,
     timerange: CommentsIterTimerange,
     show_progress: bool,
+    label_attribute_filter: Option<AttributeFilter>,
+}
+
+impl CommentDownloadOptions {
+    fn get_attribute_filters(&self) -> Vec<AttributeFilter> {
+        let mut filters: Vec<AttributeFilter> = Vec::new();
+
+        if let Some(label_attribute_filter) = &self.label_attribute_filter {
+            filters.push(label_attribute_filter.clone());
+        }
+
+        filters
+    }
 }
 
 fn download_comments(
@@ -222,6 +298,7 @@ fn download_comments(
                         dataset_name,
                         &DatasetStatisticsRequestParams {
                             comment_filter,
+                            attribute_filters: options.get_attribute_filters(),
                             ..Default::default()
                         },
                     )
@@ -241,9 +318,9 @@ fn download_comments(
         ))
     };
 
-    if let Some(dataset_identifier) = options.dataset_identifier {
+    if let Some(dataset_identifier) = &options.dataset_identifier {
         let dataset = client
-            .get_dataset(dataset_identifier)
+            .get_dataset(dataset_identifier.clone())
             .context("Operation to get dataset has failed.")?;
         let dataset_name = dataset.full_name();
         let _progress = if options.show_progress {
@@ -270,7 +347,7 @@ fn download_comments(
                 options.include_predictions,
                 options.model_version,
                 writer,
-                options.timerange,
+                &options,
             )?;
         }
     } else {
@@ -305,6 +382,8 @@ fn download_comments(
     Ok(())
 }
 
+const DEFAULT_QUERY_PAGE_SIZE: usize = 128;
+
 #[allow(clippy::too_many_arguments)]
 fn get_comments_from_uids(
     client: &Client,
@@ -314,10 +393,26 @@ fn get_comments_from_uids(
     include_predictions: bool,
     model_version: Option<u32>,
     mut writer: impl Write,
-    timerange: CommentsIterTimerange,
+    options: &CommentDownloadOptions,
 ) -> Result<()> {
+    let mut params = QueryRequestParams {
+        attribute_filters: options.get_attribute_filters(),
+        continuation: None,
+        filter: CommentFilter {
+            reviewed: None,
+            timestamp: Some(CommentTimestampFilter {
+                minimum: options.timerange.from,
+                maximum: options.timerange.to,
+            }),
+            user_properties: None,
+            sources: vec![source.id],
+        },
+        limit: DEFAULT_QUERY_PAGE_SIZE,
+        order: OrderEnum::Recent,
+    };
+
     client
-        .get_comments_iter(&source.full_name(), None, timerange)
+        .get_dataset_query_iter(&dataset_name, &mut params)
         .try_for_each(|page| {
             let page = page.context("Operation to get comments has failed.")?;
             if page.is_empty() {
@@ -331,7 +426,7 @@ fn get_comments_from_uids(
                     .get_comment_predictions(
                         &dataset_name,
                         &ModelVersion(*model_version),
-                        page.iter().map(|comment| &comment.uid),
+                        page.iter().map(|comment| &comment.comment.uid),
                     )
                     .context("Operation to get predictions has failed.")?;
                 // since predict-comments endpoint doesn't return some fields,
@@ -340,7 +435,7 @@ fn get_comments_from_uids(
                     page.into_iter()
                         .zip(predictions.into_iter())
                         .map(|(comment, prediction)| AnnotatedComment {
-                            comment,
+                            comment: comment.comment,
                             labelling: Some(vec![Labelling {
                                 group: DEFAULT_LABEL_GROUP_NAME.clone(),
                                 assigned: Vec::new(),
@@ -370,21 +465,15 @@ fn get_comments_from_uids(
                         });
                 print_resources_as_json(comments, &mut writer)
             } else {
-                let annotations = client
-                    .get_labellings(&dataset_name, page.iter().map(|comment| &comment.uid))
-                    .context("Operation to get labellings has failed.")?;
-                let comments = page.into_iter().zip(annotations.into_iter()).map(
-                    |(comment, mut annotated)| {
-                        if !include_predictions {
-                            annotated = annotated.without_predictions();
-                        }
-                        annotated.comment = comment;
-                        if annotated.has_annotations() {
-                            statistics.add_annotated(1);
-                        }
-                        annotated
-                    },
-                );
+                let comments = page.into_iter().map(|mut annotated_comment| {
+                    if !include_predictions {
+                        annotated_comment = annotated_comment.without_predictions();
+                    }
+                    if annotated_comment.has_annotations() {
+                        statistics.add_annotated(1);
+                    }
+                    annotated_comment
+                });
                 print_resources_as_json(comments, &mut writer)
             }
         })?;
