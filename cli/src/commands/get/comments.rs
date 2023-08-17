@@ -165,6 +165,10 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         bail!("The `reviewed_only` and `label_filter` options are mutually exclusive.")
     }
 
+    if label_filter.is_some() && model_version.is_some() {
+        bail!("The `label_filter` and `model_version` options are mutually exclusive.")
+    }
+
     let file = match path {
         Some(path) => Some(
             File::create(path)
