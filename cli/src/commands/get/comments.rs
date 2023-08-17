@@ -62,7 +62,7 @@ pub struct GetManyCommentsArgs {
 
     #[structopt(long = "model-version")]
     /// Get predicted labels and entities from the specified model version rather than latest.
-    model_version: Option<String>,
+    model_version: Option<u32>,
 
     #[structopt(long = "reviewed-only")]
     /// Download reviewed comments only.
@@ -183,7 +183,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
 struct CommentDownloadOptions {
     dataset_identifier: Option<DatasetIdentifier>,
     include_predictions: bool,
-    model_version: Option<String>,
+    model_version: Option<u32>,
     reviewed_only: bool,
     timerange: CommentsIterTimerange,
     show_progress: bool,
@@ -312,7 +312,7 @@ fn get_comments_from_uids(
     source: Source,
     statistics: &Arc<Statistics>,
     include_predictions: bool,
-    model_version: Option<String>,
+    model_version: Option<u32>,
     mut writer: impl Write,
     timerange: CommentsIterTimerange,
 ) -> Result<()> {
@@ -327,13 +327,10 @@ fn get_comments_from_uids(
             statistics.add_comments(page.len());
 
             if let Some(model_version) = &model_version {
-                let model_version = model_version
-                    .parse::<u32>()
-                    .context("Invalid model version")?;
                 let predictions = client
                     .get_comment_predictions(
                         &dataset_name,
-                        &ModelVersion(model_version),
+                        &ModelVersion(*model_version),
                         page.iter().map(|comment| &comment.uid),
                     )
                     .context("Operation to get predictions has failed.")?;
