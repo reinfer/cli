@@ -2,6 +2,7 @@ use crate::{TestCli, TestDataset, TestSource};
 use chrono::DateTime;
 use pretty_assertions::assert_eq;
 use reinfer_client::{AnnotatedComment, Comment, NewAnnotatedComment, NewComment};
+use std::{thread, time::Duration};
 
 #[test]
 fn test_comments_lifecycle_basic() {
@@ -206,13 +207,18 @@ fn test_delete_comments_in_range() {
         .count();
 
     // Get all comments and check counts
-    let after_deleting_range = cli.run([
-        "get",
-        "comments",
-        "--dataset",
-        dataset1.identifier(),
-        source.identifier(),
-    ]);
+    let after_deleting_range = get_comments_with_delay(
+        cli,
+        [
+            "get",
+            "comments",
+            "--dataset",
+            dataset1.identifier(),
+            source.identifier(),
+        ],
+        num_comments - num_deleted,
+    );
+
     assert_eq!(
         after_deleting_range.lines().count(),
         num_comments - num_deleted
@@ -228,13 +234,17 @@ fn test_delete_comments_in_range() {
     ]);
 
     // Get all comments and check that only annotated ones are left
-    let after_deleting_unannotated = cli.run([
-        "get",
-        "comments",
-        "--dataset",
-        dataset1.identifier(),
-        source.identifier(),
-    ]);
+    let after_deleting_unannotated = get_comments_with_delay(
+        cli,
+        [
+            "get",
+            "comments",
+            "--dataset",
+            dataset1.identifier(),
+            source.identifier(),
+        ],
+        num_annotated,
+    );
     assert_eq!(after_deleting_unannotated.lines().count(), num_annotated);
 
     // Delete all comments
@@ -246,12 +256,30 @@ fn test_delete_comments_in_range() {
     ]);
 
     // Get all comments and check there are none left
-    let after_deleting_all = cli.run([
-        "get",
-        "comments",
-        "--dataset",
-        dataset1.identifier(),
-        source.identifier(),
-    ]);
+    let after_deleting_all = get_comments_with_delay(
+        cli,
+        [
+            "get",
+            "comments",
+            "--dataset",
+            dataset1.identifier(),
+            source.identifier(),
+        ],
+        0,
+    );
     assert_eq!(after_deleting_all.lines().count(), 0);
+}
+
+fn get_comments_with_delay(cli: &TestCli, command: [&str; 5], expected_count: usize) -> String {
+    let mut result = cli.run(command.clone());
+    for _ in 0..10 {
+        if result.lines().count() == expected_count {
+            break;
+        } else {
+            thread::sleep(Duration::from_secs(1));
+            result = cli.run(command.clone());
+        }
+    }
+
+    result
 }
