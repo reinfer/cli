@@ -1,4 +1,4 @@
-## Unreleased
+## v0.18.1
 - Add comment id to document object in api
 
 ## v0.18.0
