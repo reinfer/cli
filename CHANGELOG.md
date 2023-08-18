@@ -1,3 +1,6 @@
+## Unreleased
+- Add comment id to document object in api
+
 ## v0.18.0
 - Add label filter when downloading comments with predictions
 - Retry requests on request error
