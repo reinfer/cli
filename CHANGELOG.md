@@ -1,4 +1,4 @@
-## Unreleased
+## v0.18.0
 - Add label filter when downloading comments with predictions
 - Retry requests on request error
 
