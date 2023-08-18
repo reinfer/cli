@@ -1,7 +1,7 @@
 use crate::{TestCli, TestDataset, TestSource};
 use anyhow::anyhow;
-use backoff::{default, retry, ExponentialBackoff};
-use chrono::{DateTime, Duration};
+use backoff::{retry, ExponentialBackoff};
+use chrono::DateTime;
 use pretty_assertions::assert_eq;
 use reinfer_client::{AnnotatedComment, Comment, NewAnnotatedComment, NewComment};
 
@@ -286,12 +286,5 @@ fn get_comments_with_delay(cli: &TestCli, command: &[&str], expected_count: usiz
         }
     };
 
-    retry(
-        ExponentialBackoff {
-            max_elapsed_time: Some(std::time::Duration::from_secs(60)),
-            ..Default::default()
-        },
-        run_command,
-    )
-    .unwrap()
+    retry(ExponentialBackoff::default(), run_command).unwrap()
 }
