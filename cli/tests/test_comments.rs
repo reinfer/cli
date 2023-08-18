@@ -1,8 +1,9 @@
 use crate::{TestCli, TestDataset, TestSource};
+use anyhow::anyhow;
+use backoff::{retry, ExponentialBackoff};
 use chrono::DateTime;
 use pretty_assertions::assert_eq;
 use reinfer_client::{AnnotatedComment, Comment, NewAnnotatedComment, NewComment};
-use std::{thread, time::Duration};
 
 #[test]
 fn test_comments_lifecycle_basic() {
@@ -271,15 +272,19 @@ fn test_delete_comments_in_range() {
 }
 
 fn get_comments_with_delay(cli: &TestCli, command: &[&str], expected_count: usize) -> String {
-    let mut result = cli.run(command);
-    for _ in 0..60 {
-        if result.lines().count() == expected_count {
-            break;
+    let run_command = || {
+        let result = cli.run(command);
+        let actual_count = result.lines().count();
+        if actual_count != expected_count {
+            Ok(result)
         } else {
-            thread::sleep(Duration::from_secs(1));
-            result = cli.run(command);
+            Err(backoff::Error::transient(anyhow!(
+                "Expected {} results got {}",
+                expected_count,
+                actual_count
+            )))
         }
-    }
+    };
 
-    result
+    retry(ExponentialBackoff::default(), run_command).unwrap()
 }
