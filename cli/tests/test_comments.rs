@@ -1,7 +1,7 @@
 use crate::{TestCli, TestDataset, TestSource};
 use anyhow::anyhow;
-use backoff::{retry, ExponentialBackoff};
-use chrono::DateTime;
+use backoff::{default, retry, ExponentialBackoff};
+use chrono::{DateTime, Duration};
 use pretty_assertions::assert_eq;
 use reinfer_client::{AnnotatedComment, Comment, NewAnnotatedComment, NewComment};
 
@@ -275,7 +275,7 @@ fn get_comments_with_delay(cli: &TestCli, command: &[&str], expected_count: usiz
     let run_command = || {
         let result = cli.run(command);
         let actual_count = result.lines().count();
-        if actual_count != expected_count {
+        if actual_count == expected_count {
             Ok(result)
         } else {
             Err(backoff::Error::transient(anyhow!(
@@ -286,5 +286,12 @@ fn get_comments_with_delay(cli: &TestCli, command: &[&str], expected_count: usiz
         }
     };
 
-    retry(ExponentialBackoff::default(), run_command).unwrap()
+    retry(
+        ExponentialBackoff {
+            max_elapsed_time: Some(std::time::Duration::from_secs(60)),
+            ..Default::default()
+        },
+        run_command,
+    )
+    .unwrap()
 }
