@@ -209,7 +209,7 @@ fn test_delete_comments_in_range() {
     // Get all comments and check counts
     let after_deleting_range = get_comments_with_delay(
         cli,
-        [
+        &[
             "get",
             "comments",
             "--dataset",
@@ -236,7 +236,7 @@ fn test_delete_comments_in_range() {
     // Get all comments and check that only annotated ones are left
     let after_deleting_unannotated = get_comments_with_delay(
         cli,
-        [
+        &[
             "get",
             "comments",
             "--dataset",
@@ -258,7 +258,7 @@ fn test_delete_comments_in_range() {
     // Get all comments and check there are none left
     let after_deleting_all = get_comments_with_delay(
         cli,
-        [
+        &[
             "get",
             "comments",
             "--dataset",
@@ -270,7 +270,7 @@ fn test_delete_comments_in_range() {
     assert_eq!(after_deleting_all.lines().count(), 0);
 }
 
-fn get_comments_with_delay(cli: &TestCli, command: [&str; 5], expected_count: usize) -> String {
+fn get_comments_with_delay(cli: &TestCli, command: &[&str], expected_count: usize) -> String {
     let mut result = cli.run(command);
     for _ in 0..60 {
         if result.lines().count() == expected_count {

@@ -234,8 +234,8 @@ fn get_label_attribute_filter(
             "Filtering on label(s):\n- {}",
             label_names
                 .iter()
-                .map(|label_name| label_name.0.clone())
-                .collect::<Vec<String>>()
+                .map(|label_name| label_name.0.as_str())
+                .collect::<Vec<_>>()
                 .join("\n- ")
         );
         Ok(Some(AttributeFilter {
