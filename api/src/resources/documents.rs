@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use crate::{NewComment, PropertyMap, TransformTag};
+use crate::{CommentId, NewComment, PropertyMap, TransformTag};
 use serde::{Deserialize, Serialize, Serializer};
 
 use super::email::AttachmentMetadata;
@@ -9,6 +9,8 @@ use super::email::AttachmentMetadata;
 pub struct Document {
     pub raw_email: RawEmail,
     pub user_properties: PropertyMap,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment_id: Option<CommentId>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -65,8 +67,34 @@ mod tests {
     use super::*;
 
     #[test]
+    pub fn test_deserialize_with_comment_id() {
+        let document = Document {
+            comment_id: Some(CommentId("abc123".to_string())),
+            raw_email: RawEmail {
+                attachments: vec![],
+                body: RawEmailBody::Plain("Hello world".to_string()),
+                headers: RawEmailHeaders::Raw(
+                    r#"Subject: This is the subject
+To: user@example.com
+From: sender@example.com"#
+                        .to_string(),
+                ),
+            },
+            user_properties: PropertyMap::new(),
+        };
+
+        let expected_document = "{\"raw_email\":{\"body\":{\"plain\":\"Hello world\"},\"headers\":{\"raw\":\"Subject: This is the subject\\nTo: user@example.com\\nFrom: sender@example.com\"},\"user_properties\":{},\"comment_id\":\"abc123\"}";
+
+        assert_eq!(
+            serde_json::to_string(&document).expect("Document serialization error"),
+            expected_document
+        )
+    }
+
+    #[test]
     pub fn test_document_serialize_plain_body_raw_headers() {
         let document = Document {
+            comment_id: None,
             raw_email: RawEmail {
                 attachments: vec![
                     AttachmentMetadata {
@@ -117,6 +145,7 @@ From: sender@example.com"#
         ]));
 
         let document = Document {
+            comment_id: None,
             raw_email: RawEmail {
                 body: RawEmailBody::Html("<b>Hello world</b>".to_string()),
                 headers: RawEmailHeaders::Parsed(parsed_headers),
