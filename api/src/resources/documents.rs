@@ -1,7 +1,6 @@
-use std::collections::{BTreeMap, HashMap};
-
 use crate::{CommentId, NewComment, PropertyMap, TransformTag};
 use serde::{Deserialize, Serialize, Serializer};
+use std::collections::{BTreeMap, HashMap};
 
 use super::email::AttachmentMetadata;
 
@@ -83,7 +82,7 @@ From: sender@example.com"#
             user_properties: PropertyMap::new(),
         };
 
-        let expected_document = "{\"raw_email\":{\"body\":{\"plain\":\"Hello world\"},\"headers\":{\"raw\":\"Subject: This is the subject\\nTo: user@example.com\\nFrom: sender@example.com\"},\"user_properties\":{},\"comment_id\":\"abc123\"}";
+        let expected_document = "{\"raw_email\":{\"body\":{\"plain\":\"Hello world\"},\"headers\":{\"raw\":\"Subject: This is the subject\\nTo: user@example.com\\nFrom: sender@example.com\"},\"attachments\":[]},\"user_properties\":{},\"comment_id\":\"abc123\"}";
 
         assert_eq!(
             serde_json::to_string(&document).expect("Document serialization error"),
