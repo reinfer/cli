@@ -68,7 +68,9 @@ impl Retrier {
                 Ok(response) if Self::should_retry(response.status()) => {
                     warn_and_sleep!(format!("{} for {}", response.status(), response.url()))
                 }
-                Err(error) if error.is_timeout() || error.is_connect() => warn_and_sleep!(error),
+                Err(error) if error.is_timeout() || error.is_connect() || error.is_request() => {
+                    warn_and_sleep!(error)
+                }
                 // If anything else, just return it immediately
                 result => return result,
             }

@@ -1,5 +1,6 @@
 ## Unreleased
 - Add label filter when downloading comments with predictions
+- Retry requests on request error
 
 ## v0.17.2
 - Retry TOO_MANY_REQUESTS
