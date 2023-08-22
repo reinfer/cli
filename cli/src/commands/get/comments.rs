@@ -98,11 +98,11 @@ pub struct GetManyCommentsArgs {
     label_filter: Option<Regex>,
 
     #[structopt(short = "p", long = "user-property-filter")]
-    /// The user property to use
+    /// The user property filter to use as a json string
     property_filter: Option<StructExt<UserPropertiesFilter>>,
 
     #[structopt(long = "interactive-user-property-filter")]
-    /// Open a dialog to interative construct the user property filter
+    /// Open a dialog to interactively construct the user property filter to use
     interactive_property_filter: bool,
 }
 
