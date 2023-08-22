@@ -101,9 +101,9 @@ pub struct GetManyCommentsArgs {
     /// The user property to use
     property_filter: Option<StructExt<UserPropertiesFilter>>,
 
-    #[structopt(long = "interative-user-property-filter")]
+    #[structopt(long = "interactive-user-property-filter")]
     /// Open a dialog to interative construct the user property filter
-    interative_property_filter: bool,
+    interactive_property_filter: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -240,7 +240,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         path,
         label_filter,
         property_filter: user_property_filter,
-        interative_property_filter,
+        interactive_property_filter: interative_property_filter,
     } = args;
 
     let by_timerange = from_timestamp.is_some() || to_timestamp.is_some();
