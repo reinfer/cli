@@ -1,26 +1,33 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 
 use chrono::{DateTime, Utc};
 use colored::Colorize;
+use dialoguer::{Confirm, Input, Select};
 use log::info;
 use regex::Regex;
 use reinfer_client::{
     resources::{
-        comment::{CommentTimestampFilter, ReviewedFilterEnum},
+        comment::{
+            CommentTimestampFilter, ReviewedFilterEnum, UserPropertiesFilter,
+            UserPropertyFilterKind,
+        },
         dataset::{
             Attribute, AttributeFilter, AttributeFilterEnum, OrderEnum, QueryRequestParams,
-            StatisticsRequestParams as DatasetStatisticsRequestParams,
+            StatisticsRequestParams as DatasetStatisticsRequestParams, SummaryRequestParams,
         },
         source::StatisticsRequestParams as SourceStatisticsRequestParams,
     },
     AnnotatedComment, Client, CommentFilter, CommentId, CommentsIterTimerange, DatasetFullName,
     DatasetIdentifier, Entities, HasAnnotations, LabelName, Labelling, ModelVersion,
-    PredictedLabel, Source, SourceIdentifier, DEFAULT_LABEL_GROUP_NAME,
+    PredictedLabel, PropertyValue, Source, SourceIdentifier, DEFAULT_LABEL_GROUP_NAME,
 };
+use serde::Deserialize;
 use std::{
+    collections::HashMap,
     fs::File,
     io::{self, BufWriter, Write},
     path::PathBuf,
+    str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -89,6 +96,31 @@ pub struct GetManyCommentsArgs {
     #[structopt(short = "l", long = "label-filter")]
     /// Regex filter to select which labels you want to download predictions for
     label_filter: Option<Regex>,
+
+    #[structopt(short = "p", long = "user-property-filter")]
+    /// The user property to use
+    property_filter: Option<StructExt<UserPropertiesFilter>>,
+
+    #[structopt(long = "interative-user-property-filter")]
+    /// Open a dialog to interative construct the user property filter
+    interative_property_filter: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct StructExt<T>(pub T);
+
+impl<T: serde::de::DeserializeOwned> FromStr for StructExt<T> {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Self> {
+        serde_json::from_str(string).map_err(|source| {
+            anyhow!(
+                "Expected valid json for type. Got: '{}', which failed because: '{}'",
+                string.to_owned(),
+                source
+            )
+        })
+    }
 }
 
 pub fn get_single(client: &Client, args: &GetSingleCommentArgs) -> Result<()> {
@@ -125,6 +157,76 @@ pub fn get_single(client: &Client, args: &GetSingleCommentArgs) -> Result<()> {
     )
 }
 
+fn get_user_properties_filter_interactively(
+    client: &Client,
+    dataset_id: DatasetIdentifier,
+) -> Result<UserPropertiesFilter> {
+    let dataset = client.get_dataset(dataset_id)?;
+
+    let dataset_summary = client.dataset_summary(
+        &dataset.full_name(),
+        &SummaryRequestParams {
+            attribute_filters: Vec::new(),
+            filter: CommentFilter::default(),
+        },
+    )?;
+
+    let mut properties: Vec<String> = dataset_summary
+        .summary
+        .user_properties
+        .string
+        .iter()
+        .map(|p| p.full_name.clone())
+        .collect();
+
+    let mut filters = HashMap::new();
+
+    loop {
+        if properties.is_empty() {
+            info!("No user properties available!");
+            break;
+        }
+
+        let selected_property = Select::new()
+            .with_prompt("Which user property would you like to filter?")
+            .items(&properties)
+            .interact()?;
+
+        let selected_property_name = properties.remove(selected_property);
+
+        let mut values: Vec<PropertyValue> = Vec::new();
+        loop {
+            let value: String = Input::new()
+                .with_prompt("What value would you like to filter on?")
+                .interact()?;
+            values.push(PropertyValue::String(value));
+
+            if !Confirm::new()
+                .with_prompt(format!(
+                    "Do you want to filter '{selected_property_name}' on more values?",
+                ))
+                .interact()?
+            {
+                break;
+            }
+        }
+
+        filters.insert(
+            selected_property_name,
+            UserPropertyFilterKind::OneOf(values),
+        );
+
+        if !Confirm::new()
+            .with_prompt("Do you want to filter additional user properties?")
+            .interact()?
+        {
+            break;
+        }
+    }
+
+    Ok(UserPropertiesFilter(filters))
+}
+
 pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
     let GetManyCommentsArgs {
         source,
@@ -137,6 +239,8 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         to_timestamp,
         path,
         label_filter,
+        property_filter: user_property_filter,
+        interative_property_filter,
     } = args;
 
     let by_timerange = from_timestamp.is_some() || to_timestamp.is_some();
@@ -169,6 +273,20 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         bail!("The `label_filter` and `model_version` options are mutually exclusive.")
     }
 
+    if (user_property_filter.is_some() || *interative_property_filter) && dataset.is_none() {
+        bail!("Cannot use a property filter when `dataset` is not provided.")
+    }
+
+    if (user_property_filter.is_some() || *interative_property_filter) && reviewed_only {
+        bail!("The `reviewed_only` and `property_filter` options are mutually exclusive.")
+    }
+
+    if (user_property_filter.is_some() || *interative_property_filter)
+        && user_property_filter.is_some()
+    {
+        bail!("The `interative_property_filter` and `property_filter` options are mutually exclusive.")
+    }
+
     let file = match path {
         Some(path) => Some(
             File::create(path)
@@ -187,6 +305,17 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         }
     }
 
+    let user_properties_filter = if let Some(filter) = user_property_filter {
+        Some(filter.0.clone())
+    } else if *interative_property_filter {
+        Some(get_user_properties_filter_interactively(
+            client,
+            dataset.clone().context("Could not unwrap dataset")?,
+        )?)
+    } else {
+        None
+    };
+
     let download_options = CommentDownloadOptions {
         dataset_identifier: dataset.clone(),
         include_predictions: include_predictions.unwrap_or(false),
@@ -198,6 +327,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         },
         show_progress: !no_progress,
         label_attribute_filter,
+        user_properties_filter,
     };
 
     if let Some(file) = file {
@@ -255,6 +385,7 @@ struct CommentDownloadOptions {
     timerange: CommentsIterTimerange,
     show_progress: bool,
     label_attribute_filter: Option<AttributeFilter>,
+    user_properties_filter: Option<UserPropertiesFilter>,
 }
 
 impl CommentDownloadOptions {
@@ -292,7 +423,7 @@ fn download_comments(
             } else {
                 None
             },
-            ..Default::default()
+            user_properties: options.user_properties_filter.clone(),
         };
 
         Ok(get_comments_progress_bar(
@@ -408,7 +539,7 @@ fn get_comments_from_uids(
                 minimum: options.timerange.from,
                 maximum: options.timerange.to,
             }),
-            user_properties: None,
+            user_properties: options.user_properties_filter.clone(),
             sources: vec![source.id],
         },
         limit: DEFAULT_QUERY_PAGE_SIZE,

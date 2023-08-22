@@ -15,7 +15,8 @@ use reqwest::{
 use resources::{
     dataset::{
         QueryRequestParams, QueryResponse,
-        StatisticsRequestParams as DatasetStatisticsRequestParams,
+        StatisticsRequestParams as DatasetStatisticsRequestParams, SummaryRequestParams,
+        SummaryResponse,
     },
     documents::{Document, SyncRawEmailsRequest, SyncRawEmailsResponse},
     project::ForceDeleteProject,
@@ -665,6 +666,18 @@ impl Client {
             .user)
     }
 
+    pub fn dataset_summary(
+        &self,
+        dataset_name: &DatasetFullName,
+        params: &SummaryRequestParams,
+    ) -> Result<SummaryResponse> {
+        self.post::<_, _, SummaryResponse>(
+            self.endpoints.dataset_summary(dataset_name)?,
+            serde_json::to_value(params).expect("summary params serialization error"),
+            Retry::Yes,
+        )
+    }
+
     pub fn query_dataset(
         &self,
         dataset_name: &DatasetFullName,
@@ -1252,6 +1265,13 @@ impl Endpoints {
             current_user,
             projects,
         })
+    }
+
+    fn dataset_summary(&self, dataset_name: &DatasetFullName) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "datasets", &dataset_name.0, "summary"],
+        )
     }
 
     fn query_dataset(&self, dataset_name: &DatasetFullName) -> Result<Url> {
