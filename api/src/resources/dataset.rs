@@ -111,6 +111,14 @@ pub enum OrderEnum {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct SummaryRequestParams {
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
+    pub attribute_filters: Vec<AttributeFilter>,
+
+    pub filter: CommentFilter,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct QueryRequestParams {
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     pub attribute_filters: Vec<AttributeFilter>,
@@ -123,6 +131,27 @@ pub struct QueryRequestParams {
     pub limit: usize,
 
     pub order: OrderEnum,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UserPropertySummary {
+    pub full_name: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UserPropertySummaryList {
+    pub string: Vec<UserPropertySummary>,
+    pub number: Vec<UserPropertySummary>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Summary {
+    pub user_properties: UserPropertySummaryList,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SummaryResponse {
+    pub summary: Summary,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

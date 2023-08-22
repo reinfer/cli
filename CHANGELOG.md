@@ -1,3 +1,6 @@
+## Unreleased
+-Add ability to filter on user properties when getting comments
+
 ## v0.18.1
 - Add comment id to document object in api
 
