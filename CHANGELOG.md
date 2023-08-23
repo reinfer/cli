@@ -1,4 +1,4 @@
-## Unreleased
+## v0.18.2
 -Add ability to filter on user properties when getting comments
 
 ## v0.18.1
