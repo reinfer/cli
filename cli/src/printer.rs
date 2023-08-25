@@ -58,7 +58,7 @@ pub trait DisplayTable {
 
 impl DisplayTable for Bucket {
     fn to_table_headers() -> Row {
-        row![bFg => "Name", "ID", "Created (UTC)", "Updated (UTC)", "Transform Tag"]
+        row![bFg => "Name", "ID", "Created (UTC)", "Transform Tag"]
     }
 
     fn to_table_row(&self) -> Row {
@@ -67,7 +67,6 @@ impl DisplayTable for Bucket {
             full_name,
             self.id.0,
             self.created_at.format("%Y-%m-%d %H:%M:%S"),
-            self.updated_at.format("%Y-%m-%d %H:%M:%S"),
             match &self.transform_tag {
                 Some(transform_tag) => transform_tag.0.as_str().into(),
                 None => "missing".dimmed(),
