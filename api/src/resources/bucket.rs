@@ -19,7 +19,6 @@ pub struct Bucket {
     pub name: Name,
     pub owner: Username,
     pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
     #[serde(default)]
     pub transform_tag: Option<TransformTag>,
 }
