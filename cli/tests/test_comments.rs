@@ -59,7 +59,7 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
             &format!("--source={}", source.identifier()),
         ]
         .into_iter()
-        .chain(args.into_iter()))
+        .chain(args))
         .collect::<Vec<&str>>(),
         comments_str.as_bytes(),
     );
