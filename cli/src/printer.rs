@@ -1,7 +1,9 @@
 use super::thousands::Thousands;
 use colored::Colorize;
 use prettytable::{format, row, Row, Table};
-use reinfer_client::{resources::quota::Quota, Bucket, Dataset, Project, Source, Stream, User};
+use reinfer_client::{
+    resources::quota::Quota, Bucket, Dataset, Project, Source, Statistics, Stream, User,
+};
 use serde::{Serialize, Serializer};
 
 use anyhow::{anyhow, Context, Error, Result};
@@ -144,6 +146,7 @@ impl DisplayTable for Source {
 pub struct PrintableSource {
     pub source: Source,
     pub bucket: Option<Bucket>,
+    pub stats: Option<Statistics>,
 }
 
 impl Serialize for PrintableSource {
@@ -157,7 +160,7 @@ impl Serialize for PrintableSource {
 
 impl DisplayTable for PrintableSource {
     fn to_table_headers() -> Row {
-        row![bFg => "Name", "ID", "Updated (UTC)", "Transform Tag", "Bucket", "Title"]
+        row![bFg => "Name", "ID", "Updated (UTC)", "Transform Tag", "Bucket", "Title", "Num Comments"]
     }
 
     fn to_table_row(&self) -> Row {
@@ -182,7 +185,12 @@ impl DisplayTable for PrintableSource {
                     None => "none".dimmed(),
                 },
             },
-            self.source.title
+            self.source.title,
+            if let Some(stats) = &self.stats {
+                stats.num_comments.to_string().as_str().into()
+            } else {
+                "none".dimmed()
+            }
         ]
     }
 }

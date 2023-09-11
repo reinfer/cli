@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
-use reinfer_client::{Client, SourceIdentifier};
+use log::info;
+use reinfer_client::{resources::source::StatisticsRequestParams, Client, SourceIdentifier};
 use std::collections::HashMap;
 use structopt::StructOpt;
 
@@ -10,10 +11,18 @@ pub struct GetSourcesArgs {
     #[structopt(name = "source")]
     /// If specified, only list this source (name or id)
     source: Option<SourceIdentifier>,
+
+    #[structopt(long = "stats")]
+    /// Whether to include source statistics in response
+    include_stats: bool,
 }
 
 pub fn get(client: &Client, args: &GetSourcesArgs, printer: &Printer) -> Result<()> {
-    let GetSourcesArgs { source } = args;
+    let GetSourcesArgs {
+        source,
+        include_stats,
+    } = args;
+
     let sources = if let Some(source) = source {
         vec![client
             .get_source(source.clone())
@@ -35,6 +44,24 @@ pub fn get(client: &Client, args: &GetSourcesArgs, printer: &Printer) -> Result<
         .map(|bucket| (bucket.id.clone(), bucket))
         .collect();
 
+    let mut source_stats: HashMap<_, _> = HashMap::new();
+    if *include_stats {
+        sources.iter().try_for_each(|source| -> Result<()> {
+            info!("Getting statistics for source {}", source.full_name().0);
+            let stats = client
+                .get_source_statistics(
+                    &source.full_name(),
+                    &StatisticsRequestParams {
+                        comment_filter: Default::default(),
+                    },
+                )
+                .context("Could not get statistics for source")?;
+
+            source_stats.insert(source.id.clone(), stats);
+            Ok(())
+        })?;
+    };
+
     let printable_sources: Vec<PrintableSource> = sources
         .into_iter()
         .map(|source| {
@@ -43,7 +70,13 @@ pub fn get(client: &Client, args: &GetSourcesArgs, printer: &Printer) -> Result<
                 .as_ref()
                 .and_then(|id| buckets.get(id))
                 .cloned();
-            PrintableSource { source, bucket }
+
+            let stats = source_stats.get(&source.id).cloned();
+            PrintableSource {
+                source,
+                bucket,
+                stats,
+            }
         })
         .collect();
 
