@@ -187,9 +187,9 @@ impl DisplayTable for PrintableSource {
             },
             self.source.title,
             if let Some(stats) = &self.stats {
-                stats.num_comments.to_string()
+                stats.num_comments.to_string().as_str().into()
             } else {
-                "N/A".to_string()
+                "none".dimmed()
             }
         ]
     }

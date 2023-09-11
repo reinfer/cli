@@ -44,24 +44,22 @@ pub fn get(client: &Client, args: &GetSourcesArgs, printer: &Printer) -> Result<
         .map(|bucket| (bucket.id.clone(), bucket))
         .collect();
 
-    let source_stats: HashMap<_, _> = if *include_stats {
-        sources
-            .iter()
-            .map(|source| {
-                info!("Getting statistics for source {}", source.full_name().0);
-                let stats = client
-                    .get_source_statistics(
-                        &source.full_name(),
-                        &StatisticsRequestParams {
-                            comment_filter: Default::default(),
-                        },
-                    )
-                    .expect("Could not get statistics for source");
-                (source.id.clone(), stats)
-            })
-            .collect()
-    } else {
-        HashMap::new()
+    let mut source_stats: HashMap<_, _> = HashMap::new();
+    if *include_stats {
+        sources.iter().try_for_each(|source| -> Result<()> {
+            info!("Getting statistics for source {}", source.full_name().0);
+            let stats = client
+                .get_source_statistics(
+                    &source.full_name(),
+                    &StatisticsRequestParams {
+                        comment_filter: Default::default(),
+                    },
+                )
+                .context("Could not get statistics for source")?;
+
+            source_stats.insert(source.id.clone(), stats);
+            Ok(())
+        })?;
     };
 
     let printable_sources: Vec<PrintableSource> = sources
