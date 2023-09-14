@@ -22,6 +22,7 @@ use resources::{
     project::ForceDeleteProject,
     quota::{GetQuotasResponse, Quota},
     source::StatisticsRequestParams as SourceStatisticsRequestParams,
+    stream::{NewStream, PutStreamRequest, PutStreamResponse},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -390,6 +391,17 @@ impl Client {
             Some(PutCommentsRequest { comments }),
             Some(NoChargeQuery { no_charge }),
             Retry::No,
+        )
+    }
+
+    pub fn put_stream(
+        &self,
+        dataset_name: &DatasetFullName,
+        stream: &NewStream,
+    ) -> Result<PutStreamResponse> {
+        self.put(
+            self.endpoints.streams(dataset_name)?,
+            Some(PutStreamRequest { stream }),
         )
     }
 

@@ -87,6 +87,7 @@ pub struct CommentFilter {
     pub user_properties: Option<UserPropertiesFilter>,
 
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub sources: Vec<SourceId>,
 }
 
