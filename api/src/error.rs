@@ -25,6 +25,9 @@ pub enum Error {
     #[error("Expected <owner>/<dataset>/<stream>: {}", identifier)]
     BadStreamName { identifier: String },
 
+    #[error("Expected u64: {}", version)]
+    BadStreamModelVersion { version: String },
+
     #[error(
         "Expected a user id (usernames and emails are not supported), got: {}",
         identifier

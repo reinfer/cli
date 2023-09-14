@@ -43,6 +43,49 @@ impl FromStr for FullName {
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct PutStreamRequest<'request> {
+    pub stream: &'request NewStream,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PutStreamResponse {
+    pub stream: Stream,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct NewStream {
+    pub name: Name,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment_filter: Option<CommentFilter>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<StreamModel>,
+}
+
+impl NewStream {
+    pub fn set_model_version(&mut self, model_version: &UserModelVersion) {
+        if let Some(model) = &mut self.model {
+            model.version = model_version.clone()
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct StreamModel {
+    pub version: UserModelVersion,
+    pub label_thresholds: Vec<StreamLabelThreshold>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct StreamLabelThreshold {
+    name: Vec<String>,
+    threshold: NotNan<f64>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Stream {
     pub id: Id,
@@ -58,6 +101,9 @@ pub struct Stream {
 
     #[serde(rename = "label_threshold_filter")]
     pub label_filter: Option<LabelFilter>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<StreamModel>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -69,6 +115,19 @@ pub struct LabelFilter {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UserModelVersion(pub u64);
+
+impl FromStr for UserModelVersion {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s.parse::<u64>() {
+            Ok(version) => Ok(UserModelVersion(version)),
+            Err(_) => Err(Error::BadStreamModelVersion {
+                version: s.to_string(),
+            }),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Batch {

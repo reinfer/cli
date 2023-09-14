@@ -1,4 +1,5 @@
 ## Unreleased
+- Add create streams command
 - Show source statistics in table when getting sources
 
 ## v0.18.2

@@ -7,13 +7,14 @@ mod project;
 mod quota;
 mod source;
 mod stream_exception;
+mod streams;
 mod user;
 
 use self::{
     annotations::CreateAnnotationsArgs, bucket::CreateBucketArgs, comments::CreateCommentsArgs,
     dataset::CreateDatasetArgs, emails::CreateEmailsArgs, project::CreateProjectArgs,
     quota::CreateQuotaArgs, source::CreateSourceArgs, stream_exception::CreateStreamExceptionArgs,
-    user::CreateUserArgs,
+    streams::CreateStreamsArgs, user::CreateUserArgs,
 };
 use crate::printer::Printer;
 use anyhow::Result;
@@ -62,6 +63,10 @@ pub enum CreateArgs {
     #[structopt(name = "quota")]
     /// Set a new value for a quota
     Quota(CreateQuotaArgs),
+
+    #[structopt(name = "stream")]
+    /// Create a stream
+    Stream(CreateStreamsArgs),
 }
 
 pub fn run(
@@ -85,5 +90,6 @@ pub fn run(
             stream_exception::create(&client, stream_exception_args, printer)
         }
         CreateArgs::Quota(quota_args) => quota::create(&client, quota_args),
+        CreateArgs::Stream(stream_args) => streams::create(&client, stream_args),
     }
 }
