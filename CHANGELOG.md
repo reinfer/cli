@@ -1,50 +1,67 @@
+## Unreleased
+
+- Upgrade `ordered-float` version, which is exposed in the public crate api.
+
 ## v0.19.0
+
 - Add create streams command
 - Show source statistics in table when getting sources
 
 ## v0.18.2
+
 -Add ability to filter on user properties when getting comments
 
 ## v0.18.1
+
 - Add comment id to document object in api
 
 ## v0.18.0
+
 - Add label filter when downloading comments with predictions
 - Retry requests on request error
 
 ## v0.17.2
+
 - Retry TOO_MANY_REQUESTS
 
 ## v0.17.1
+
 - Support markup in signatures
 - Fix bug where annotations may have been uploaded before comments, causing a failure
 
 ## v0.17.0
+
 - Always retry on connection issues
 - Upload annotations in parallel
 
 ## v0.16.1
+
 - Add attachments to `sync-raw-email`
 
 ## v0.16.0
+
 - Add command to list quotas for current tenant
 - Show correct statistics when downloading comments
 - Add `sync-raw-emails` to api
 
 ## v0.15.0
+
 - Add support for markup on comments
 
 ## v0.14.0
+
 - Add a warning for UiPath cloud users when an operation will charge ai units
 
-
 ## v0.13.4
+
 - Add user property filters to the query api
 
 ## v0.13.3
+
 - Add recent as an option for the query api
 
 ## v0.13.2
+
 - Skip serialization of continuation on `None`
 
 ## v0.13.1
@@ -53,7 +70,6 @@
 - Add comment and label filters to `get_statistics`
 - Add timeseries to `get_statistics`
 - Add `query_dataset` to api
-
 
 ## Added
 
