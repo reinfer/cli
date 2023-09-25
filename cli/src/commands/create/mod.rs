@@ -64,7 +64,7 @@ pub enum CreateArgs {
     /// Set a new value for a quota
     Quota(CreateQuotaArgs),
 
-    #[structopt(name = "stream")]
+    #[structopt(name = "streams")]
     /// Create a stream
     Stream(CreateStreamsArgs),
 }
