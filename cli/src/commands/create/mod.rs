@@ -64,9 +64,13 @@ pub enum CreateArgs {
     /// Set a new value for a quota
     Quota(CreateQuotaArgs),
 
-    #[structopt(name = "streams")]
+    #[structopt(name = "stream")]
     /// Create a stream
     Stream(CreateStreamsArgs),
+
+    #[structopt(name = "streams")]
+    /// Create streams
+    Streams(CreateStreamsArgs),
 }
 
 pub fn run(
@@ -90,6 +94,8 @@ pub fn run(
             stream_exception::create(&client, stream_exception_args, printer)
         }
         CreateArgs::Quota(quota_args) => quota::create(&client, quota_args),
-        CreateArgs::Stream(stream_args) => streams::create(&client, stream_args),
+        CreateArgs::Stream(stream_args) | CreateArgs::Streams(stream_args) => {
+            streams::create(&client, stream_args)
+        }
     }
 }
