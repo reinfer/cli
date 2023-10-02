@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Show Global Permissions in `get users`
 - Upgrade `ordered-float` version, which is exposed in the public crate api.
 
 ## v0.19.0

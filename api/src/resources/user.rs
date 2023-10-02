@@ -87,6 +87,7 @@ pub struct User {
     pub global_permissions: HashSet<GlobalPermission>,
     #[serde(rename = "organisation_permissions")]
     pub project_permissions: HashMap<ProjectName, HashSet<ProjectPermission>>,
+    pub sso_global_permissions: HashSet<GlobalPermission>,
     pub verified: bool,
 }
 

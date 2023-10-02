@@ -212,7 +212,7 @@ impl DisplayTable for Stream {
 
 impl DisplayTable for User {
     fn to_table_headers() -> Row {
-        row![bFg => "Name", "Email", "ID", "Created (UTC)"]
+        row![bFg => "Name", "Email", "ID", "Created (UTC)", "Global Permissions"]
     }
 
     fn to_table_row(&self) -> Row {
@@ -221,6 +221,12 @@ impl DisplayTable for User {
             self.email.0,
             self.id.0,
             self.created_at.format("%Y-%m-%d %H:%M:%S"),
+            self.global_permissions
+                .iter()
+                .chain(self.sso_global_permissions.iter())
+                .map(|permission| permission.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")
         ]
     }
 }
