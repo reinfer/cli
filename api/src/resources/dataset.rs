@@ -17,7 +17,7 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Dataset {
     pub id: Id,
     pub name: Name,
@@ -34,6 +34,7 @@ pub struct Dataset {
     pub entity_defs: Vec<EntityDef>,
     pub label_defs: Vec<LabelDef>,
     pub label_groups: Vec<LabelGroup>,
+    pub num_reviewed: Option<f64>,
 }
 
 impl Dataset {
@@ -248,17 +249,17 @@ pub(crate) struct CreateRequest<'request> {
     pub dataset: NewDataset<'request>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub(crate) struct CreateResponse {
     pub dataset: Dataset,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub(crate) struct GetAvailableResponse {
     pub datasets: Vec<Dataset>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub(crate) struct GetResponse {
     pub dataset: Dataset,
 }
@@ -280,7 +281,7 @@ pub(crate) struct UpdateRequest<'request> {
     pub dataset: UpdateDataset<'request>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub(crate) struct UpdateResponse {
     pub dataset: Dataset,
 }

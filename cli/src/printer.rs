@@ -89,7 +89,7 @@ impl DisplayTable for Quota {
 
 impl DisplayTable for Dataset {
     fn to_table_headers() -> Row {
-        row![bFg => "Name", "ID", "Updated (UTC)", "Title"]
+        row![bFg => "Name", "ID", "Updated (UTC)", "Title", "Num Reviewed"]
     }
 
     fn to_table_row(&self) -> Row {
@@ -98,7 +98,12 @@ impl DisplayTable for Dataset {
             full_name,
             self.id.0,
             self.updated_at.format("%Y-%m-%d %H:%M:%S"),
-            self.title
+            self.title,
+            if let Some(num_reviewed) = &self.num_reviewed {
+                num_reviewed.to_string().as_str().into()
+            } else {
+                "none".dimmed()
+            }
         ]
     }
 }

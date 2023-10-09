@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Add ability to get dataset stats
 - Show Global Permissions in `get users`
 - Upgrade `ordered-float` version, which is exposed in the public crate api.
 
