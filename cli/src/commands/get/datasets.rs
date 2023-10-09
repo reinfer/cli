@@ -16,7 +16,7 @@ pub struct GetDatasetsArgs {
     dataset: Option<DatasetIdentifier>,
 
     #[structopt(long = "stats")]
-    /// Whether to include source statistics in response
+    /// Whether to include dataset statistics in response
     include_stats: bool,
 }
 
