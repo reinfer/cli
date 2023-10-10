@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use ordered_float::NotNan;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -17,7 +18,7 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Dataset {
     pub id: Id,
     pub name: Name,
@@ -34,7 +35,17 @@ pub struct Dataset {
     pub entity_defs: Vec<EntityDef>,
     pub label_defs: Vec<LabelDef>,
     pub label_groups: Vec<LabelGroup>,
-    pub num_reviewed: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct DatasetStats {
+    pub num_reviewed: NotNan<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct DatasetAndStats {
+    pub dataset: Dataset,
+    pub stats: DatasetStats,
 }
 
 impl Dataset {
@@ -249,17 +260,17 @@ pub(crate) struct CreateRequest<'request> {
     pub dataset: NewDataset<'request>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct CreateResponse {
     pub dataset: Dataset,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct GetAvailableResponse {
     pub datasets: Vec<Dataset>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct GetResponse {
     pub dataset: Dataset,
 }
@@ -281,7 +292,7 @@ pub(crate) struct UpdateRequest<'request> {
     pub dataset: UpdateDataset<'request>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct UpdateResponse {
     pub dataset: Dataset,
 }

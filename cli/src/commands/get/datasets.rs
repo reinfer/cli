@@ -1,9 +1,8 @@
-use std::collections::HashMap;
-
 use anyhow::{Context, Result};
 use log::info;
 use reinfer_client::{
-    resources::dataset::StatisticsRequestParams, Client, CommentFilter, DatasetIdentifier,
+    resources::dataset::{DatasetAndStats, DatasetStats, StatisticsRequestParams},
+    Client, CommentFilter, DatasetIdentifier,
 };
 use structopt::StructOpt;
 
@@ -25,7 +24,7 @@ pub fn get(client: &Client, args: &GetDatasetsArgs, printer: &Printer) -> Result
         dataset,
         include_stats,
     } = args;
-    let mut datasets = if let Some(dataset) = dataset {
+    let datasets = if let Some(dataset) = dataset {
         vec![client
             .get_dataset(dataset.clone())
             .context("Operation to list datasets has failed.")?]
@@ -39,7 +38,7 @@ pub fn get(client: &Client, args: &GetDatasetsArgs, printer: &Printer) -> Result
         datasets
     };
 
-    let mut dataset_stats: HashMap<_, _> = HashMap::new();
+    let mut dataset_stats = Vec::new();
     if *include_stats {
         datasets.iter().try_for_each(|dataset| -> Result<()> {
             info!("Getting statistics for dataset {}", dataset.full_name().0);
@@ -56,18 +55,17 @@ pub fn get(client: &Client, args: &GetDatasetsArgs, printer: &Printer) -> Result
                 )
                 .context("Could not get statistics for dataset")?;
 
-            dataset_stats.insert(dataset.id.clone(), stats);
+            let dataset_and_stats = DatasetAndStats {
+                dataset: dataset.clone(),
+                stats: DatasetStats {
+                    num_reviewed: stats.num_comments
+                }
+            };
+            dataset_stats.push(dataset_and_stats);
             Ok(())
         })?;
-
-        datasets.iter_mut().for_each(|dataset| {
-            dataset.num_reviewed = if let Some(stats) = dataset_stats.get(&dataset.id).cloned() {
-                Some(*stats.num_comments)
-            } else {
-                None
-            }
-        });
+        printer.print_resources(&dataset_stats)
+    } else {
+        printer.print_resources(&datasets)
     }
-
-    printer.print_resources(&datasets)
 }

@@ -2,7 +2,8 @@ use super::thousands::Thousands;
 use colored::Colorize;
 use prettytable::{format, row, Row, Table};
 use reinfer_client::{
-    resources::quota::Quota, Bucket, Dataset, Project, Source, Statistics, Stream, User,
+    resources::{dataset::DatasetAndStats, quota::Quota},
+    Bucket, Dataset, Project, Source, Statistics, Stream, User,
 };
 use serde::{Serialize, Serializer};
 
@@ -89,7 +90,7 @@ impl DisplayTable for Quota {
 
 impl DisplayTable for Dataset {
     fn to_table_headers() -> Row {
-        row![bFg => "Name", "ID", "Updated (UTC)", "Title", "Num Reviewed"]
+        row![bFg => "Name", "ID", "Updated (UTC)", "Title"]
     }
 
     fn to_table_row(&self) -> Row {
@@ -99,11 +100,28 @@ impl DisplayTable for Dataset {
             self.id.0,
             self.updated_at.format("%Y-%m-%d %H:%M:%S"),
             self.title,
-            if let Some(num_reviewed) = &self.num_reviewed {
-                num_reviewed.to_string().as_str().into()
-            } else {
-                "none".dimmed()
-            }
+        ]
+    }
+}
+
+impl DisplayTable for DatasetAndStats {
+    fn to_table_headers() -> Row {
+        row![bFg => "Name", "ID", "Updated (UTC)", "Title", "Num Reviewed"]
+    }
+
+    fn to_table_row(&self) -> Row {
+        let full_name = format!(
+            "{}{}{}",
+            self.dataset.owner.0.dimmed(),
+            "/".dimmed(),
+            self.dataset.name.0
+        );
+        row![
+            full_name,
+            self.dataset.id.0,
+            self.dataset.updated_at.format("%Y-%m-%d %H:%M:%S"),
+            self.dataset.title,
+            self.stats.num_reviewed
         ]
     }
 }
