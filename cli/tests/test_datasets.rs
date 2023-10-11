@@ -1,3 +1,5 @@
+use anyhow::anyhow;
+use backoff::{retry, ExponentialBackoff};
 use pretty_assertions::assert_eq;
 use reinfer_client::{
     Dataset, EntityDef, EntityName, LabelDef, LabelDefPretrained, LabelDefPretrainedId, LabelGroup,
@@ -59,8 +61,16 @@ impl TestDataset {
 
 impl Drop for TestDataset {
     fn drop(&mut self) {
-        let output = TestCli::get().run(["delete", "dataset", self.identifier()]);
-        assert!(output.is_empty());
+        let delete_dataset_command = || {
+            let output = TestCli::get().run(["delete", "dataset", self.identifier()]);
+            if output.is_empty() {
+                Ok(())
+            } else {
+                Err(backoff::Error::transient(anyhow!(output)))
+            }
+        };
+
+        retry(ExponentialBackoff::default(), delete_dataset_command).unwrap()
     }
 }
 
