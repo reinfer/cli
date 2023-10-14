@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use ordered_float::NotNan;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -34,6 +35,18 @@ pub struct Dataset {
     pub entity_defs: Vec<EntityDef>,
     pub label_defs: Vec<LabelDef>,
     pub label_groups: Vec<LabelGroup>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct DatasetStats {
+    pub num_reviewed: NotNan<f64>,
+    pub total_verbatims: NotNan<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct DatasetAndStats {
+    pub dataset: Dataset,
+    pub stats: DatasetStats,
 }
 
 impl Dataset {

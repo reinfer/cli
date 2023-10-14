@@ -1,5 +1,9 @@
 use anyhow::{Context, Result};
-use reinfer_client::{Client, DatasetIdentifier};
+use log::info;
+use reinfer_client::{
+    resources::dataset::{DatasetAndStats, DatasetStats, StatisticsRequestParams},
+    Client, CommentFilter, DatasetIdentifier,
+};
 use structopt::StructOpt;
 
 use crate::printer::Printer;
@@ -9,10 +13,17 @@ pub struct GetDatasetsArgs {
     #[structopt(name = "dataset")]
     /// If specified, only list this dataset (name or id)
     dataset: Option<DatasetIdentifier>,
+
+    #[structopt(long = "stats")]
+    /// Whether to include dataset statistics in response
+    include_stats: bool,
 }
 
 pub fn get(client: &Client, args: &GetDatasetsArgs, printer: &Printer) -> Result<()> {
-    let GetDatasetsArgs { dataset } = args;
+    let GetDatasetsArgs {
+        dataset,
+        include_stats,
+    } = args;
     let datasets = if let Some(dataset) = dataset {
         vec![client
             .get_dataset(dataset.clone())
@@ -26,5 +37,45 @@ pub fn get(client: &Client, args: &GetDatasetsArgs, printer: &Printer) -> Result
         });
         datasets
     };
-    printer.print_resources(&datasets)
+
+    let mut dataset_stats = Vec::new();
+    if *include_stats {
+        datasets.iter().try_for_each(|dataset| -> Result<()> {
+            info!("Getting statistics for dataset {}", dataset.full_name().0);
+            let unfiltered_stats = client
+                .get_dataset_statistics(
+                    &dataset.full_name(),
+                    &StatisticsRequestParams {
+                        ..Default::default()
+                    },
+                )
+                .context("Could not get statistics for dataset")?;
+
+            let reviewed_stats = client
+                .get_dataset_statistics(
+                    &dataset.full_name(),
+                    &StatisticsRequestParams {
+                        comment_filter: CommentFilter {
+                            reviewed:Some(reinfer_client::resources::comment::ReviewedFilterEnum::OnlyReviewed),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                )
+                .context("Could not get statistics for dataset")?;
+
+            let dataset_and_stats = DatasetAndStats {
+                dataset: dataset.clone(),
+                stats: DatasetStats {
+                    num_reviewed: reviewed_stats.num_comments,
+                    total_verbatims: unfiltered_stats.num_comments
+                }
+            };
+            dataset_stats.push(dataset_and_stats);
+            Ok(())
+        })?;
+        printer.print_resources(&dataset_stats)
+    } else {
+        printer.print_resources(&datasets)
+    }
 }

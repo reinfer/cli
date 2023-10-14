@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
 use reinfer_client::User;
 use std::{
@@ -77,6 +78,14 @@ impl TestCli {
     }
 
     #[track_caller]
+    pub fn run_and_result(
+        &self,
+        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+    ) -> Result<String> {
+        self.output_result(self.command().args(args))
+    }
+
+    #[track_caller]
     pub fn run_with_stdin(
         &self,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
@@ -115,6 +124,20 @@ impl TestCli {
         }
 
         String::from_utf8(output.stdout).unwrap()
+    }
+
+    #[track_caller]
+    pub fn output_result(&self, command: &mut Command) -> Result<String> {
+        let output = command.output().unwrap();
+
+        if output.status.success() {
+            Ok(String::from_utf8(output.stdout)?)
+        } else {
+            Err(anyhow!(
+                "failed to run command:\n{}",
+                String::from_utf8_lossy(&output.stderr)
+            ))
+        }
     }
 
     #[track_caller]
