@@ -40,6 +40,7 @@ pub struct Dataset {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct DatasetStats {
     pub num_reviewed: NotNan<f64>,
+    pub total_verbatims: NotNan<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]

@@ -106,7 +106,7 @@ impl DisplayTable for Dataset {
 
 impl DisplayTable for DatasetAndStats {
     fn to_table_headers() -> Row {
-        row![bFg => "Name", "ID", "Updated (UTC)", "Title", "Num Reviewed"]
+        row![bFg => "Name", "ID", "Updated (UTC)", "Title","Total Verbatims", "Num Reviewed"]
     }
 
     fn to_table_row(&self) -> Row {
@@ -121,6 +121,7 @@ impl DisplayTable for DatasetAndStats {
             self.dataset.id.0,
             self.dataset.updated_at.format("%Y-%m-%d %H:%M:%S"),
             self.dataset.title,
+            self.stats.total_verbatims,
             self.stats.num_reviewed
         ]
     }

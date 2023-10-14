@@ -42,7 +42,16 @@ pub fn get(client: &Client, args: &GetDatasetsArgs, printer: &Printer) -> Result
     if *include_stats {
         datasets.iter().try_for_each(|dataset| -> Result<()> {
             info!("Getting statistics for dataset {}", dataset.full_name().0);
-            let stats = client
+            let unfiltered_stats = client
+                .get_dataset_statistics(
+                    &dataset.full_name(),
+                    &StatisticsRequestParams {
+                        ..Default::default()
+                    },
+                )
+                .context("Could not get statistics for dataset")?;
+
+            let reviewed_stats = client
                 .get_dataset_statistics(
                     &dataset.full_name(),
                     &StatisticsRequestParams {
@@ -58,7 +67,8 @@ pub fn get(client: &Client, args: &GetDatasetsArgs, printer: &Printer) -> Result
             let dataset_and_stats = DatasetAndStats {
                 dataset: dataset.clone(),
                 stats: DatasetStats {
-                    num_reviewed: stats.num_comments
+                    num_reviewed: reviewed_stats.num_comments,
+                    total_verbatims: unfiltered_stats.num_comments
                 }
             };
             dataset_stats.push(dataset_and_stats);
