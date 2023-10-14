@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use backoff::{retry, ExponentialBackoff};
 use pretty_assertions::assert_eq;
 use reinfer_client::{
@@ -62,15 +61,12 @@ impl TestDataset {
 impl Drop for TestDataset {
     fn drop(&mut self) {
         let delete_dataset_command = || {
-            let output = TestCli::get().run(["delete", "dataset", self.identifier()]);
-            if output.is_empty() {
-                Ok(())
-            } else {
-                Err(backoff::Error::transient(anyhow!(output)))
-            }
+            TestCli::get()
+                .run_and_result(["delete", "dataset", self.identifier()])
+                .map_err(backoff::Error::transient)
         };
 
-        retry(ExponentialBackoff::default(), delete_dataset_command).unwrap()
+        retry(ExponentialBackoff::default(), delete_dataset_command).unwrap();
     }
 }
 
