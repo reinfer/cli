@@ -3,6 +3,7 @@
 - Add ability to get dataset stats
 - Show Global Permissions in `get users`
 - Upgrade `ordered-float` version, which is exposed in the public crate api.
+- Add ability to filter users by project and permission
 
 ## v0.19.0
 
