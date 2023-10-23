@@ -379,7 +379,7 @@ fn test_create_dataset_wrong_model_family() {
         .unwrap();
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr)
-        .contains("API request failed with 400 Bad Request: 'non-existent-family' is not one of"))
+        .contains("API request failed with 400 Bad Request: Invalid request - Unsupported model family: non-existent-family"))
 }
 
 #[test]
