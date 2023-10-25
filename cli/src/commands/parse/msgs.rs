@@ -31,7 +31,9 @@ const MSG_NAME_USER_PROPERTY_NAME: &str = "MSG NAME ID";
 const STREAM_PATH_ATTACHMENT_STORE_PREFIX: &str = "__attach_version1.0_#";
 
 static CONTENT_TYPE_MIME_HEADER_RX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"Content-Type:((\s)+.+\n)*").unwrap());
+    Lazy::new(|| Regex::new(r"Content-Type:((\s)+.+\n)+").unwrap());
+static CONTENT_TRANSFER_ENCODING_MIME_HEADER_RX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"Content-Transfer-Encoding:((\s)+.+\n)+").unwrap());
 static STREAM_PATH_MESSAGE_BODY_PLAIN: Lazy<PathBuf> =
     Lazy::new(|| PathBuf::from("__substg1.0_1000001F"));
 static STREAM_PATH_MESSAGE_HEADER: Lazy<PathBuf> =
@@ -178,11 +180,20 @@ fn read_attachment(
     })
 }
 
-fn remove_content_type_header(headers_string: String) -> Result<String> {
-    Ok(CONTENT_TYPE_MIME_HEADER_RX
+fn remove_content_headers(headers_string: String) -> Result<String> {
+    let mut clean_headers_string: String;
+
+    clean_headers_string = CONTENT_TYPE_MIME_HEADER_RX
         .clone()
         .replace(&headers_string, "")
-        .to_string())
+        .to_string();
+
+    clean_headers_string = CONTENT_TRANSFER_ENCODING_MIME_HEADER_RX
+        .clone()
+        .replace(&clean_headers_string, "")
+        .to_string();
+
+    Ok(clean_headers_string)
 }
 
 fn read_msg_to_document(path: &PathBuf) -> Result<Document> {
@@ -197,7 +208,7 @@ fn read_msg_to_document(path: &PathBuf) -> Result<Document> {
         read_unicode_stream_to_string(STREAM_PATH_MESSAGE_HEADER.clone(), &mut compound_file)?;
 
     // As the content type won't match the parsed value from the body in the msg
-    let headers_string_no_content_type = remove_content_type_header(headers_string)?;
+    let headers_string_no_content_headers = remove_content_headers(headers_string)?;
 
     let plain_body_string =
         read_unicode_stream_to_string(STREAM_PATH_MESSAGE_BODY_PLAIN.clone(), &mut compound_file)?;
@@ -230,7 +241,7 @@ fn read_msg_to_document(path: &PathBuf) -> Result<Document> {
     Ok(Document {
         raw_email: RawEmail {
             body: RawEmailBody::Plain(plain_body_string),
-            headers: RawEmailHeaders::Raw(headers_string_no_content_type),
+            headers: RawEmailHeaders::Raw(headers_string_no_content_headers),
             attachments,
         },
         user_properties,
