@@ -1,4 +1,4 @@
-## Unreleased
+## v0.20.0
 
 - Add ability to get dataset stats
 - Show Global Permissions in `get users`
