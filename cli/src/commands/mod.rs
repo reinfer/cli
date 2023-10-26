@@ -6,6 +6,7 @@ pub mod config;
 pub mod create;
 pub mod delete;
 pub mod get;
+pub mod parse;
 pub mod update;
 
 pub fn ensure_uip_user_consents_to_ai_unit_charge(base_url: &Url) -> Result<()> {

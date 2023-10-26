@@ -4,6 +4,7 @@
 - Show Global Permissions in `get users`
 - Upgrade `ordered-float` version, which is exposed in the public crate api.
 - Add ability to filter users by project and permission
+- Add feature to parse unicode msg files
 
 ## v0.19.0
 

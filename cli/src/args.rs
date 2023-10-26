@@ -1,6 +1,6 @@
 use crate::{
     commands::{
-        config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs,
+        config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs, parse::ParseArgs,
         update::UpdateArgs,
     },
     printer::OutputFormat,
@@ -103,6 +103,13 @@ pub enum Command {
     Get {
         #[structopt(subcommand)]
         get_args: GetArgs,
+    },
+
+    #[structopt(name = "parse")]
+    /// Upload data from various file types
+    Parse {
+        #[structopt(subcommand)]
+        parse_args: ParseArgs,
     },
 }
 
