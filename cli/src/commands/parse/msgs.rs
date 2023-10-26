@@ -129,23 +129,35 @@ fn read_unicode_stream_to_string(
     stream_path: PathBuf,
     compound_file: &mut CompoundFile<File>,
 ) -> Result<String> {
-    if !compound_file.is_stream(stream_path.clone()) {
+    if !compound_file.is_stream(&stream_path) {
         return Err(anyhow!(
             "Could not find stream {}. Please check that you are using unicode msgs",
             stream_path.to_string_lossy()
         ));
     }
 
-    let data = read_stream(stream_path, compound_file)?;
-
     // Stream data is a UTF16 string encoded as Vec[u8]
-    let mut buffer: String = String::with_capacity(data.len() * 2);
+    let data = read_stream(stream_path, compound_file)?;
+    Ok(utf16le_stream_to_string(&data))
+}
+
+// Decode a UTF-16LE data stream, given as raw bytes of Vec<u8>
+fn utf16le_stream_to_string(data: &[u8]) -> String {
     let mut decoder = encoding_rs::UTF_16LE.new_decoder();
-    let (coder_result, _, _) = decoder.decode_to_string(&data, &mut buffer, true);
-    if coder_result != encoding_rs::CoderResult::InputEmpty {
-        Err(anyhow!("Unexpected coder result"))
-    } else {
-        Ok(buffer)
+
+    // The amount of memory to reserve for writing at a time
+    // We should only require one or two blocks for the vast majority of cases
+    let block_length = data.len();
+    let mut buffer: String = String::with_capacity(block_length);
+
+    loop {
+        let (coder_result, _, _) = decoder.decode_to_string(data, &mut buffer, true);
+        use encoding_rs::CoderResult;
+        match coder_result {
+            // The output buffer was not big enough - increase and retry
+            CoderResult::OutputFull => buffer.reserve(block_length),
+            CoderResult::InputEmpty => return buffer,
+        }
     }
 }
 
@@ -161,13 +173,13 @@ fn read_attachment(
     compound_file: &mut CompoundFile<File>,
 ) -> Result<AttachmentMetadata> {
     let mut attachment_name_path = attachment_path.clone();
-    attachment_name_path.push(STREAM_PATH_ATTACHMENT_FILENAME.clone());
+    attachment_name_path.push(&*STREAM_PATH_ATTACHMENT_FILENAME);
 
     let mut content_type_path = attachment_path.clone();
-    content_type_path.push(STREAM_PATH_ATTACHMENT_EXTENSION.clone());
+    content_type_path.push(&*STREAM_PATH_ATTACHMENT_EXTENSION);
 
     let mut data_path = attachment_path.clone();
-    data_path.push(STREAM_PATH_ATTACHMENT_DATA.clone());
+    data_path.push(&*STREAM_PATH_ATTACHMENT_DATA);
 
     let name = read_unicode_stream_to_string(attachment_name_path.clone(), compound_file)?;
     let content_type = read_unicode_stream_to_string(content_type_path, compound_file)?;
@@ -184,12 +196,10 @@ fn remove_content_headers(headers_string: String) -> Result<String> {
     let mut clean_headers_string: String;
 
     clean_headers_string = CONTENT_TYPE_MIME_HEADER_RX
-        .clone()
         .replace(&headers_string, "")
         .to_string();
 
     clean_headers_string = CONTENT_TRANSFER_ENCODING_MIME_HEADER_RX
-        .clone()
         .replace(&clean_headers_string, "")
         .to_string();
 
@@ -271,12 +281,9 @@ fn upload_batch_of_documents(
 pub fn get_msgs_in_directory(directory: &PathBuf) -> Result<Vec<DirEntry>> {
     Ok(std::fs::read_dir(directory)?
         .filter_map(|path| {
-            if let Ok(path) = path {
-                if !path.path().extension().is_some_and(|msg| msg == "msg") {
-                    None
-                } else {
-                    Some(path)
-                }
+            let path = path.ok()?;
+            if path.path().extension().is_some_and(|msg| msg == "msg") {
+                Some(path)
             } else {
                 None
             }
@@ -304,21 +311,27 @@ pub fn parse(client: &Client, args: &ParseMsgArgs) -> Result<()> {
 
     let mut documents = Vec::new();
     let mut errors = Vec::new();
+
+    let send = |documents: &mut Vec<Document>| -> Result<()> {
+        upload_batch_of_documents(
+            client,
+            &source,
+            documents,
+            transform_tag,
+            *no_charge,
+            &statistics,
+        )?;
+        documents.clear();
+        Ok(())
+    };
+
     for path in msg_paths {
         match read_msg_to_document(&path.path()) {
             Ok(document) => {
                 documents.push(document);
 
                 if documents.len() >= UPLOAD_BATCH_SIZE {
-                    upload_batch_of_documents(
-                        client,
-                        &source,
-                        &documents,
-                        transform_tag,
-                        *no_charge,
-                        &statistics,
-                    )?;
-                    documents.clear();
+                    send(&mut documents)?;
                 }
                 statistics.increment_processed();
             }
@@ -334,14 +347,7 @@ pub fn parse(client: &Client, args: &ParseMsgArgs) -> Result<()> {
         }
     }
 
-    upload_batch_of_documents(
-        client,
-        &source,
-        &documents,
-        transform_tag,
-        *no_charge,
-        &statistics,
-    )?;
+    send(&mut documents)?;
 
     for error in errors {
         error!("{}", error);
