@@ -34,14 +34,16 @@ case $BUILD_PLATFORM in
     build_and_upload "x86_64-unknown-linux-musl" "re"
     build_and_upload "x86_64-unknown-linux-gnu" "re"
 
+    export LOCAL_DEB_PATH="../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb"
+
     # Build and upload deb package
-    cargo deb
+    cargo deb --output "$LOCAL_DEB_PATH"
 
     export VERSIONED_DEB_PATH="gs://reinfer-public/cli/debian/reinfer-cli_${CLI_VERSION}_amd64.deb"
     export LATEST_DEB_PATH="gs://reinfer-public/cli/debian/reinfer-cli_latest_amd64.deb"
 
     if ! gsutil -q stat "$VERSIONED_DEB_PATH"; then
-            gsutil cp "../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb" "$VERSIONED_DEB_PATH"
+            gsutil cp "$LOCAL_DEB_PATH" "$VERSIONED_DEB_PATH"
     fi
 
     # TODO (tommmiligan) Disable until we can overwrite files from CI
