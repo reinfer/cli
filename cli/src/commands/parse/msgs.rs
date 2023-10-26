@@ -18,7 +18,10 @@ use reinfer_client::{
     },
     Client, PropertyMap, Source, SourceIdentifier, TransformTag,
 };
-use std::{fs::File, path::PathBuf};
+use std::{
+    fs::File,
+    path::{Path, PathBuf},
+};
 use structopt::StructOpt;
 
 use crate::{
@@ -114,7 +117,7 @@ pub struct ParseMsgArgs {
     yes: bool,
 }
 
-fn read_stream(stream_path: PathBuf, compound_file: &mut CompoundFile<File>) -> Result<Vec<u8>> {
+fn read_stream(stream_path: &Path, compound_file: &mut CompoundFile<File>) -> Result<Vec<u8>> {
     let data = {
         let mut stream = compound_file.open_stream(stream_path)?;
         let mut buffer = Vec::new();
@@ -126,7 +129,7 @@ fn read_stream(stream_path: PathBuf, compound_file: &mut CompoundFile<File>) -> 
 }
 
 fn read_unicode_stream_to_string(
-    stream_path: PathBuf,
+    stream_path: &Path,
     compound_file: &mut CompoundFile<File>,
 ) -> Result<String> {
     if !compound_file.is_stream(&stream_path) {
@@ -181,9 +184,9 @@ fn read_attachment(
     let mut data_path = attachment_path.clone();
     data_path.push(&*STREAM_PATH_ATTACHMENT_DATA);
 
-    let name = read_unicode_stream_to_string(attachment_name_path.clone(), compound_file)?;
-    let content_type = read_unicode_stream_to_string(content_type_path, compound_file)?;
-    let data = read_stream(data_path, compound_file)?;
+    let name = read_unicode_stream_to_string(&attachment_name_path, compound_file)?;
+    let content_type = read_unicode_stream_to_string(&content_type_path, compound_file)?;
+    let data = read_stream(&data_path, compound_file)?;
 
     Ok(AttachmentMetadata {
         name,
@@ -215,13 +218,13 @@ fn read_msg_to_document(path: &PathBuf) -> Result<Document> {
 
     // Headers
     let headers_string =
-        read_unicode_stream_to_string(STREAM_PATH_MESSAGE_HEADER.clone(), &mut compound_file)?;
+        read_unicode_stream_to_string(&*STREAM_PATH_MESSAGE_HEADER, &mut compound_file)?;
 
     // As the content type won't match the parsed value from the body in the msg
     let headers_string_no_content_headers = remove_content_headers(headers_string)?;
 
     let plain_body_string =
-        read_unicode_stream_to_string(STREAM_PATH_MESSAGE_BODY_PLAIN.clone(), &mut compound_file)?;
+        read_unicode_stream_to_string(&*STREAM_PATH_MESSAGE_BODY_PLAIN, &mut compound_file)?;
 
     // Attachments
     let mut attachment_number = 0;
@@ -229,7 +232,7 @@ fn read_msg_to_document(path: &PathBuf) -> Result<Document> {
     loop {
         let attachment_path = get_attachment_store_path(attachment_number);
 
-        if compound_file.is_storage(attachment_path.clone()) {
+        if compound_file.is_storage(&attachment_path) {
             attachments.push(read_attachment(attachment_path, &mut compound_file)?);
         } else {
             break;
