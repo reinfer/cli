@@ -132,7 +132,7 @@ fn read_unicode_stream_to_string(
     stream_path: &Path,
     compound_file: &mut CompoundFile<File>,
 ) -> Result<String> {
-    if !compound_file.is_stream(&stream_path) {
+    if !compound_file.is_stream(stream_path) {
         return Err(anyhow!(
             "Could not find stream {}. Please check that you are using unicode msgs",
             stream_path.to_string_lossy()
@@ -218,13 +218,13 @@ fn read_msg_to_document(path: &PathBuf) -> Result<Document> {
 
     // Headers
     let headers_string =
-        read_unicode_stream_to_string(&*STREAM_PATH_MESSAGE_HEADER, &mut compound_file)?;
+        read_unicode_stream_to_string(&STREAM_PATH_MESSAGE_HEADER, &mut compound_file)?;
 
     // As the content type won't match the parsed value from the body in the msg
     let headers_string_no_content_headers = remove_content_headers(headers_string)?;
 
     let plain_body_string =
-        read_unicode_stream_to_string(&*STREAM_PATH_MESSAGE_BODY_PLAIN, &mut compound_file)?;
+        read_unicode_stream_to_string(&STREAM_PATH_MESSAGE_BODY_PLAIN, &mut compound_file)?;
 
     // Attachments
     let mut attachment_number = 0;
