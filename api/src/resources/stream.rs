@@ -134,6 +134,7 @@ pub struct Batch {
     pub results: Vec<StreamResult>,
     pub filtered: u32,
     pub sequence_id: SequenceId,
+    pub is_end_sequence: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
