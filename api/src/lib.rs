@@ -1308,7 +1308,9 @@ impl Endpoints {
                 "v1",
                 "datasets",
                 &stream_name.dataset.0,
+                "streams",
                 &stream_name.stream.0,
+                "fetch",
             ],
         )
     }

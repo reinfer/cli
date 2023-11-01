@@ -1,3 +1,7 @@
+## Unreleased
+- Fix url used for fetching streams
+- Return `is_end_sequence` on stream fetch
+
 ## v0.20.0
 
 - Add ability to get dataset stats
