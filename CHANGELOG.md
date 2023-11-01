@@ -1,3 +1,6 @@
+## Unreleased
+- Fix url used for fetching streams
+
 ## v0.20.0
 
 - Add ability to get dataset stats
