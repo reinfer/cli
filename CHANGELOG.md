@@ -1,3 +1,6 @@
+# Unreleased
+- Add `get emails`
+
 # v0.22.2
 - Fix a bug where some label annotations cannot be applied
 
@@ -50,7 +53,7 @@
 
 ## v0.18.2
 
--Add ability to filter on user properties when getting comments
+- Add ability to filter on user properties when getting comments
 
 ## v0.18.1
 

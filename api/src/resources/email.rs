@@ -56,3 +56,12 @@ pub(crate) struct PutEmailsRequest<'request> {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct PutEmailsResponse {}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct Continuation(pub String);
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct EmailsIterPage {
+    pub emails: Vec<NewEmail>,
+    pub continuation: Option<Continuation>,
+}
