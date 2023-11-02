@@ -1,5 +1,6 @@
 mod audit_events;
 mod buckets;
+mod emails;
 mod comments;
 mod datasets;
 mod projects;
@@ -16,6 +17,7 @@ use structopt::StructOpt;
 use self::{
     audit_events::GetAuditEventsArgs,
     buckets::GetBucketsArgs,
+    emails::GetManyEmailsArgs,
     comments::{GetManyCommentsArgs, GetSingleCommentArgs},
     datasets::GetDatasetsArgs,
     projects::GetProjectsArgs,
@@ -30,6 +32,10 @@ pub enum GetArgs {
     #[structopt(name = "buckets")]
     /// List the available buckets
     Buckets(GetBucketsArgs),
+
+    #[structopt(name = "emails")]
+    /// Download all emails from a source
+    Emails(GetManyEmailsArgs),
 
     #[structopt(name = "comment")]
     /// Get a single comment from a source
@@ -83,6 +89,7 @@ pub enum GetArgs {
 pub fn run(args: &GetArgs, client: Client, printer: &Printer, pool: &mut Pool) -> Result<()> {
     match args {
         GetArgs::Buckets(args) => buckets::get(&client, args, printer),
+        GetArgs::Emails(args) => emails::get_many(&client, args),
         GetArgs::Comment(args) => comments::get_single(&client, args),
         GetArgs::Comments(args) => comments::get_many(&client, args),
         GetArgs::Datasets(args) => datasets::get(&client, args, printer),

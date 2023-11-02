@@ -1,4 +1,7 @@
-# v0.21.4
+## Unreleased
+- re get emails
+
+## v0.21.4
 - Add messages filters
 - Fixes `required` field error when interacting with datasets
 
@@ -37,7 +40,7 @@
 
 ## v0.18.2
 
--Add ability to filter on user properties when getting comments
+- Add ability to filter on user properties when getting comments
 
 ## v0.18.1
 

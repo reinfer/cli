@@ -97,7 +97,7 @@ pub use crate::{
             Dataset, FullName as DatasetFullName, Id as DatasetId, Identifier as DatasetIdentifier,
             ModelVersion, Name as DatasetName, NewDataset, UpdateDataset,
         },
-        email::{Id as EmailId, Mailbox, MimeContent, NewEmail},
+        email::{Id as EmailId, Continuation as EmailContinuation, EmailsIterPage, Mailbox, MimeContent, NewEmail},
         entity_def::{EntityDef, Id as EntityDefId, Name as EntityName, NewEntityDef},
         label_def::{
             LabelDef, LabelDefPretrained, MoonFormFieldDef, Name as LabelName, NewLabelDef,
@@ -178,6 +178,13 @@ pub struct GetCommentsIterPageQuery<'a> {
     pub after: Option<&'a Continuation>,
     pub limit: usize,
     pub include_markup: bool,
+}
+
+#[derive(Serialize)]
+pub struct GetEmailsIterPageQuery<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub continuation: Option<&'a EmailContinuation>,
+    pub limit: usize,
 }
 
 #[derive(Serialize)]
@@ -365,6 +372,29 @@ impl Client {
         timerange: CommentsIterTimerange,
     ) -> CommentsIter<'a> {
         CommentsIter::new(self, source_name, page_size, timerange)
+    }
+
+    /// Get a page of comments from a source.
+    pub fn get_emails_iter_page(
+        &self,
+        bucket_name: &BucketFullName,
+        continuation: Option<&EmailContinuation>,
+        limit: usize,
+    ) -> Result<EmailsIterPage> {
+        let query_params = GetEmailsIterPageQuery {
+            continuation,
+            limit,
+        };
+        self.post(self.endpoints.get_emails(bucket_name)?, Some(&query_params), Retry::Yes)
+    }
+
+    /// Iterate through all comments in a source.
+    pub fn get_emails_iter<'a>(
+        &'a self,
+        bucket_name: &'a BucketFullName,
+        page_size: Option<usize>,
+    ) -> EmailsIter<'a> {
+        EmailsIter::new(self, bucket_name, page_size)
     }
 
     /// Get a single comment by id.
@@ -1165,6 +1195,55 @@ pub enum ContinuationKind {
     Continuation(Continuation),
 }
 
+pub struct EmailsIter<'a> {
+    client: &'a Client,
+    bucket_name: &'a BucketFullName,
+    continuation: Option<EmailContinuation>,
+    done: bool,
+    page_size: usize,
+}
+
+impl<'a> EmailsIter<'a> {
+    // Default number of emails per page to request from API.
+    pub const DEFAULT_PAGE_SIZE: usize = 64;
+    // Maximum number of emails per page which can be requested from the API.
+    pub const MAX_PAGE_SIZE: usize = 256;
+
+    fn new(
+        client: &'a Client,
+        bucket_name: &'a BucketFullName,
+        page_size: Option<usize>,
+    ) -> Self {
+        Self {
+            client,
+            bucket_name,
+            continuation: None,
+            done: false,
+            page_size: page_size.unwrap_or(Self::DEFAULT_PAGE_SIZE),
+        }
+    }
+}
+
+impl<'a> Iterator for EmailsIter<'a> {
+    type Item = Result<Vec<NewEmail>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+        let response = self.client.get_emails_iter_page(
+            self.bucket_name,
+            self.continuation.as_ref(),
+            self.page_size,
+        );
+        Some(response.map(|page| {
+            self.continuation = page.continuation;
+            self.done = self.continuation.is_none();
+            page.emails
+        }))
+    }
+}
+
 pub struct CommentsIter<'a> {
     client: &'a Client,
     source_name: &'a SourceFullName,
@@ -1587,6 +1666,13 @@ impl Endpoints {
                 &comment_id.0,
                 "audio",
             ],
+        )
+    }
+
+    fn get_emails(&self, bucket_name: &BucketFullName) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "buckets", &bucket_name.0, "emails"],
         )
     }
 
