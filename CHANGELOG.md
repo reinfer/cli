@@ -1,6 +1,8 @@
 ## Unreleased
 - Fix url used for fetching streams
 - Return `is_end_sequence` on stream fetch
+- Retry `put_emails` requests
+
 
 ## v0.20.0
 

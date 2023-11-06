@@ -452,7 +452,7 @@ impl Client {
             self.endpoints.put_emails(bucket_name)?,
             Some(PutEmailsRequest { emails }),
             Some(NoChargeQuery { no_charge }),
-            Retry::No,
+            Retry::Yes,
         )
     }
 
