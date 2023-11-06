@@ -1,6 +1,7 @@
 use crate::printer::Printer;
 use anyhow::{Context, Result};
 use log::info;
+use once_cell::sync::Lazy;
 use reinfer_client::{BucketFullName, BucketType, Client, NewBucket, TransformTag};
 use structopt::StructOpt;
 
@@ -21,8 +22,11 @@ pub struct CreateBucketArgs {
     #[structopt(long = "transform-tag")]
     /// Set the transform tag of the new bucket. You will be given this value
     /// by a Re:infer engineer.
-    transform_tag: TransformTag,
+    transform_tag: Option<TransformTag>,
 }
+
+static DEFAULT_TRANSFORM_TAG: Lazy<TransformTag> =
+    Lazy::new(|| TransformTag("generic.0.CONVKER5".to_string()));
 
 pub fn create(client: &Client, args: &CreateBucketArgs, printer: &Printer) -> Result<()> {
     let CreateBucketArgs {
@@ -31,6 +35,12 @@ pub fn create(client: &Client, args: &CreateBucketArgs, printer: &Printer) -> Re
         bucket_type,
         transform_tag,
     } = args;
+
+    let transform_tag = &if let Some(transform_tag) = transform_tag {
+        transform_tag.clone()
+    } else {
+        DEFAULT_TRANSFORM_TAG.clone()
+    };
 
     let bucket = client
         .create_bucket(
