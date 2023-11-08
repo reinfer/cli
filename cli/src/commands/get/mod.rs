@@ -9,6 +9,7 @@ mod users;
 
 use anyhow::Result;
 use reinfer_client::Client;
+use scoped_threadpool::Pool;
 use structopt::StructOpt;
 
 use self::{
@@ -17,7 +18,7 @@ use self::{
     datasets::GetDatasetsArgs,
     projects::GetProjectsArgs,
     sources::GetSourcesArgs,
-    streams::{GetStreamCommentsArgs, GetStreamsArgs},
+    streams::{GetStreamCommentsArgs, GetStreamStatsArgs, GetStreamsArgs},
     users::GetUsersArgs,
 };
 use crate::printer::Printer;
@@ -56,6 +57,10 @@ pub enum GetArgs {
     /// Fetch comments from a stream
     StreamComments(GetStreamCommentsArgs),
 
+    #[structopt(name = "stream-stats")]
+    /// Get the validation stats for a given stream
+    StreamStats(GetStreamStatsArgs),
+
     #[structopt(name = "users")]
     /// List the available users
     Users(GetUsersArgs),
@@ -69,7 +74,7 @@ pub enum GetArgs {
     Quotas,
 }
 
-pub fn run(args: &GetArgs, client: Client, printer: &Printer) -> Result<()> {
+pub fn run(args: &GetArgs, client: Client, printer: &Printer, pool: &mut Pool) -> Result<()> {
     match args {
         GetArgs::Buckets(args) => buckets::get(&client, args, printer),
         GetArgs::Comment(args) => comments::get_single(&client, args),
@@ -79,6 +84,7 @@ pub fn run(args: &GetArgs, client: Client, printer: &Printer) -> Result<()> {
         GetArgs::Sources(args) => sources::get(&client, args, printer),
         GetArgs::Streams(args) => streams::get(&client, args, printer),
         GetArgs::StreamComments(args) => streams::get_stream_comments(&client, args),
+        GetArgs::StreamStats(args) => streams::get_stream_stats(&client, args, printer, pool),
         GetArgs::Users(args) => users::get(&client, args, printer),
         GetArgs::CurrentUser => users::get_current_user(&client, printer),
         GetArgs::Quotas => quota::get(&client, printer),

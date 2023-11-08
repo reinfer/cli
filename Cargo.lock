@@ -1250,6 +1250,7 @@ dependencies = [
  "log",
  "maplit",
  "once_cell",
+ "ordered-float",
  "pretty_assertions",
  "prettytable-rs",
  "regex",
