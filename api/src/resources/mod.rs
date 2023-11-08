@@ -13,6 +13,7 @@ pub mod statistics;
 pub mod stream;
 pub mod tenant_id;
 pub mod user;
+pub mod validation;
 
 use crate::error::{Error, Result};
 use reqwest::StatusCode;

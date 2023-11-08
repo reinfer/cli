@@ -6,10 +6,8 @@ use std::{
 
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::{
-    resources::stream::{NewStream, UserModelVersion},
-    Client, DatasetIdentifier,
-};
+use reinfer_client::ModelVersion;
+use reinfer_client::{resources::stream::NewStream, Client, DatasetIdentifier};
 
 use structopt::StructOpt;
 
@@ -25,7 +23,7 @@ pub struct CreateStreamsArgs {
 
     #[structopt(short = "v", long = "model-version")]
     /// The model version for the new streams to use
-    model_version: UserModelVersion,
+    model_version: ModelVersion,
 }
 
 pub fn create(client: &Client, args: &CreateStreamsArgs) -> Result<()> {
