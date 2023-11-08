@@ -22,7 +22,10 @@ use resources::{
     project::ForceDeleteProject,
     quota::{GetQuotasResponse, Quota},
     source::StatisticsRequestParams as SourceStatisticsRequestParams,
-    stream::{NewStream, PutStreamRequest, PutStreamResponse},
+    stream::{GetStreamResponse, NewStream, PutStreamRequest, PutStreamResponse},
+    validation::{
+        LabelValidation, LabelValidationRequest, LabelValidationResponse, ValidationResponse,
+    },
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -58,7 +61,7 @@ use crate::resources::{
     statistics::GetResponse as GetStatisticsResponse,
     stream::{
         AdvanceRequest as StreamAdvanceRequest, FetchRequest as StreamFetchRequest,
-        GetResponse as GetStreamsResponse, ResetRequest as StreamResetRequest,
+        GetStreamsResponse, ResetRequest as StreamResetRequest,
         TagExceptionsRequest as TagStreamExceptionsRequest,
     },
     tenant_id::TenantId,
@@ -403,6 +406,32 @@ impl Client {
             self.endpoints.streams(dataset_name)?,
             Some(PutStreamRequest { stream }),
         )
+    }
+
+    pub fn get_validation(
+        &self,
+        dataset_name: &DatasetFullName,
+        model_version: &ModelVersion,
+    ) -> Result<ValidationResponse> {
+        self.get::<_, ValidationResponse>(self.endpoints.validation(dataset_name, model_version)?)
+    }
+
+    pub fn get_label_validation(
+        &self,
+        label: &LabelName,
+        dataset_name: &DatasetFullName,
+        model_version: &ModelVersion,
+    ) -> Result<LabelValidation> {
+        Ok(self
+            .post::<_, _, LabelValidationResponse>(
+                self.endpoints
+                    .label_validation(dataset_name, model_version)?,
+                LabelValidationRequest {
+                    label: label.clone(),
+                },
+                Retry::Yes,
+            )?
+            .label_validation)
     }
 
     pub fn sync_comments(
@@ -797,6 +826,12 @@ impl Client {
             StreamFetchRequest { size },
             Retry::No,
         )
+    }
+
+    pub fn get_stream(&self, stream_name: &StreamFullName) -> Result<Stream> {
+        Ok(self
+            .get::<_, GetStreamResponse>(self.endpoints.stream(stream_name)?)?
+            .stream)
     }
 
     pub fn advance_stream(
@@ -1279,6 +1314,44 @@ impl Endpoints {
         })
     }
 
+    fn validation(
+        &self,
+        dataset_name: &DatasetFullName,
+        model_version: &ModelVersion,
+    ) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "datasets",
+                &dataset_name.0,
+                "labellers",
+                &model_version.0.to_string(),
+                "validation",
+            ],
+        )
+    }
+
+    fn label_validation(
+        &self,
+        dataset_name: &DatasetFullName,
+        model_version: &ModelVersion,
+    ) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "datasets",
+                &dataset_name.0,
+                "labellers",
+                &model_version.0.to_string(),
+                "label-validation",
+            ],
+        )
+    }
+
     fn dataset_summary(&self, dataset_name: &DatasetFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
@@ -1297,6 +1370,20 @@ impl Endpoints {
         construct_endpoint(
             &self.base,
             &["api", "v1", "datasets", &dataset_name.0, "streams"],
+        )
+    }
+
+    fn stream(&self, stream_name: &StreamFullName) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "v1",
+                "datasets",
+                &stream_name.dataset.0,
+                "streams",
+                &stream_name.stream.0,
+            ],
         )
     }
 

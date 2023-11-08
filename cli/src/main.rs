@@ -56,9 +56,12 @@ fn run(args: Args) -> Result<()> {
             app.gen_completions_to("re", clap_shell, &mut io::stdout());
             Ok(())
         }
-        Command::Get { get_args } => {
-            get::run(get_args, client_from_args(&args, &config)?, &printer)
-        }
+        Command::Get { get_args } => get::run(
+            get_args,
+            client_from_args(&args, &config)?,
+            &printer,
+            &mut pool,
+        ),
         Command::Delete { delete_args } => {
             delete::run(delete_args, client_from_args(&args, &config)?)
         }

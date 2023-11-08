@@ -3,7 +3,10 @@ use ordered_float::NotNan;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-use crate::error::{Error, Result};
+use crate::{
+    error::{Error, Result},
+    ModelVersion,
+};
 
 use super::{
     comment::{Comment, CommentFilter, Entity, PredictedLabel, Uid as CommentUid},
@@ -67,7 +70,7 @@ pub struct NewStream {
 }
 
 impl NewStream {
-    pub fn set_model_version(&mut self, model_version: &UserModelVersion) {
+    pub fn set_model_version(&mut self, model_version: &ModelVersion) {
         if let Some(model) = &mut self.model {
             model.version = model_version.clone()
         }
@@ -76,14 +79,14 @@ impl NewStream {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StreamModel {
-    pub version: UserModelVersion,
+    pub version: ModelVersion,
     pub label_thresholds: Vec<StreamLabelThreshold>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StreamLabelThreshold {
-    name: Vec<String>,
-    threshold: NotNan<f64>,
+    pub name: Vec<String>,
+    pub threshold: NotNan<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -109,19 +112,16 @@ pub struct Stream {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LabelFilter {
     pub label: LabelName,
-    pub model_version: UserModelVersion,
+    pub model_version: ModelVersion,
     pub threshold: NotNan<f64>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct UserModelVersion(pub u64);
-
-impl FromStr for UserModelVersion {
+impl FromStr for ModelVersion {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
-        match s.parse::<u64>() {
-            Ok(version) => Ok(UserModelVersion(version)),
+        match s.parse::<u32>() {
+            Ok(version) => Ok(ModelVersion(version)),
             Err(_) => Err(Error::BadStreamModelVersion {
                 version: s.to_string(),
             }),
@@ -146,8 +146,13 @@ pub struct StreamResult {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub(crate) struct GetResponse {
+pub(crate) struct GetStreamsResponse {
     pub streams: Vec<Stream>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct GetStreamResponse {
+    pub stream: Stream,
 }
 
 #[derive(Debug, Clone, Serialize)]

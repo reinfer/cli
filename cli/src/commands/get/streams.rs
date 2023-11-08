@@ -1,5 +1,17 @@
-use anyhow::{Context, Result};
-use reinfer_client::{Client, DatasetIdentifier, StreamFullName};
+use anyhow::{anyhow, Context, Result};
+use colored::{ColoredString, Colorize};
+use log::info;
+use ordered_float::NotNan;
+use prettytable::row;
+use reinfer_client::resources::stream::{StreamLabelThreshold, StreamModel};
+use reinfer_client::resources::validation::ValidationResponse;
+use reinfer_client::{
+    resources::validation::LabelValidation, Client, DatasetIdentifier, ModelVersion, StreamFullName,
+};
+use reinfer_client::{DatasetFullName, LabelDef, LabelName};
+use scoped_threadpool::Pool;
+use serde::Serialize;
+use std::sync::mpsc::channel;
 use std::{
     fs::File,
     io,
@@ -8,7 +20,7 @@ use std::{
 };
 use structopt::StructOpt;
 
-use crate::printer::{print_resources_as_json, Printer};
+use crate::printer::{print_resources_as_json, DisplayTable, Printer};
 
 #[derive(Debug, StructOpt)]
 pub struct GetStreamsArgs {
@@ -40,6 +52,21 @@ pub struct GetStreamCommentsArgs {
     individual_advance: bool,
 }
 
+#[derive(Debug, StructOpt)]
+pub struct GetStreamStatsArgs {
+    #[structopt(name = "stream")]
+    /// The full stream name `<owner>/<dataset>/<stream>`.
+    stream_full_name: StreamFullName,
+
+    #[structopt(long = "compare-version", short = "v")]
+    /// The model version to compare stats with
+    compare_to_model_version: Option<ModelVersion>,
+
+    #[structopt(long = "compare-dataset", short = "d")]
+    /// The dataset to compare stats with
+    compare_to_dataset: Option<DatasetFullName>,
+}
+
 pub fn get(client: &Client, args: &GetStreamsArgs, printer: &Printer) -> Result<()> {
     let GetStreamsArgs { dataset, path } = args;
 
@@ -66,6 +93,259 @@ pub fn get(client: &Client, args: &GetStreamsArgs, printer: &Printer) -> Result<
     } else {
         printer.print_resources(&streams)
     }
+}
+
+#[derive(Serialize)]
+pub struct StreamStat {
+    label_name: LabelName,
+    threshold: NotNan<f64>,
+    precision: NotNan<f64>,
+    recall: NotNan<f64>,
+    compare_to_precision: Option<NotNan<f64>>,
+    compare_to_recall: Option<NotNan<f64>>,
+}
+impl DisplayTable for StreamStat {
+    fn to_table_headers() -> prettytable::Row {
+        row![
+            "Name",
+            "Threshold",
+            "Current Precision",
+            "Current Recall",
+            "Compare to Precision",
+            "Compare to Recall"
+        ]
+    }
+    fn to_table_row(&self) -> prettytable::Row {
+        row![
+            self.label_name.0,
+            format!("{:.3}", self.threshold),
+            format!("{:.3}", self.precision),
+            format!("{:.3}", self.recall),
+            if let Some(precision) = self.compare_to_precision {
+                red_if_lower_green_otherwise(precision, self.precision)
+            } else {
+                "none".dimmed()
+            },
+            if let Some(recall) = self.compare_to_recall {
+                red_if_lower_green_otherwise(recall, self.recall)
+            } else {
+                "none".dimmed()
+            },
+        ]
+    }
+}
+
+fn red_if_lower_green_otherwise(test: NotNan<f64>, threshold: NotNan<f64>) -> ColoredString {
+    let test_str = format!("{:.3}", test);
+
+    match test {
+        test if test < threshold => format!("{test_str} (decrease)").red(),
+        test if test > threshold => format!("{test_str} (increase)").green(),
+        _ => test_str.green(),
+    }
+}
+
+fn get_precision_and_recall_for_threshold(
+    threshold: NotNan<f64>,
+    label_name: LabelName,
+    label_validation: LabelValidation,
+) -> Result<(NotNan<f64>, NotNan<f64>)> {
+    let threshold_index = label_validation
+        .thresholds
+        .iter()
+        .position(|&val_threshold| val_threshold < threshold)
+        .context(format!(
+            "Could not find threshold for label {}",
+            label_name.0
+        ))?;
+
+    let precision = label_validation
+        .precisions
+        .get(threshold_index)
+        .context(format!(
+            "Could not get precision for label {}",
+            label_name.0
+        ))?;
+    let recall = label_validation
+        .recalls
+        .get(threshold_index)
+        .context(format!("Could not get recall for label {}", label_name.0))?;
+    Ok((*precision, *recall))
+}
+
+#[derive(Clone)]
+struct CompareConfig {
+    validation: ValidationResponse,
+    dataset_name: DatasetFullName,
+    model_version: ModelVersion,
+}
+
+impl CompareConfig {
+    pub fn get_label_def(&self, label_name: &LabelName) -> Result<Option<&LabelDef>> {
+        Ok(self
+            .validation
+            .get_default_label_group()
+            .context("Compare to dataset does not have a default label group")?
+            .label_defs
+            .iter()
+            .find(|label| label.name == *label_name))
+    }
+}
+
+fn get_compare_config(
+    client: &Client,
+    model_version: &Option<ModelVersion>,
+    dataset_name: &Option<DatasetFullName>,
+    stream_name: &StreamFullName,
+) -> Result<Option<CompareConfig>> {
+    if model_version.is_none() && dataset_name.is_none() {
+        return Ok(None);
+    }
+
+    let dataset_name = if let Some(dataset_name) = dataset_name {
+        dataset_name
+    } else {
+        &stream_name.dataset
+    };
+
+    let model_version = model_version
+        .clone()
+        .context("No compare to model version provided")?;
+
+    info!("Getting validation for {}", dataset_name.0);
+    let validation = client.get_validation(dataset_name, &model_version)?;
+
+    Ok(Some(CompareConfig {
+        validation,
+        dataset_name: dataset_name.clone(),
+        model_version,
+    }))
+}
+
+fn get_stream_stat(
+    label_threshold: &StreamLabelThreshold,
+    stream_full_name: &StreamFullName,
+    model: &StreamModel,
+    compare_config: &Option<CompareConfig>,
+    client: &Client,
+) -> Result<StreamStat> {
+    let label_name = reinfer_client::LabelName(label_threshold.name.join(" > "));
+
+    info!(
+        "Getting label validation for {} in dataset {}",
+        label_name.0, stream_full_name.dataset.0
+    );
+    let label_validation =
+        client.get_label_validation(&label_name, &stream_full_name.dataset, &model.version)?;
+
+    let (precision, recall) = get_precision_and_recall_for_threshold(
+        label_threshold.threshold,
+        label_name.clone(),
+        label_validation,
+    )?;
+
+    let mut stream_stat = StreamStat {
+        label_name: label_name.clone(),
+        threshold: label_threshold.threshold,
+        precision,
+        recall,
+        compare_to_precision: None,
+        compare_to_recall: None,
+    };
+
+    if let Some(ref compare_config) = compare_config {
+        if compare_config.get_label_def(&label_name)?.is_some() {
+            info!(
+                "Getting label validation for {} in dataset {}",
+                label_name.0, compare_config.dataset_name.0
+            );
+            let compare_to_label_validation = client.get_label_validation(
+                &label_name,
+                &compare_config.dataset_name,
+                &compare_config.model_version,
+            )?;
+
+            let (compare_to_precision, compare_to_recall) = get_precision_and_recall_for_threshold(
+                label_threshold.threshold,
+                label_name,
+                compare_to_label_validation,
+            )?;
+
+            stream_stat.compare_to_precision = Some(compare_to_precision);
+            stream_stat.compare_to_recall = Some(compare_to_recall);
+        }
+    }
+    Ok(stream_stat)
+}
+
+pub fn get_stream_stats(
+    client: &Client,
+    args: &GetStreamStatsArgs,
+    printer: &Printer,
+    pool: &mut Pool,
+) -> Result<()> {
+    let GetStreamStatsArgs {
+        stream_full_name,
+        compare_to_model_version,
+        compare_to_dataset,
+    } = args;
+
+    if compare_to_dataset.is_some() && compare_to_model_version.is_none() {
+        return Err(anyhow!(
+            "You cannot provide `compare_to_dataset` without `compare_to_model_version`"
+        ));
+    }
+
+    info!("Getting Stream");
+    let stream = client.get_stream(stream_full_name)?;
+    let model = stream.model.context("No model associated with stream.")?;
+
+    let compare_config = get_compare_config(
+        client,
+        compare_to_model_version,
+        compare_to_dataset,
+        stream_full_name,
+    )?;
+
+    let mut stream_stats = Vec::new();
+
+    let (sender, receiver) = channel();
+
+    pool.scoped(|scope| {
+        for label_threshold in &model.label_thresholds {
+            if label_threshold.threshold >= NotNan::new(1.0).expect("Could not create NotNan") {
+                // As the precision and recall will always be 0
+                continue;
+            }
+            let sender = sender.clone();
+            let model = model.clone();
+            let compare_config = compare_config.clone();
+
+            scope.execute(move || {
+                let result = get_stream_stat(
+                    label_threshold,
+                    stream_full_name,
+                    &model,
+                    &compare_config,
+                    client,
+                );
+                sender.send(result).expect("Could not send result");
+            });
+        }
+    });
+
+    drop(sender);
+    let results: Vec<Result<StreamStat>> = receiver.iter().collect();
+
+    for result in results {
+        let stream_stat = result?;
+        stream_stats.push(stream_stat)
+    }
+
+    stream_stats.sort_by(|a, b| a.label_name.0.cmp(&b.label_name.0));
+
+    printer.print_resources(&stream_stats)?;
+    Ok(())
 }
 
 pub fn get_stream_comments(client: &Client, args: &GetStreamCommentsArgs) -> Result<()> {
