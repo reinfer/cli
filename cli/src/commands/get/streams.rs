@@ -169,8 +169,8 @@ fn red_if_lower_green_otherwise(test: NotNan<f64>, threshold: NotNan<f64>) -> Co
     let diff = test - threshold;
 
     match test {
-        test if test < threshold => format!("{test_str} ({diff:.3})").red(),
-        test if test > threshold => format!("{test_str} (+{diff:.3})").green(),
+        test if test < threshold => format!("{test_str} ({diff:+.3})").red(),
+        test if test > threshold => format!("{test_str} ({diff:+.3})").green(),
         _ => test_str.green(),
     }
 }
