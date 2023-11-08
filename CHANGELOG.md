@@ -1,4 +1,9 @@
+<<<<<<< Updated upstream
 ## Unreleased
+=======
+## v0.21.0
+
+>>>>>>> Stashed changes
 - Fix url used for fetching streams
 - Return `is_end_sequence` on stream fetch
 - Make `transform_tag` optional on `create bucket`
