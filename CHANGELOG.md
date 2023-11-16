@@ -1,7 +1,13 @@
+## Unreleased
+
+- Add get audit events command
+
 ## v0.21.1
+
 - Add more stream stats
 
 ## v0.21.0
+
 - Fix url used for fetching streams
 - Return `is_end_sequence` on stream fetch
 - Make `transform_tag` optional on `create bucket`

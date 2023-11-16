@@ -13,6 +13,7 @@ use reqwest::{
     IntoUrl, Proxy, Result as ReqwestResult,
 };
 use resources::{
+    comment::CommentTimestampFilter,
     dataset::{
         QueryRequestParams, QueryResponse,
         StatisticsRequestParams as DatasetStatisticsRequestParams, SummaryRequestParams,
@@ -33,6 +34,7 @@ use std::{cell::Cell, fmt::Display, path::Path};
 use url::Url;
 
 use crate::resources::{
+    audit::{AuditQueryFilter, AuditQueryRequest, AuditQueryResponse},
     bucket::{
         CreateRequest as CreateBucketRequest, CreateResponse as CreateBucketResponse,
         GetAvailableResponse as GetAvailableBucketsResponse, GetResponse as GetBucketResponse,
@@ -405,6 +407,27 @@ impl Client {
         self.put(
             self.endpoints.streams(dataset_name)?,
             Some(PutStreamRequest { stream }),
+        )
+    }
+
+    pub fn get_audit_events(
+        &self,
+        minimum_timestamp: Option<DateTime<Utc>>,
+        maximum_timestamp: Option<DateTime<Utc>>,
+        continuation: Option<Continuation>,
+    ) -> Result<AuditQueryResponse> {
+        self.post::<_, _, AuditQueryResponse>(
+            self.endpoints.audit_events_query()?,
+            AuditQueryRequest {
+                continuation,
+                filter: AuditQueryFilter {
+                    timestamp: CommentTimestampFilter {
+                        minimum: minimum_timestamp,
+                        maximum: maximum_timestamp,
+                    },
+                },
+            },
+            Retry::Yes,
         )
     }
 
@@ -1312,6 +1335,10 @@ impl Endpoints {
             current_user,
             projects,
         })
+    }
+
+    fn audit_events_query(&self) -> Result<Url> {
+        construct_endpoint(&self.base, &["api", "v1", "audit_events", "query"])
     }
 
     fn validation(
