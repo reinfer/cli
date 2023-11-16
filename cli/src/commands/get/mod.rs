@@ -1,3 +1,4 @@
+mod audit_events;
 mod buckets;
 mod comments;
 mod datasets;
@@ -13,6 +14,7 @@ use scoped_threadpool::Pool;
 use structopt::StructOpt;
 
 use self::{
+    audit_events::GetAuditEventsArgs,
     buckets::GetBucketsArgs,
     comments::{GetManyCommentsArgs, GetSingleCommentArgs},
     datasets::GetDatasetsArgs,
@@ -72,6 +74,10 @@ pub enum GetArgs {
     #[structopt(name = "quotas")]
     /// List all quotas for current tenant
     Quotas,
+
+    #[structopt(name = "audit-events")]
+    /// Get audit events for current tenant
+    AuditEvents(GetAuditEventsArgs),
 }
 
 pub fn run(args: &GetArgs, client: Client, printer: &Printer, pool: &mut Pool) -> Result<()> {
@@ -88,5 +94,6 @@ pub fn run(args: &GetArgs, client: Client, printer: &Printer, pool: &mut Pool) -
         GetArgs::Users(args) => users::get(&client, args, printer),
         GetArgs::CurrentUser => users::get_current_user(&client, printer),
         GetArgs::Quotas => quota::get(&client, printer),
+        GetArgs::AuditEvents(args) => audit_events::get(&client, args, printer),
     }
 }

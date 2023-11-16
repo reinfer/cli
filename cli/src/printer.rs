@@ -2,7 +2,7 @@ use super::thousands::Thousands;
 use colored::Colorize;
 use prettytable::{format, row, Row, Table};
 use reinfer_client::{
-    resources::{dataset::DatasetAndStats, quota::Quota},
+    resources::{audit::PrintableAuditEvent, dataset::DatasetAndStats, quota::Quota},
     Bucket, Dataset, Project, Source, Statistics, Stream, User,
 };
 use serde::{Serialize, Serializer};
@@ -251,6 +251,52 @@ impl DisplayTable for User {
                 .map(|permission| permission.to_string())
                 .collect::<Vec<String>>()
                 .join(", ")
+        ]
+    }
+}
+
+impl DisplayTable for PrintableAuditEvent {
+    fn to_table_headers() -> Row {
+        row![bFg => "Timestamp", "Event Id", "Event Type", "Actor Email", "Actor Tenant", "Dataset Names",  "Project Names", "Tenant Names"]
+    }
+
+    fn to_table_row(&self) -> Row {
+        row![
+            self.timestamp,
+            self.event_id.0,
+            self.event_type.0,
+            self.actor_email.0,
+            self.actor_tenant_name.0,
+            if self.dataset_names.is_empty() {
+                "none".dimmed()
+            } else {
+                self.dataset_names
+                    .iter()
+                    .map(|dataset| dataset.0.clone())
+                    .collect::<Vec<String>>()
+                    .join(" & ")
+                    .normal()
+            },
+            if self.project_names.is_empty() {
+                "none".dimmed()
+            } else {
+                self.project_names
+                    .iter()
+                    .map(|project| project.0.clone())
+                    .collect::<Vec<String>>()
+                    .join(" & ")
+                    .normal()
+            },
+            if self.tenant_names.is_empty() {
+                "none".dimmed()
+            } else {
+                self.tenant_names
+                    .iter()
+                    .map(|name| name.0.clone())
+                    .collect::<Vec<String>>()
+                    .join(" & ")
+                    .normal()
+            }
         ]
     }
 }

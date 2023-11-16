@@ -1,3 +1,4 @@
+pub mod audit;
 pub mod bucket;
 pub mod comment;
 pub mod dataset;
