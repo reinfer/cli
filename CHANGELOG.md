@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Add get audit events command
+- Add ability to parse .emls
 
 ## v0.21.1
 
