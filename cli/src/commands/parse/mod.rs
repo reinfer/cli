@@ -1,18 +1,18 @@
 mod emls;
 mod msgs;
 
-use std::fs::DirEntry;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use colored::Colorize;
 use anyhow::Result;
+use colored::Colorize;
 use reinfer_client::resources::bucket::FullName as BucketFullName;
 use reinfer_client::resources::documents::Document;
-use reinfer_client::{Client,  NewEmail, Source, TransformTag};
+use reinfer_client::{Client, NewEmail, Source, TransformTag};
+use std::fs::DirEntry;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use structopt::StructOpt;
 
-use crate::progress::{Progress, Options as ProgressOptions};
+use crate::progress::{Options as ProgressOptions, Progress};
 
 use self::emls::ParseEmlArgs;
 use self::msgs::ParseMsgArgs;
@@ -85,7 +85,7 @@ impl Statistics {
     }
 }
 
-pub fn get_files_in_directory(directory: &PathBuf, extension:&str) -> Result<Vec<DirEntry>> {
+pub fn get_files_in_directory(directory: &PathBuf, extension: &str) -> Result<Vec<DirEntry>> {
     Ok(std::fs::read_dir(directory)?
         .filter_map(|path| {
             let path = path.ok()?;
@@ -103,8 +103,8 @@ fn upload_batch_of_new_emails(
     bucket: &BucketFullName,
     emails: &Vec<NewEmail>,
     no_charge: bool,
-    statistics: &Arc<Statistics>) -> Result<()>{
-
+    statistics: &Arc<Statistics>,
+) -> Result<()> {
     client.put_emails(bucket, emails, no_charge)?;
     statistics.add_uploaded(emails.len());
     Ok(())
@@ -131,8 +131,8 @@ fn upload_batch_of_documents(
 
 fn get_progress_bar(total_bytes: u64, statistics: &Arc<Statistics>) -> Progress {
     Progress::new(
-        move |statistic| { 
-            let num_processed = statistic.num_processed(); 
+        move |statistic| {
+            let num_processed = statistic.num_processed();
             let num_failed = statistic.num_failed();
             let num_uploaded = statistic.num_uploaded();
             (
@@ -149,7 +149,7 @@ fn get_progress_bar(total_bytes: u64, statistics: &Arc<Statistics>) -> Progress 
             )
         },
         statistics,
-        Some(total_bytes), 
-        ProgressOptions { bytes_units: false }, 
+        Some(total_bytes),
+        ProgressOptions { bytes_units: false },
     )
 }

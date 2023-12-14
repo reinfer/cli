@@ -32,7 +32,9 @@ pub fn create(client: &Client, args: &CreateBucketArgs, printer: &Printer) -> Re
         transform_tag,
     } = args;
 
-    let transform_tag = transform_tag.clone().unwrap_or(DEFAULT_TRANSFORM_TAG.clone());
+    let transform_tag = transform_tag
+        .clone()
+        .unwrap_or(DEFAULT_TRANSFORM_TAG.clone());
 
     let bucket = client
         .create_bucket(
