@@ -1,5 +1,7 @@
 use anyhow::{anyhow, Result};
 use dialoguer::Confirm;
+use once_cell::sync::Lazy;
+use reinfer_client::TransformTag;
 use url::Url;
 
 pub mod config;
@@ -34,3 +36,6 @@ Do you want to continue?"#,
         Err(anyhow!("Billable operation aborted by user"))
     }
 }
+
+static DEFAULT_TRANSFORM_TAG: Lazy<TransformTag> =
+    Lazy::new(|| TransformTag("generic.0.CONVKER5".to_string()));

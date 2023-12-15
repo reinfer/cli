@@ -1,22 +1,21 @@
+use crate::{
+    commands::DEFAULT_TRANSFORM_TAG,
+    parse::{get_files_in_directory, Statistics},
+};
 use anyhow::{anyhow, Context, Result};
 use cfb::CompoundFile;
 use colored::Colorize;
-use core::sync::atomic::Ordering;
 use log::error;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use std::{
-    fs::DirEntry,
-    io::Read,
-    sync::{atomic::AtomicUsize, Arc},
-};
+use std::{io::Read, sync::Arc};
 
 use reinfer_client::{
     resources::{
         documents::{Document, RawEmail, RawEmailBody, RawEmailHeaders},
         email::AttachmentMetadata,
     },
-    Client, PropertyMap, Source, SourceIdentifier, TransformTag,
+    Client, PropertyMap, SourceIdentifier, TransformTag,
 };
 use std::{
     fs::File,
@@ -29,7 +28,8 @@ use crate::{
     progress::{Options as ProgressOptions, Progress},
 };
 
-const UPLOAD_BATCH_SIZE: usize = 128;
+use super::{upload_batch_of_documents, UPLOAD_BATCH_SIZE};
+
 const MSG_NAME_USER_PROPERTY_NAME: &str = "MSG NAME ID";
 const STREAM_PATH_ATTACHMENT_STORE_PREFIX: &str = "__attach_version1.0_#";
 
@@ -48,52 +48,6 @@ static STREAM_PATH_ATTACHMENT_EXTENSION: Lazy<PathBuf> =
 static STREAM_PATH_ATTACHMENT_DATA: Lazy<PathBuf> =
     Lazy::new(|| PathBuf::from("__substg1.0_37010102"));
 
-pub struct Statistics {
-    processed: AtomicUsize,
-    failed: AtomicUsize,
-    uploaded: AtomicUsize,
-}
-
-impl Statistics {
-    fn new() -> Self {
-        Self {
-            processed: AtomicUsize::new(0),
-            failed: AtomicUsize::new(0),
-            uploaded: AtomicUsize::new(0),
-        }
-    }
-
-    #[inline]
-    fn add_uploaded(&self, num_uploaded: usize) {
-        self.uploaded.fetch_add(num_uploaded, Ordering::SeqCst);
-    }
-
-    #[inline]
-    fn increment_failed(&self) {
-        self.failed.fetch_add(1, Ordering::SeqCst);
-    }
-
-    #[inline]
-    fn increment_processed(&self) {
-        self.processed.fetch_add(1, Ordering::SeqCst);
-    }
-
-    #[inline]
-    fn num_uploaded(&self) -> usize {
-        self.uploaded.load(Ordering::SeqCst)
-    }
-
-    #[inline]
-    fn num_failed(&self) -> usize {
-        self.failed.load(Ordering::SeqCst)
-    }
-
-    #[inline]
-    fn num_processed(&self) -> usize {
-        self.processed.load(Ordering::SeqCst)
-    }
-}
-
 #[derive(Debug, StructOpt)]
 pub struct ParseMsgArgs {
     #[structopt(short = "d", long = "dir", parse(from_os_str))]
@@ -106,7 +60,7 @@ pub struct ParseMsgArgs {
 
     #[structopt(long = "transform-tag")]
     /// Transform tag to use.
-    transform_tag: TransformTag,
+    transform_tag: Option<TransformTag>,
 
     #[structopt(short = "n", long = "no-charge")]
     /// Whether to attempt to bypass billing (internal only)
@@ -262,38 +216,6 @@ fn read_msg_to_document(path: &PathBuf) -> Result<Document> {
     })
 }
 
-fn upload_batch_of_documents(
-    client: &Client,
-    source: &Source,
-    documents: &Vec<Document>,
-    transform_tag: &TransformTag,
-    no_charge: bool,
-    statistics: &Arc<Statistics>,
-) -> Result<()> {
-    client.sync_raw_emails(
-        &source.full_name(),
-        documents,
-        transform_tag,
-        false,
-        no_charge,
-    )?;
-    statistics.add_uploaded(documents.len());
-    Ok(())
-}
-
-pub fn get_msgs_in_directory(directory: &PathBuf) -> Result<Vec<DirEntry>> {
-    Ok(std::fs::read_dir(directory)?
-        .filter_map(|path| {
-            let path = path.ok()?;
-            if path.path().extension().is_some_and(|msg| msg == "msg") {
-                Some(path)
-            } else {
-                None
-            }
-        })
-        .collect())
-}
-
 pub fn parse(client: &Client, args: &ParseMsgArgs) -> Result<()> {
     let ParseMsgArgs {
         directory,
@@ -307,10 +229,13 @@ pub fn parse(client: &Client, args: &ParseMsgArgs) -> Result<()> {
         ensure_uip_user_consents_to_ai_unit_charge(client.base_url())?;
     }
 
-    let msg_paths = get_msgs_in_directory(directory)?;
+    let msg_paths = get_files_in_directory(directory, "msg")?;
     let statistics = Arc::new(Statistics::new());
     let _progress = get_progress_bar(msg_paths.len() as u64, &statistics);
     let source = client.get_source(source.clone())?;
+    let transform_tag = transform_tag
+        .clone()
+        .unwrap_or(DEFAULT_TRANSFORM_TAG.clone());
 
     let mut documents = Vec::new();
     let mut errors = Vec::new();
@@ -320,7 +245,7 @@ pub fn parse(client: &Client, args: &ParseMsgArgs) -> Result<()> {
             client,
             &source,
             documents,
-            transform_tag,
+            &transform_tag,
             *no_charge,
             &statistics,
         )?;
@@ -406,23 +331,25 @@ mod tests {
 
         let expected_body = "Hey, \r\n\r\nWe should check that attachments work to ✅\r\n\r\nJoe \r\n________________________________\r\n\r\nFrom: Joe Prosser <joe.prosser@uipath.com>\r\nSent: 25 October 2023 17:53\r\nTo: Andra Buica <andra.buica@uipath.com>\r\nSubject: Re: Testing the CLI!! \r\n \r\nHey,\r\n\r\nFingers cross  🤞 \r\n\r\nJoe\r\n________________________________\r\n\r\nFrom: Andra Buica <andra.buica@uipath.com>\r\nSent: 25 October 2023 17:52\r\nTo: Joe Prosser <joe.prosser@uipath.com>\r\nSubject: Re: Testing the CLI!! \r\n \r\n\r\nHey, \r\n\r\n \r\n\r\nHopefully it will work! \r\n\r\n \r\n\r\nAndra\r\n\r\n \r\n\r\nFrom: Joe Prosser <joe.prosser@uipath.com>\r\nDate: Wednesday, 25 October 2023 at 17:52\r\nTo: Andra Buica <andra.buica@uipath.com>\r\nSubject: Testing the CLI!!\r\n\r\nHey,\r\n\r\n \r\n\r\nDo you think it will work?\r\n\r\n \r\n\r\nJoe \r\n\r\n";
 
+        let expected_attachments = vec![
+            AttachmentMetadata {
+                name: "hello.txt".to_string(),
+                size: 12,
+                content_type: ".txt".to_string(),
+            },
+            AttachmentMetadata {
+                name: "world.pdf".to_string(),
+                size: 7302,
+                content_type: ".pdf".to_string(),
+            },
+        ];
+
         let expected_document = Document {
             comment_id: None,
             raw_email: RawEmail {
                 body: RawEmailBody::Plain(expected_body.to_string()),
                 headers: RawEmailHeaders::Raw(expected_headers.to_string()),
-                attachments: vec![
-                    AttachmentMetadata {
-                        name: "hello.txt".to_string(),
-                        size: 12,
-                        content_type: ".txt".to_string(),
-                    },
-                    AttachmentMetadata {
-                        name: "world.pdf".to_string(),
-                        size: 7302,
-                        content_type: ".pdf".to_string(),
-                    },
-                ],
+                attachments: expected_attachments,
             },
             user_properties: expected_user_properties,
         };
