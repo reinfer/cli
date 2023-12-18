@@ -38,7 +38,6 @@ pub fn run(args: &ParseArgs, client: Client, pool: &mut Pool) -> Result<()> {
     }
 }
 
-
 pub struct Statistics {
     processed: AtomicUsize,
     failed: AtomicUsize,

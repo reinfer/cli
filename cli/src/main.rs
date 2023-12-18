@@ -74,7 +74,9 @@ fn run(args: Args) -> Result<()> {
         Command::Update { update_args } => {
             update::run(update_args, client_from_args(&args, &config)?, &printer)
         }
-        Command::Parse { parse_args } => parse::run(parse_args, client_from_args(&args, &config)?, &mut pool),
+        Command::Parse { parse_args } => {
+            parse::run(parse_args, client_from_args(&args, &config)?, &mut pool)
+        }
     }
 }
 
