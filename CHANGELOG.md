@@ -1,4 +1,4 @@
-## Unreleased
+## v0.21.3 
 - Reduce batch size for parse emls
 
 ## v0.21.2
