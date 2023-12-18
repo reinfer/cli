@@ -58,7 +58,7 @@ pub struct Args {
     pub command: Command,
 
     #[structopt(long = "num-threads", default_value = "32")]
-    /// The number of threads to use when uploading annotations. Can be overwritten by the
+    /// The number of threads to use when uploading annotations and emls. Can be overwritten by the
     /// REINFER_CLI_NUM_THREADS environment variable
     pub num_threads: u32,
 }

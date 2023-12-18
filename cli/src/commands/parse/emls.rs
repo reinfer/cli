@@ -2,20 +2,22 @@ use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc};
 use log::error;
 use mailparse::{DispositionType, MailHeader, MailHeaderMap};
+use scoped_threadpool::Pool;
 use std::{
     fs,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{mpsc::channel, Arc},
 };
 
 use crate::commands::{
     ensure_uip_user_consents_to_ai_unit_charge,
-    parse::{get_files_in_directory, get_progress_bar, Statistics, UPLOAD_BATCH_SIZE},
+    parse::{get_files_in_directory, get_progress_bar, Statistics},
 };
 use reinfer_client::{resources::email::AttachmentMetadata, BucketIdentifier, Client, NewEmail};
 use structopt::StructOpt;
 
 use super::upload_batch_of_new_emails;
+const UPLOAD_BATCH_SIZE: usize = 4;
 
 #[derive(Debug, StructOpt)]
 pub struct ParseEmlArgs {
@@ -36,7 +38,7 @@ pub struct ParseEmlArgs {
     yes: bool,
 }
 
-pub fn parse(client: &Client, args: &ParseEmlArgs) -> Result<()> {
+pub fn parse(client: &Client, args: &ParseEmlArgs, pool: &mut Pool) -> Result<()> {
     let ParseEmlArgs {
         directory,
         bucket,
@@ -59,10 +61,41 @@ pub fn parse(client: &Client, args: &ParseEmlArgs) -> Result<()> {
     let mut emails = Vec::new();
     let mut errors = Vec::new();
 
-    let send = |emails: &mut Vec<NewEmail>| -> Result<()> {
-        upload_batch_of_new_emails(client, &bucket.full_name(), emails, *no_charge, &statistics)?;
-        emails.clear();
-        Ok(())
+    let mut send_if_needed = |emails: &mut Vec<NewEmail>, force_send: bool| -> Result<()> {
+        let thread_count = pool.thread_count();
+        let should_upload = emails.len() > (thread_count as usize * UPLOAD_BATCH_SIZE);
+
+        if !force_send && !should_upload {
+            return Ok(());
+        }
+
+        let chunks: Vec<_> = emails.chunks(UPLOAD_BATCH_SIZE).collect();
+
+        let (error_sender, error_receiver) = channel();
+        pool.scoped(|scope| {
+            for chunk in chunks {
+                scope.execute(|| {
+                    let result = upload_batch_of_new_emails(
+                        client,
+                        &bucket.full_name(),
+                        &chunk.into(),
+                        *no_charge,
+                        &statistics,
+                    );
+
+                    if let Err(error) = result {
+                        error_sender.send(error).expect("Could not send error");
+                    }
+                });
+            }
+        });
+
+        if let Ok(error) = error_receiver.try_recv() {
+            Err(error)
+        } else {
+            emails.clear();
+            Ok(())
+        }
     };
 
     for path in eml_paths {
@@ -70,9 +103,7 @@ pub fn parse(client: &Client, args: &ParseEmlArgs) -> Result<()> {
             Ok(new_email) => {
                 emails.push(new_email);
 
-                if emails.len() >= UPLOAD_BATCH_SIZE {
-                    send(&mut emails)?;
-                }
+                send_if_needed(&mut emails, false)?;
                 statistics.increment_processed();
             }
             Err(error) => {
@@ -87,7 +118,7 @@ pub fn parse(client: &Client, args: &ParseEmlArgs) -> Result<()> {
         }
     }
 
-    send(&mut emails)?;
+    send_if_needed(&mut emails, true)?;
 
     for error in errors {
         error!("{}", error);

@@ -1,3 +1,6 @@
+## Unreleased
+- Reduce batch size for parse emls
+
 ## v0.21.2
 
 - Add get audit events command

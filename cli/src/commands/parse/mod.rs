@@ -6,6 +6,7 @@ use colored::Colorize;
 use reinfer_client::resources::bucket::FullName as BucketFullName;
 use reinfer_client::resources::documents::Document;
 use reinfer_client::{Client, NewEmail, Source, TransformTag};
+use scoped_threadpool::Pool;
 use std::fs::DirEntry;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -30,14 +31,12 @@ pub enum ParseArgs {
     Emls(ParseEmlArgs),
 }
 
-pub fn run(args: &ParseArgs, client: Client) -> Result<()> {
+pub fn run(args: &ParseArgs, client: Client, pool: &mut Pool) -> Result<()> {
     match args {
         ParseArgs::Msgs(parse_msg_args) => msgs::parse(&client, parse_msg_args),
-        ParseArgs::Emls(parse_eml_args) => emls::parse(&client, parse_eml_args),
+        ParseArgs::Emls(parse_eml_args) => emls::parse(&client, parse_eml_args, pool),
     }
 }
-
-const UPLOAD_BATCH_SIZE: usize = 128;
 
 pub struct Statistics {
     processed: AtomicUsize,
