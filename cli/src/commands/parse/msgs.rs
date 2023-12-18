@@ -28,10 +28,11 @@ use crate::{
     progress::{Options as ProgressOptions, Progress},
 };
 
-use super::{upload_batch_of_documents, UPLOAD_BATCH_SIZE};
+use super::upload_batch_of_documents;
 
 const MSG_NAME_USER_PROPERTY_NAME: &str = "MSG NAME ID";
 const STREAM_PATH_ATTACHMENT_STORE_PREFIX: &str = "__attach_version1.0_#";
+const UPLOAD_BATCH_SIZE: usize = 128;
 
 static CONTENT_TYPE_MIME_HEADER_RX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"Content-Type:((\s)+.+\n)+").unwrap());
