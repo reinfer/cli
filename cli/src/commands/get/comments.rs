@@ -8,8 +8,8 @@ use regex::Regex;
 use reinfer_client::{
     resources::{
         comment::{
-            CommentTimestampFilter, ReviewedFilterEnum, UserPropertiesFilter,
-            UserPropertyFilterKind,
+            CommentTimestampFilter, MessagesFilter, PropertyFilterKind, ReviewedFilterEnum,
+            UserPropertiesFilter,
         },
         dataset::{
             Attribute, AttributeFilter, AttributeFilterEnum, OrderEnum, QueryRequestParams,
@@ -88,6 +88,14 @@ pub struct GetManyCommentsArgs {
     #[structopt(long = "to-timestamp")]
     /// Ending timestamp for comments to retrieve (inclusive).
     to_timestamp: Option<DateTime<Utc>>,
+
+    #[structopt(long = "senders")]
+    /// Filter to comments only from these senders
+    senders: Option<Vec<String>>,
+
+    #[structopt(long = "recipients")]
+    /// Filter to emails only to these recipients
+    recipients: Option<Vec<String>>,
 
     #[structopt(short = "f", long = "file", parse(from_os_str))]
     /// Path where to write comments as JSON. If not specified, stdout will be used.
@@ -211,10 +219,7 @@ fn get_user_properties_filter_interactively(
             }
         }
 
-        filters.insert(
-            selected_property_name,
-            UserPropertyFilterKind::OneOf(values),
-        );
+        filters.insert(selected_property_name, PropertyFilterKind::OneOf(values));
 
         if !Confirm::new()
             .with_prompt("Do you want to filter additional user properties?")
@@ -241,6 +246,8 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         label_filter,
         property_filter: user_property_filter,
         interactive_property_filter: interative_property_filter,
+        recipients,
+        senders,
     } = args;
 
     let by_timerange = from_timestamp.is_some() || to_timestamp.is_some();
@@ -287,6 +294,10 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         bail!("The `interative_property_filter` and `property_filter` options are mutually exclusive.")
     }
 
+    if (senders.is_some() || recipients.is_some()) && dataset.is_none() {
+        bail!("Cannot filter on `senders` or `recipients` when `dataset` is not provided")
+    }
+
     let file = match path {
         Some(path) => Some(
             File::create(path)
@@ -316,6 +327,25 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         None
     };
 
+    let messages_filter = MessagesFilter {
+        from: senders.as_ref().map(|senders| {
+            PropertyFilterKind::OneOf(
+                senders
+                    .iter()
+                    .map(|sender| PropertyValue::String(sender.to_owned()))
+                    .collect(),
+            )
+        }),
+        to: recipients.as_ref().map(|recipients| {
+            PropertyFilterKind::OneOf(
+                recipients
+                    .iter()
+                    .map(|recipient| PropertyValue::String(recipient.to_owned()))
+                    .collect(),
+            )
+        }),
+    };
+
     let download_options = CommentDownloadOptions {
         dataset_identifier: dataset.clone(),
         include_predictions: include_predictions.unwrap_or(false),
@@ -328,6 +358,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         show_progress: !no_progress,
         label_attribute_filter,
         user_properties_filter,
+        messages_filter: Some(messages_filter),
     };
 
     if let Some(file) = file {
@@ -386,6 +417,7 @@ struct CommentDownloadOptions {
     show_progress: bool,
     label_attribute_filter: Option<AttributeFilter>,
     user_properties_filter: Option<UserPropertiesFilter>,
+    messages_filter: Option<MessagesFilter>,
 }
 
 impl CommentDownloadOptions {
@@ -424,6 +456,7 @@ fn download_comments(
                 None
             },
             user_properties: options.user_properties_filter.clone(),
+            messages: options.messages_filter.clone(),
         };
 
         Ok(get_comments_progress_bar(
@@ -541,6 +574,7 @@ fn get_comments_from_uids(
             }),
             user_properties: options.user_properties_filter.clone(),
             sources: vec![source.id],
+            messages: options.messages_filter.clone(),
         },
         limit: DEFAULT_QUERY_PAGE_SIZE,
         order: OrderEnum::Recent,

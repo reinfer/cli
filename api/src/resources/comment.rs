@@ -67,11 +67,11 @@ pub enum ReviewedFilterEnum {
 type UserPropertyName = String;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserPropertiesFilter(pub HashMap<UserPropertyName, UserPropertyFilterKind>);
+pub struct UserPropertiesFilter(pub HashMap<UserPropertyName, PropertyFilterKind>);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum UserPropertyFilterKind {
+pub enum PropertyFilterKind {
     OneOf(Vec<PropertyValue>),
 }
 
@@ -89,6 +89,18 @@ pub struct CommentFilter {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
     pub sources: Vec<SourceId>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub messages: Option<MessagesFilter>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MessagesFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from: Option<PropertyFilterKind>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub to: Option<PropertyFilterKind>,
 }
 
 #[derive(Debug, Clone, Serialize)]

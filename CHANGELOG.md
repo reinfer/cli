@@ -1,3 +1,6 @@
+## Unreleased
+- Add messages filters
+
 ## v0.21.3 
 - Reduce batch size for parse emls
 
