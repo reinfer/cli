@@ -56,7 +56,4 @@ pub struct NewLabelDefPretrained {
 pub struct MoonFormFieldDef {
     pub name: String,
     pub kind: String,
-    pub required: bool,
-    #[serde(rename = "type")]
-    pub field_type: String,
 }
