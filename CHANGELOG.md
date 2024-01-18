@@ -1,5 +1,6 @@
-## Unreleased
+# v0.21.4
 - Add messages filters
+- Fixes `required` field error when interacting with datasets
 
 ## v0.21.3 
 - Reduce batch size for parse emls
