@@ -242,8 +242,6 @@ fn test_create_update_dataset_custom() {
                 moon_form: Some(vec![MoonFormFieldDef {
                     name: "luna".to_owned(),
                     kind: "ent".to_owned(),
-                    required: false,
-                    field_type: "string".to_owned(),
                 }]),
             },
         ],
@@ -270,8 +268,6 @@ fn test_create_update_dataset_custom() {
                     moon_form: Some(vec![MoonFormFieldDef {
                         name: "luna".to_owned(),
                         kind: "ent".to_owned(),
-                        required: false,
-                        field_type: "string".to_owned(),
                     }]),
                 },
             ],

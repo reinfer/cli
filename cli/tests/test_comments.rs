@@ -89,7 +89,7 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
     }
 
     // Test getting a comment by id to check the content matches
-    let test_comment = annotated_comments.get(0).unwrap().comment.clone();
+    let test_comment = annotated_comments.first().unwrap().comment.clone();
     let output = cli.run([
         "get",
         "comment",
@@ -111,7 +111,7 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
         "delete",
         "comments",
         &format!("--source={}", source.identifier()),
-        &annotated_comments.get(0).unwrap().comment.id.0,
+        &annotated_comments.first().unwrap().comment.id.0,
     ]);
     assert!(output.is_empty());
 
