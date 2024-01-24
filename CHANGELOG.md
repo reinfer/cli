@@ -1,3 +1,7 @@
+# unreleaswed
+- Fix a bug where stream responses were not correctly parsed 
+- Fix a bug where streams were not correctly advanced 
+
 # v0.21.4
 - Add messages filters
 - Fixes `required` field error when interacting with datasets
