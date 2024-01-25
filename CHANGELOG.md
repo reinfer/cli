@@ -1,4 +1,4 @@
-# unreleaswed
+# v0.21.5 
 - Fix a bug where stream responses were not correctly parsed 
 - Fix a bug where streams were not correctly advanced 
 
