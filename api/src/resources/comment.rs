@@ -624,7 +624,7 @@ pub struct Label {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct PredictedLabel {
-    pub name: LabelName,
+    pub name: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sentiment: Option<NotNan<f64>>,
     pub probability: NotNan<f64>,

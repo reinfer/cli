@@ -613,7 +613,7 @@ fn get_comments_from_uids(
                                     auto_threshold_labels
                                         .iter()
                                         .map(|auto_threshold_label| PredictedLabel {
-                                            name: LabelName(auto_threshold_label.name.join(" > ")),
+                                            name: auto_threshold_label.name.to_owned(),
                                             sentiment: None,
                                             probability: auto_threshold_label.probability,
                                             auto_thresholds: Some(
