@@ -5,6 +5,7 @@ pub mod dataset;
 pub mod documents;
 pub mod email;
 pub mod entity_def;
+pub mod integration;
 pub mod label_def;
 pub mod label_group;
 pub mod project;

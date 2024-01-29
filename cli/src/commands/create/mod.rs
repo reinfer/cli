@@ -3,6 +3,7 @@ mod bucket;
 mod comments;
 mod dataset;
 mod emails;
+mod integrations;
 mod project;
 mod quota;
 mod source;
@@ -12,9 +13,9 @@ mod user;
 
 use self::{
     annotations::CreateAnnotationsArgs, bucket::CreateBucketArgs, comments::CreateCommentsArgs,
-    dataset::CreateDatasetArgs, emails::CreateEmailsArgs, project::CreateProjectArgs,
-    quota::CreateQuotaArgs, source::CreateSourceArgs, stream_exception::CreateStreamExceptionArgs,
-    streams::CreateStreamsArgs, user::CreateUserArgs,
+    dataset::CreateDatasetArgs, emails::CreateEmailsArgs, integrations::CreateIntegrationArgs,
+    project::CreateProjectArgs, quota::CreateQuotaArgs, source::CreateSourceArgs,
+    stream_exception::CreateStreamExceptionArgs, streams::CreateStreamsArgs, user::CreateUserArgs,
 };
 use crate::printer::Printer;
 use anyhow::Result;
@@ -71,6 +72,14 @@ pub enum CreateArgs {
     #[structopt(name = "streams")]
     /// Create streams
     Streams(CreateStreamsArgs),
+
+    #[structopt(name = "integration")]
+    /// Create integration
+    Integration(CreateIntegrationArgs),
+
+    #[structopt(name = "integrations")]
+    /// Create integrations
+    Integrations(CreateIntegrationArgs),
 }
 
 pub fn run(
@@ -96,6 +105,9 @@ pub fn run(
         CreateArgs::Quota(quota_args) => quota::create(&client, quota_args),
         CreateArgs::Stream(stream_args) | CreateArgs::Streams(stream_args) => {
             streams::create(&client, stream_args)
+        }
+        CreateArgs::Integration(integration_args) | CreateArgs::Integrations(integration_args) => {
+            integrations::create(&client, integration_args)
         }
     }
 }

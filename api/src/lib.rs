@@ -20,6 +20,11 @@ use resources::{
         SummaryResponse,
     },
     documents::{Document, SyncRawEmailsRequest, SyncRawEmailsResponse},
+    integration::{
+        GetIntegrationResponse, GetIntegrationsResponse, Integration, NewIntegration,
+        PostIntegrationRequest, PostIntegrationResponse, PutIntegrationRequest,
+        PutIntegrationResponse,
+    },
     project::ForceDeleteProject,
     quota::{GetQuotasResponse, Quota},
     source::StatisticsRequestParams as SourceStatisticsRequestParams,
@@ -99,6 +104,7 @@ pub use crate::{
         },
         email::{Id as EmailId, Mailbox, MimeContent, NewEmail},
         entity_def::{EntityDef, Id as EntityDefId, Name as EntityName, NewEntityDef},
+        integration::FullName as IntegrationFullName,
         label_def::{
             LabelDef, LabelDefPretrained, MoonFormFieldDef, Name as LabelName, NewLabelDef,
             NewLabelDefPretrained, PretrainedId as LabelDefPretrainedId,
@@ -383,6 +389,37 @@ impl Client {
             )?
             .comment)
     }
+    pub fn post_integration(
+        &self,
+        name: &IntegrationFullName,
+        integration: &NewIntegration,
+    ) -> Result<PostIntegrationResponse> {
+        self.request(
+            Method::POST,
+            self.endpoints.integration(name)?,
+            Some(PostIntegrationRequest {
+                integration: integration.clone(),
+            }),
+            None::<()>,
+            Retry::No,
+        )
+    }
+
+    pub fn put_integration(
+        &self,
+        name: &IntegrationFullName,
+        integration: &NewIntegration,
+    ) -> Result<PutIntegrationResponse> {
+        self.request(
+            Method::PUT,
+            self.endpoints.integration(name)?,
+            Some(PutIntegrationRequest {
+                integration: integration.clone(),
+            }),
+            None::<()>,
+            Retry::No,
+        )
+    }
 
     pub fn put_comments(
         &self,
@@ -544,6 +581,18 @@ impl Client {
             .map_err(Error::BadJsonResponse)?
             .into_result(status)?;
         Ok(())
+    }
+
+    pub fn get_integrations(&self) -> Result<Vec<Integration>> {
+        Ok(self
+            .get::<_, GetIntegrationsResponse>(self.endpoints.integrations()?)?
+            .integrations)
+    }
+
+    pub fn get_integration(&self, name: &IntegrationFullName) -> Result<Integration> {
+        Ok(self
+            .get::<_, GetIntegrationResponse>(self.endpoints.integration(name)?)?
+            .integration)
     }
 
     pub fn get_datasets(&self) -> Result<Vec<Dataset>> {
@@ -1099,6 +1148,7 @@ impl Client {
         })?;
 
         let status = http_response.status();
+
         http_response
             .json::<Response<SuccessT>>()
             .map_err(Error::BadJsonResponse)?
@@ -1339,6 +1389,14 @@ impl Endpoints {
 
     fn audit_events_query(&self) -> Result<Url> {
         construct_endpoint(&self.base, &["api", "v1", "audit_events", "query"])
+    }
+
+    fn integrations(&self) -> Result<Url> {
+        construct_endpoint(&self.base, &["api", "_private", "integrations"])
+    }
+
+    fn integration(&self, name: &IntegrationFullName) -> Result<Url> {
+        construct_endpoint(&self.base, &["api", "_private", "integrations", &name.0])
     }
 
     fn validation(
