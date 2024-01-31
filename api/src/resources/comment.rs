@@ -625,6 +625,7 @@ pub struct Label {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(untagged)]
 pub enum PredictedLabelName {
     Parts(Vec<String>),
     String(LabelName),
