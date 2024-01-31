@@ -1,4 +1,4 @@
-# unreleased 
+# v0.22.0
 - Add integration commands
 
 # v0.21.5 

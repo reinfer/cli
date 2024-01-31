@@ -1268,7 +1268,7 @@ checksum = "f162c6dd7b008981e4d40210aca20b4bd0f9b60ca9271061b07f78537722f2e1"
 
 [[package]]
 name = "reinfer-cli"
-version = "0.21.5"
+version = "0.22.0"
 dependencies = [
  "anyhow",
  "backoff",
@@ -1301,7 +1301,7 @@ dependencies = [
 
 [[package]]
 name = "reinfer-client"
-version = "0.21.5"
+version = "0.22.0"
 dependencies = [
  "chrono",
  "http",
