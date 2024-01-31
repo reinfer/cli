@@ -1,4 +1,4 @@
-# unreleased
+# v0.22.2
 - Fix a bug where some label annotations cannot be applied
 
 # v0.22.1
