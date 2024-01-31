@@ -73,6 +73,8 @@ pub struct UserPropertiesFilter(pub HashMap<UserPropertyName, PropertyFilterKind
 #[serde(rename_all = "snake_case")]
 pub enum PropertyFilterKind {
     OneOf(Vec<PropertyValue>),
+    NotOneOf(Vec<PropertyValue>),
+    DomainNotOneOf(Vec<PropertyValue>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
