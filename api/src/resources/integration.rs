@@ -7,8 +7,10 @@ use crate::{Email, ProjectName};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct NewIntegration {
-    pub title: Title,
-    pub enabled: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<Title>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
     pub configuration: Configuration,
 }
 
@@ -66,6 +68,7 @@ pub enum DisabledReason {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Configuration {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub connection: Option<Connection>,
     pub mailboxes: Vec<Mailbox>,
 }
@@ -74,7 +77,9 @@ pub struct Configuration {
 pub struct Connection {
     access: AccessType,
     application: ApplicationType,
+    #[serde(skip_serializing_if = "Option::is_none")]
     ews_endpoint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     build_version: Option<String>,
 }
 
@@ -103,15 +108,23 @@ pub struct CustomApplicationConfig {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Mailbox {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub disabled_reason: Option<DisabledReason>,
     pub email: Email,
     pub enabled: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub folder_allowlist: Option<Vec<Vec<String>>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub folder_denylist: Option<Vec<Vec<String>>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub participant_allowlist: Option<Vec<Email>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub participant_denylist: Option<Vec<Email>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub participant_domain_allowlist: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub participant_domain_denylist: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub start_timestamp: Option<DateTime<Utc>>,
     pub bucket_specification: BucketSpecification,
 }
