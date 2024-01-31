@@ -1,3 +1,6 @@
+# v0.22.1
+- minor api improvements 
+
 # v0.22.0
 - Add integration commands
 
