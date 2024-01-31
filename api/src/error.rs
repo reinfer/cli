@@ -22,6 +22,9 @@ pub enum Error {
     #[error("Expected <owner>/<name> or a dataset id, got: {}", identifier)]
     BadDatasetIdentifier { identifier: String },
 
+    #[error("Expected <owner>/<name>: {}", identifier)]
+    BadIntegrationIdentifier { identifier: String },
+
     #[error("Expected <owner>/<dataset>/<stream>: {}", identifier)]
     BadStreamName { identifier: String },
 

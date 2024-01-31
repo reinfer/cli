@@ -2,7 +2,10 @@ use super::thousands::Thousands;
 use colored::Colorize;
 use prettytable::{format, row, Row, Table};
 use reinfer_client::{
-    resources::{audit::PrintableAuditEvent, dataset::DatasetAndStats, quota::Quota},
+    resources::{
+        audit::PrintableAuditEvent, dataset::DatasetAndStats, integration::Integration,
+        quota::Quota,
+    },
     Bucket, Dataset, Project, Source, Statistics, Stream, User,
 };
 use serde::{Serialize, Serializer};
@@ -59,6 +62,21 @@ pub trait DisplayTable {
     fn to_table_row(&self) -> Row;
 }
 
+impl DisplayTable for Integration {
+    fn to_table_headers() -> Row {
+        row![bFg => "Project", "Name", "ID", "Created (UTC)", "Mailbox Count"]
+    }
+
+    fn to_table_row(&self) -> Row {
+        row![
+            self.owner.0,
+            self.name.0,
+            self.id.0,
+            self.created_at.format("%Y-%m-%d %H:%M:%S"),
+            self.configuration.mailboxes.len()
+        ]
+    }
+}
 impl DisplayTable for Bucket {
     fn to_table_headers() -> Row {
         row![bFg => "Name", "ID", "Created (UTC)", "Transform Tag"]

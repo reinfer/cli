@@ -2,6 +2,7 @@ mod audit_events;
 mod buckets;
 mod comments;
 mod datasets;
+mod integrations;
 mod projects;
 mod quota;
 mod sources;
@@ -18,6 +19,7 @@ use self::{
     buckets::GetBucketsArgs,
     comments::{GetManyCommentsArgs, GetSingleCommentArgs},
     datasets::GetDatasetsArgs,
+    integrations::GetIntegrationsArgs,
     projects::GetProjectsArgs,
     sources::GetSourcesArgs,
     streams::{GetStreamCommentsArgs, GetStreamStatsArgs, GetStreamsArgs},
@@ -78,6 +80,10 @@ pub enum GetArgs {
     #[structopt(name = "audit-events")]
     /// Get audit events for current tenant
     AuditEvents(GetAuditEventsArgs),
+
+    #[structopt(name = "integrations")]
+    /// Get integrations
+    Integrations(GetIntegrationsArgs),
 }
 
 pub fn run(args: &GetArgs, client: Client, printer: &Printer, pool: &mut Pool) -> Result<()> {
@@ -95,5 +101,6 @@ pub fn run(args: &GetArgs, client: Client, printer: &Printer, pool: &mut Pool) -
         GetArgs::CurrentUser => users::get_current_user(&client, printer),
         GetArgs::Quotas => quota::get(&client, printer),
         GetArgs::AuditEvents(args) => audit_events::get(&client, args, printer),
+        GetArgs::Integrations(args) => integrations::get(&client, args, printer),
     }
 }

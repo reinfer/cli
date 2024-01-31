@@ -1276,6 +1276,7 @@ dependencies = [
  "chrono",
  "colored",
  "dialoguer",
+ "diff",
  "dirs",
  "encoding_rs",
  "env_logger",
