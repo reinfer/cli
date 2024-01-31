@@ -1,3 +1,6 @@
+# unreleased
+- Fix a bug where some label annotations cannot be applied
+
 # v0.22.1
 - minor api improvements 
 
