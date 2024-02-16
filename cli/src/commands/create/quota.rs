@@ -27,6 +27,10 @@ pub struct CreateQuotaArgs {
     #[structopt(long = "limit")]
     /// New value of the quota to set
     hard_limit: u64,
+
+    #[structopt(long = "auto-increase-up-to")]
+    /// If set, will also change the `auto-increase-up-to` value of the quota
+    auto_increase_up_to: Option<u64>,
 }
 
 pub fn create(client: &Client, args: &CreateQuotaArgs) -> Result<()> {
@@ -35,6 +39,7 @@ pub fn create(client: &Client, args: &CreateQuotaArgs) -> Result<()> {
         uipath_tenant_id,
         tenant_quota_kind,
         hard_limit,
+        auto_increase_up_to,
     } = args;
 
     let tenant_id: TenantId = match (reinfer_tenant_id, uipath_tenant_id) {
@@ -53,6 +58,7 @@ pub fn create(client: &Client, args: &CreateQuotaArgs) -> Result<()> {
             *tenant_quota_kind,
             CreateQuota {
                 hard_limit: *hard_limit,
+                auto_increase_up_to: *auto_increase_up_to,
             },
         )
         .context("Operation to set quota has failed")?;

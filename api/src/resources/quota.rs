@@ -93,6 +93,13 @@ impl Display for TenantQuotaKind {
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
 pub struct CreateQuota {
     pub hard_limit: u64,
+
+    // It is very important for this value not to be serialized if it is `None`.
+    // This is because the API will interpret `null` as "reset the auto-increase-up-to" value to
+    // its default value. If the field is not set, then the value will be left unchanged (which is
+    // what we want).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_increase_up_to: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Copy)]
