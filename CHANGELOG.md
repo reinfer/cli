@@ -1,24 +1,32 @@
 # Unreleased
+
 - Add `get emails`
+- Added support for `--auto-increase-up-to` when creating quotas.
 
 # v0.22.2
+
 - Fix a bug where some label annotations cannot be applied
 
 # v0.22.1
-- minor api improvements 
+
+- minor api improvements
 
 # v0.22.0
+
 - Add integration commands
 
-# v0.21.5 
-- Fix a bug where stream responses were not correctly parsed 
-- Fix a bug where streams were not correctly advanced 
+# v0.21.5
+
+- Fix a bug where stream responses were not correctly parsed
+- Fix a bug where streams were not correctly advanced
 
 # v0.21.4
+
 - Add messages filters
 - Fixes `required` field error when interacting with datasets
 
-## v0.21.3 
+## v0.21.3
+
 - Reduce batch size for parse emls
 
 ## v0.21.2

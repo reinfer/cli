@@ -100,7 +100,7 @@ pub fn get_files_in_directory(directory: &PathBuf, extension: &str) -> Result<Ve
 fn upload_batch_of_new_emails(
     client: &Client,
     bucket: &BucketFullName,
-    emails: &Vec<NewEmail>,
+    emails: &[NewEmail],
     no_charge: bool,
     statistics: &Arc<Statistics>,
 ) -> Result<()> {
@@ -112,7 +112,7 @@ fn upload_batch_of_new_emails(
 fn upload_batch_of_documents(
     client: &Client,
     source: &Source,
-    documents: &Vec<Document>,
+    documents: &[Document],
     transform_tag: &TransformTag,
     no_charge: bool,
     statistics: &Arc<Statistics>,

@@ -78,7 +78,7 @@ pub fn parse(client: &Client, args: &ParseEmlArgs, pool: &mut Pool) -> Result<()
                     let result = upload_batch_of_new_emails(
                         client,
                         &bucket.full_name(),
-                        &chunk.into(),
+                        chunk,
                         *no_charge,
                         &statistics,
                     );
