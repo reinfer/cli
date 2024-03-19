@@ -13,6 +13,7 @@ use reqwest::{
     IntoUrl, Proxy, Result as ReqwestResult,
 };
 use resources::{
+    bucket_statistics::GetBucketStatisticsResponse,
     comment::CommentTimestampFilter,
     dataset::{
         QueryRequestParams, QueryResponse,
@@ -44,6 +45,7 @@ use crate::resources::{
         CreateRequest as CreateBucketRequest, CreateResponse as CreateBucketResponse,
         GetAvailableResponse as GetAvailableBucketsResponse, GetResponse as GetBucketResponse,
     },
+    bucket_statistics::Statistics as BucketStatistics,
     comment::{
         GetAnnotationsResponse, GetCommentResponse, GetLabellingsAfter, GetPredictionsResponse,
         GetRecentRequest, PutCommentsRequest, PutCommentsResponse, RecentCommentsPage,
@@ -102,7 +104,10 @@ pub use crate::{
             Dataset, FullName as DatasetFullName, Id as DatasetId, Identifier as DatasetIdentifier,
             ModelVersion, Name as DatasetName, NewDataset, UpdateDataset,
         },
-        email::{Id as EmailId, Continuation as EmailContinuation, EmailsIterPage, Mailbox, MimeContent, NewEmail},
+        email::{
+            Continuation as EmailContinuation, EmailsIterPage, Id as EmailId, Mailbox, MimeContent,
+            NewEmail,
+        },
         entity_def::{EntityDef, Id as EntityDefId, Name as EntityName, NewEntityDef},
         integration::FullName as IntegrationFullName,
         label_def::{
@@ -117,7 +122,7 @@ pub use crate::{
             FullName as SourceFullName, Id as SourceId, Identifier as SourceIdentifier,
             Name as SourceName, NewSource, Source, SourceKind, UpdateSource,
         },
-        statistics::Statistics,
+        statistics::Statistics as CommentStatistics,
         stream::{
             Batch as StreamBatch, FullName as StreamFullName, SequenceId as StreamSequenceId,
             Stream, StreamException, StreamExceptionMetadata,
@@ -391,7 +396,11 @@ impl Client {
             continuation,
             limit,
         };
-        self.post(self.endpoints.get_emails(bucket_name)?, Some(&query_params), Retry::Yes)
+        self.post(
+            self.endpoints.get_emails(bucket_name)?,
+            Some(&query_params),
+            Retry::Yes,
+        )
     }
 
     /// Iterate through all comments in a source.
@@ -842,11 +851,17 @@ impl Client {
         Ok(())
     }
 
+    pub fn get_bucket_statistics(&self, bucket_name: &BucketFullName) -> Result<BucketStatistics> {
+        Ok(self
+            .get::<_, GetBucketStatisticsResponse>(self.endpoints.bucket_statistics(bucket_name)?)?
+            .statistics)
+    }
+
     pub fn get_dataset_statistics(
         &self,
         dataset_name: &DatasetFullName,
         params: &DatasetStatisticsRequestParams,
-    ) -> Result<Statistics> {
+    ) -> Result<CommentStatistics> {
         Ok(self
             .post::<_, _, GetStatisticsResponse>(
                 self.endpoints.dataset_statistics(dataset_name)?,
@@ -861,7 +876,7 @@ impl Client {
         &self,
         source_name: &SourceFullName,
         params: &SourceStatisticsRequestParams,
-    ) -> Result<Statistics> {
+    ) -> Result<CommentStatistics> {
         Ok(self
             .post::<_, _, GetStatisticsResponse>(
                 self.endpoints.source_statistics(source_name)?,
@@ -1259,11 +1274,7 @@ impl<'a> EmailsIter<'a> {
     // Maximum number of emails per page which can be requested from the API.
     pub const MAX_PAGE_SIZE: usize = 256;
 
-    fn new(
-        client: &'a Client,
-        bucket_name: &'a BucketFullName,
-        page_size: Option<usize>,
-    ) -> Self {
+    fn new(client: &'a Client, bucket_name: &'a BucketFullName, page_size: Option<usize>) -> Self {
         Self {
             client,
             bucket_name,
@@ -1513,6 +1524,12 @@ impl Endpoints {
                 &model_version.0.to_string(),
                 "label-validation",
             ],
+        )
+    }
+    fn bucket_statistics(&self, bucket_name: &BucketFullName) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "buckets", &bucket_name.0, "statistics"],
         )
     }
 

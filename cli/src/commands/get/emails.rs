@@ -1,9 +1,7 @@
 use anyhow::{anyhow, Context, Error, Result};
 
 use colored::Colorize;
-use reinfer_client::{
-    BucketIdentifier, Client,
-};
+use reinfer_client::{BucketIdentifier, Client};
 use serde::Deserialize;
 use std::{
     fs::File,
@@ -28,10 +26,6 @@ pub struct GetManyEmailsArgs {
     /// Source name or id
     bucket: BucketIdentifier,
 
-    #[structopt(long)]
-    /// Don't display a progress bar (only applicable when --file is used).
-    no_progress: bool,
-
     #[structopt(short = "f", long = "file", parse(from_os_str))]
     /// Path where to write comments as JSON. If not specified, stdout will be used.
     path: Option<PathBuf>,
@@ -55,11 +49,7 @@ impl<T: serde::de::DeserializeOwned> FromStr for StructExt<T> {
 }
 
 pub fn get_many(client: &Client, args: &GetManyEmailsArgs) -> Result<()> {
-    let GetManyEmailsArgs {
-        bucket,
-        no_progress,
-        path,
-    } = args;
+    let GetManyEmailsArgs { bucket, path } = args;
 
     let file = match path {
         Some(path) => Some(
@@ -73,14 +63,9 @@ pub fn get_many(client: &Client, args: &GetManyEmailsArgs) -> Result<()> {
     if let Some(file) = file {
         download_emails(client, bucket.clone(), file)
     } else {
-        download_emails(
-            client,
-            bucket.clone(),
-            io::stdout().lock(),
-        )
+        download_emails(client, bucket.clone(), io::stdout().lock())
     }
 }
-
 
 fn download_emails(
     client: &Client,
@@ -90,17 +75,21 @@ fn download_emails(
     let bucket = client
         .get_bucket(bucket_identifier)
         .context("Operation to get source has failed.")?;
+
+    let bucket_statistics = client
+        .get_bucket_statistics(&bucket.full_name())
+        .context("Could not get bucket statistics")?;
+
     let statistics = Arc::new(Statistics::new());
+
+    let _progress = get_emails_progress_bar(bucket_statistics.count as u64, &statistics);
 
     client
         .get_emails_iter(&bucket.full_name(), None)
         .try_for_each(|page| {
             let page = page.context("Operation to get emails has failed.")?;
             statistics.add_emails(page.len());
-            print_resources_as_json(
-                page.into_iter(),
-                &mut writer,
-            )
+            print_resources_as_json(page.into_iter(), &mut writer)
         })?;
     log::info!(
         "Successfully downloaded {} emails.",
@@ -108,8 +97,6 @@ fn download_emails(
     );
     Ok(())
 }
-
-const DEFAULT_QUERY_PAGE_SIZE: usize = 128;
 
 #[derive(Debug)]
 pub struct Statistics {
@@ -132,14 +119,9 @@ impl Statistics {
     fn num_downloaded(&self) -> usize {
         self.downloaded.load(Ordering::SeqCst)
     }
-
 }
 
-fn get_emails_progress_bar(
-    total_bytes: u64,
-    statistics: &Arc<Statistics>,
-    show_annotated: bool,
-) -> Progress {
+fn get_emails_progress_bar(total_bytes: u64, statistics: &Arc<Statistics>) -> Progress {
     Progress::new(
         move |statistics| {
             let num_downloaded = statistics.num_downloaded();

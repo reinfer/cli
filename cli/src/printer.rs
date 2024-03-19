@@ -6,7 +6,7 @@ use reinfer_client::{
         audit::PrintableAuditEvent, dataset::DatasetAndStats, integration::Integration,
         quota::Quota,
     },
-    Bucket, Dataset, Project, Source, Statistics, Stream, User,
+    Bucket, CommentStatistics, Dataset, Project, Source, Stream, User,
 };
 use serde::{Serialize, Serializer};
 
@@ -188,7 +188,7 @@ impl DisplayTable for Source {
 pub struct PrintableSource {
     pub source: Source,
     pub bucket: Option<Bucket>,
-    pub stats: Option<Statistics>,
+    pub stats: Option<CommentStatistics>,
 }
 
 impl Serialize for PrintableSource {
