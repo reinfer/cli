@@ -1,13 +1,11 @@
-use anyhow::{anyhow, Context, Error, Result};
+use anyhow::{Context, Result};
 
 use colored::Colorize;
 use reinfer_client::{BucketIdentifier, Client};
-use serde::Deserialize;
 use std::{
     fs::File,
     io::{self, BufWriter, Write},
     path::PathBuf,
-    str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -23,29 +21,12 @@ use crate::{
 #[derive(Debug, StructOpt)]
 pub struct GetManyEmailsArgs {
     #[structopt(name = "bucket")]
-    /// Source name or id
+    /// Bucket name or id
     bucket: BucketIdentifier,
 
     #[structopt(short = "f", long = "file", parse(from_os_str))]
     /// Path where to write comments as JSON. If not specified, stdout will be used.
     path: Option<PathBuf>,
-}
-
-#[derive(Debug, Deserialize)]
-struct StructExt<T>(pub T);
-
-impl<T: serde::de::DeserializeOwned> FromStr for StructExt<T> {
-    type Err = Error;
-
-    fn from_str(string: &str) -> Result<Self> {
-        serde_json::from_str(string).map_err(|source| {
-            anyhow!(
-                "Expected valid json for type. Got: '{}', which failed because: '{}'",
-                string.to_owned(),
-                source
-            )
-        })
-    }
 }
 
 pub fn get_many(client: &Client, args: &GetManyEmailsArgs) -> Result<()> {
@@ -74,7 +55,7 @@ fn download_emails(
 ) -> Result<()> {
     let bucket = client
         .get_bucket(bucket_identifier)
-        .context("Operation to get source has failed.")?;
+        .context("Operation to get bucket has failed.")?;
 
     let bucket_statistics = client
         .get_bucket_statistics(&bucket.full_name())
