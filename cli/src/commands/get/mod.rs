@@ -1,8 +1,8 @@
 mod audit_events;
 mod buckets;
-mod emails;
 mod comments;
 mod datasets;
+mod emails;
 mod integrations;
 mod projects;
 mod quota;
@@ -18,9 +18,9 @@ use structopt::StructOpt;
 use self::{
     audit_events::GetAuditEventsArgs,
     buckets::GetBucketsArgs,
-    emails::GetManyEmailsArgs,
     comments::{GetManyCommentsArgs, GetSingleCommentArgs},
     datasets::GetDatasetsArgs,
+    emails::GetManyEmailsArgs,
     integrations::GetIntegrationsArgs,
     projects::GetProjectsArgs,
     sources::GetSourcesArgs,
