@@ -1,5 +1,6 @@
 pub mod audit;
 pub mod bucket;
+pub mod bucket_statistics;
 pub mod comment;
 pub mod dataset;
 pub mod documents;

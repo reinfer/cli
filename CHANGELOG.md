@@ -1,5 +1,6 @@
 # Unreleased
 
+- Add `get emails`
 - Added support for `--auto-increase-up-to` when creating quotas.
 
 # v0.22.2
@@ -60,7 +61,7 @@
 
 ## v0.18.2
 
--Add ability to filter on user properties when getting comments
+- Add ability to filter on user properties when getting comments
 
 ## v0.18.1
 
