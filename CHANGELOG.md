@@ -1,4 +1,4 @@
-# Unreleased
+# v0.23.0
 
 - Add `get emails`
 - Added support for `--auto-increase-up-to` when creating quotas.
