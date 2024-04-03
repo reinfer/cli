@@ -143,7 +143,7 @@ fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
     })
     .context("Failed to initialise the HTTP client.")?;
 
-    check_if_context_is_a_required_field(config, &client, &args)?;
+    check_if_context_is_a_required_field(config, &client, args)?;
 
     Ok(client)
 }
@@ -155,7 +155,9 @@ fn check_if_context_is_a_required_field(
     client: &Client,
     args: &Args,
 ) -> Result<()> {
-    if config.context_is_required {
+    let context_is_none = args.context.is_none();
+
+    if config.context_is_required && context_is_none {
         return Err(anyhow!(
             "Please provide a context with the `re -c <context>` option"
         ));
@@ -166,7 +168,7 @@ fn check_if_context_is_a_required_field(
     if DOMAINS_THAT_REQUIRE_CONTEXT
         .iter()
         .any(|domain| current_user.email.0.to_lowercase().ends_with(domain))
-        && args.context.is_none()
+        && context_is_none
     {
         return Err(anyhow!(
             "As a UiPath user, please provide a context with the `re -c <context>` option"
