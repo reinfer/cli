@@ -165,7 +165,7 @@ fn check_if_context_is_a_required_field(
 
     if DOMAINS_THAT_REQUIRE_CONTEXT
         .iter()
-        .any(|domain| current_user.email.0.ends_with(domain))
+        .any(|domain| current_user.email.0.to_lowercase().ends_with(domain))
         && args.context.is_none()
     {
         return Err(anyhow!(
