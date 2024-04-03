@@ -134,14 +134,46 @@ fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
         backoff_factor: 2.0,
     };
 
-    Client::new(ClientConfig {
+    let client = Client::new(ClientConfig {
         endpoint,
         token,
         accept_invalid_certificates,
         proxy,
         retry_config: Some(retry_config),
     })
-    .context("Failed to initialise the HTTP client.")
+    .context("Failed to initialise the HTTP client.")?;
+
+    check_if_context_is_a_required_field(config, &client, &args)?;
+
+    Ok(client)
+}
+
+const DOMAINS_THAT_REQUIRE_CONTEXT: [&str; 2] = ["uipath.com", "reinfer.io"];
+
+fn check_if_context_is_a_required_field(
+    config: &ReinferConfig,
+    client: &Client,
+    args: &Args,
+) -> Result<()> {
+    if config.context_is_required {
+        return Err(anyhow!(
+            "Please provide a context with the `re -c <context>` option"
+        ));
+    }
+
+    let current_user = client.get_current_user()?;
+
+    if DOMAINS_THAT_REQUIRE_CONTEXT
+        .iter()
+        .any(|domain| current_user.email.0.ends_with(domain))
+        && args.context.is_none()
+    {
+        return Err(anyhow!(
+            "As a UiPath user, please provide a context with the `re -c <context>` option"
+        ));
+    };
+
+    Ok(())
 }
 
 fn find_configuration(args: &Args) -> Result<PathBuf> {

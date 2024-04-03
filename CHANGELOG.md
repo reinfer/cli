@@ -1,3 +1,7 @@
+# Unreleased
+- Add option to make context option a required field
+- Make context option a required field for internal users
+
 # v0.23.0
 
 - Add `get emails`

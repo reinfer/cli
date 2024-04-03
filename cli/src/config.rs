@@ -12,6 +12,8 @@ use std::{
 pub struct ReinferConfig {
     current_context: Option<String>,
     contexts: Vec<ContextConfig>,
+    #[serde(default)]
+    pub context_is_required: bool,
 }
 
 impl ReinferConfig {
