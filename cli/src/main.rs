@@ -155,7 +155,7 @@ fn check_if_context_is_a_required_field(
     client: &Client,
     args: &Args,
 ) -> Result<()> {
-    let context_is_none = args.context.is_none();
+    let context_is_none = args.context.is_none() && args.endpoint.is_none();
 
     if config.context_is_required && context_is_none {
         return Err(anyhow!(
