@@ -775,10 +775,24 @@ fn should_skip_serializing_entities(maybe_entities: &Option<Entities>) -> bool {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
-pub struct NewEntity {
+#[serde(untagged)]
+pub enum NewEntity {
+    WithSpan(NewEntityWithSpan),
+    WithSpans(NewEntityWithSpans),
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
+pub struct NewEntityWithSpan {
     pub name: EntityName,
     pub formatted_value: String,
     pub span: NewEntitySpan,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
+pub struct NewEntityWithSpans {
+    pub name: EntityName,
+    pub formatted_value: String,
+    pub spans: Vec<NewEntitySpan>,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize, Eq)]
@@ -793,7 +807,7 @@ pub struct NewEntitySpan {
 pub struct Entity {
     pub name: EntityName,
     pub formatted_value: String,
-    pub span: EntitySpan,
+    pub spans: Vec<EntitySpan>,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize, Eq)]
