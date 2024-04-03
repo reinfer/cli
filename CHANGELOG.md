@@ -2,6 +2,7 @@
 
 - Add `get emails`
 - Added support for `--auto-increase-up-to` when creating quotas.
+- Support spans format for entities 
 
 # v0.22.2
 
