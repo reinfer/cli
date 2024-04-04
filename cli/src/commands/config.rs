@@ -70,7 +70,7 @@ pub enum ConfigArgs {
     },
 
     #[structopt(name = "set-context-required")]
-    /// Set whether  context is a required field
+    /// Set whether context is a required field
     SetContextRequired {
         // Whether the context is a required field
         #[structopt(name = "is-required", parse(try_from_str))]
