@@ -300,9 +300,7 @@ pub(crate) struct UpdateResponse {
 
 #[cfg(test)]
 mod tests {
-    use crate::resources::comment::{
-        CommentTimestampFilter, PropertyFilterKind, UserPropertiesFilter,
-    };
+    use crate::resources::comment::{CommentTimestampFilter, PropertyFilter, UserPropertiesFilter};
 
     use super::*;
     use crate::PropertyValue;
@@ -431,9 +429,13 @@ mod tests {
     pub fn test_serialize_user_properties_request_params() {
         let user_property_filter = UserPropertiesFilter(HashMap::from([(
             "string:Generation Tag".to_string(),
-            PropertyFilterKind::OneOf(vec![PropertyValue::String(
-                "72b01fe7-ef2e-481e-934d-bc2fe0ca9b06".to_string(),
-            )]),
+            PropertyFilter::new(
+                vec![PropertyValue::String(
+                    "72b01fe7-ef2e-481e-934d-bc2fe0ca9b06".to_string(),
+                )],
+                Vec::new(),
+                Vec::new(),
+            ),
         )]));
 
         let params = QueryRequestParams {

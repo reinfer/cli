@@ -8,7 +8,7 @@ use regex::Regex;
 use reinfer_client::{
     resources::{
         comment::{
-            CommentTimestampFilter, MessagesFilter, PredictedLabelName, PropertyFilterKind,
+            CommentTimestampFilter, MessagesFilter, PredictedLabelName, PropertyFilter,
             ReviewedFilterEnum, UserPropertiesFilter,
         },
         dataset::{
@@ -219,7 +219,9 @@ fn get_user_properties_filter_interactively(
             }
         }
 
-        filters.insert(selected_property_name, PropertyFilterKind::OneOf(values));
+        let property_filter = PropertyFilter::new(values, Vec::new(), Vec::new());
+
+        filters.insert(selected_property_name, property_filter);
 
         if !Confirm::new()
             .with_prompt("Do you want to filter additional user properties?")
@@ -329,19 +331,23 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
 
     let messages_filter = MessagesFilter {
         from: senders.as_ref().map(|senders| {
-            PropertyFilterKind::OneOf(
+            PropertyFilter::new(
                 senders
                     .iter()
                     .map(|sender| PropertyValue::String(sender.to_owned()))
                     .collect(),
+                Vec::new(),
+                Vec::new(),
             )
         }),
         to: recipients.as_ref().map(|recipients| {
-            PropertyFilterKind::OneOf(
+            PropertyFilter::new(
                 recipients
                     .iter()
                     .map(|recipient| PropertyValue::String(recipient.to_owned()))
                     .collect(),
+                Vec::new(),
+                Vec::new(),
             )
         }),
     };
