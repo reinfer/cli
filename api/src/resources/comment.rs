@@ -67,14 +67,30 @@ pub enum ReviewedFilterEnum {
 type UserPropertyName = String;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserPropertiesFilter(pub HashMap<UserPropertyName, PropertyFilterKind>);
+pub struct UserPropertiesFilter(pub HashMap<UserPropertyName, PropertyFilter>);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum PropertyFilterKind {
-    OneOf(Vec<PropertyValue>),
-    NotOneOf(Vec<PropertyValue>),
-    DomainNotOneOf(Vec<PropertyValue>),
+pub struct PropertyFilter {
+    #[serde(skip_serializing_if = "<[_]>::is_empty", default)]
+    pub one_of: Vec<PropertyValue>,
+    #[serde(skip_serializing_if = "<[_]>::is_empty", default)]
+    pub not_one_of: Vec<PropertyValue>,
+    #[serde(skip_serializing_if = "<[_]>::is_empty", default)]
+    pub domain_not_one_of: Vec<PropertyValue>,
+}
+
+impl PropertyFilter {
+    pub fn new(
+        one_of: Vec<PropertyValue>,
+        not_one_of: Vec<PropertyValue>,
+        domain_not_one_of: Vec<PropertyValue>,
+    ) -> Self {
+        Self {
+            one_of,
+            not_one_of,
+            domain_not_one_of,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -99,10 +115,10 @@ pub struct CommentFilter {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MessagesFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub from: Option<PropertyFilterKind>,
+    pub from: Option<PropertyFilter>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub to: Option<PropertyFilterKind>,
+    pub to: Option<PropertyFilter>,
 }
 
 #[derive(Debug, Clone, Serialize)]
