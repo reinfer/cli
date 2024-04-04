@@ -159,7 +159,7 @@ fn check_if_context_is_a_required_field(
 
     if config.context_is_required && context_is_none {
         return Err(anyhow!(
-            "Please provide a context with the `re -c <context>` option"
+            "Please provide a context with the `re -c <context>` option \n or opt out with `re config set-context-required false`"
         ));
     }
 

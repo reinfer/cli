@@ -1,6 +1,7 @@
 # Unreleased
-- Add option to make context option a required field
-- Make context option a required field for internal users
+- BREAKING: the `--context` option is now required. Users need to opt
+  out if they don't want to provide this for every command
+- BREAKING: the `--context` option is always a required field for internal users
 
 # v0.23.0
 
