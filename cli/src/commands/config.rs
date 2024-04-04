@@ -7,7 +7,7 @@ use std::path::Path;
 use structopt::StructOpt;
 
 use crate::{
-    config::{self, ContextConfig, ReinferConfig},
+    config::{self, write_reinfer_config, ContextConfig, ReinferConfig},
     utils,
 };
 use anyhow::{anyhow, Result};
@@ -68,6 +68,14 @@ pub enum ConfigArgs {
         /// The name of the context.
         name: String,
     },
+
+    #[structopt(name = "set-context-required")]
+    /// Set whether context is a required field
+    SetContextRequired {
+        // Whether the context is a required field
+        #[structopt(name = "is-required", parse(try_from_str))]
+        is_required: bool,
+    },
 }
 
 pub fn run(
@@ -76,6 +84,10 @@ pub fn run(
     config_path: impl AsRef<Path>,
 ) -> Result<ReinferConfig> {
     match args {
+        ConfigArgs::SetContextRequired { is_required } => {
+            config.context_is_required = *is_required;
+            write_reinfer_config(config_path, &config)?
+        }
         ConfigArgs::ListContexts { tokens } if config.num_contexts() > 0 => {
             let mut contexts = config.get_all_contexts().clone();
             contexts.sort_unstable_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
