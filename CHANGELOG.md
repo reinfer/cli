@@ -1,4 +1,4 @@
-# Unreleased
+# v0.24.0
 - BREAKING: the `--context` option is now required. Users need to opt
   out if they don't want to provide this for every command
 - BREAKING: the `--context` option is always a required field for internal users
