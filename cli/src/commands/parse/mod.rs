@@ -87,12 +87,17 @@ impl Statistics {
 pub fn get_files_in_directory(
     directory: &PathBuf,
     target_extension: &str,
+    case_insensitive: bool,
 ) -> Result<Vec<DirEntry>> {
     Ok(std::fs::read_dir(directory)?
         .filter_map(|path| {
             let path = path.ok()?;
             if path.path().extension().is_some_and(|extension| {
-                *extension.to_ascii_lowercase() == *target_extension.to_ascii_lowercase()
+                if case_insensitive {
+                    *extension.to_ascii_lowercase() == *target_extension.to_ascii_lowercase()
+                } else {
+                    extension == target_extension
+                }
             }) {
                 Some(path)
             } else {

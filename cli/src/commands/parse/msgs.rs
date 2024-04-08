@@ -230,7 +230,7 @@ pub fn parse(client: &Client, args: &ParseMsgArgs) -> Result<()> {
         ensure_uip_user_consents_to_ai_unit_charge(client.base_url())?;
     }
 
-    let msg_paths = get_files_in_directory(directory, "msg")?;
+    let msg_paths = get_files_in_directory(directory, "msg", true)?;
     let statistics = Arc::new(Statistics::new());
     let _progress = get_progress_bar(msg_paths.len() as u64, &statistics);
     let source = client.get_source(source.clone())?;
