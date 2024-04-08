@@ -50,7 +50,7 @@ pub fn parse(client: &Client, args: &ParseEmlArgs, pool: &mut Pool) -> Result<()
         ensure_uip_user_consents_to_ai_unit_charge(client.base_url())?;
     }
 
-    let eml_paths = get_files_in_directory(directory, "eml")?;
+    let eml_paths = get_files_in_directory(directory, "eml", true)?;
     let statistics = Arc::new(Statistics::new());
     let _progress = get_progress_bar(eml_paths.len() as u64, &statistics);
 
