@@ -200,7 +200,7 @@ fn delete_comments_in_period(
         };
 
         // This is the maximum number of comments which the API permits deleting in a single call.
-        const DELETION_BATCH_SIZE: usize = 128;
+        const DELETION_BATCH_SIZE: usize = 32;
         // Buffer to store comment IDs to delete - allow it to be slightly larger than the deletion
         // batch size so that if there's an incomplete page it'll increase the counts.
         let mut comments_to_delete =
