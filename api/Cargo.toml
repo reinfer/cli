@@ -2,7 +2,7 @@
 name = "reinfer-client"
 version = "0.24.0"
 description = "API client for Re:infer, the conversational data intelligence platform"
-homepage = "https://github.com/reinfer/cli"
+repository = "https://github.com/reinfer/cli"
 readme = "README.md"
 authors = ["reinfer Ltd. <eng@reinfer.io>"]
 license = "Apache-2.0"
