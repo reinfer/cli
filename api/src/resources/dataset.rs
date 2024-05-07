@@ -11,7 +11,7 @@ use crate::{
         source::Id as SourceId,
         user::Username,
     },
-    AnnotatedComment, CommentFilter, Continuation, LabelName,
+    AnnotatedComment, CommentFilter, Continuation,
 };
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -87,12 +87,13 @@ pub enum TimeResolution {
 #[serde(rename_all = "snake_case")]
 pub enum Attribute {
     Labels,
+    AttachmentPropertyTypes,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AttributeFilterEnum {
-    StringAnyOf { any_of: Vec<LabelName> },
+    StringAnyOf { any_of: Vec<String> },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -326,7 +327,7 @@ mod tests {
             attribute_filters: vec![AttributeFilter {
                 attribute: Attribute::Labels,
                 filter: AttributeFilterEnum::StringAnyOf {
-                    any_of: vec![LabelName("Access Management".to_string())],
+                    any_of: vec!["Access Management".to_string()],
                 },
             }],
             continuation: Some(Continuation(
@@ -361,7 +362,7 @@ mod tests {
             attribute_filters: vec![AttributeFilter {
                 attribute: Attribute::Labels,
                 filter: AttributeFilterEnum::StringAnyOf {
-                    any_of: vec![LabelName("Access Management".to_string())],
+                    any_of: vec!["Access Management".to_string()],
                 },
             }],
             continuation: Some(Continuation(
@@ -394,7 +395,7 @@ mod tests {
             attribute_filters: vec![AttributeFilter {
                 attribute: Attribute::Labels,
                 filter: AttributeFilterEnum::StringAnyOf {
-                    any_of: vec![LabelName("label Name".to_string())],
+                    any_of: vec!["label Name".to_string()],
                 },
             }],
             label_property_timeseries: true,
