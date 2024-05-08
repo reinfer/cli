@@ -112,6 +112,10 @@ pub struct GetManyCommentsArgs {
     #[structopt(long = "interactive-user-property-filter")]
     /// Open a dialog to interactively construct the user property filter to use
     interactive_property_filter: bool,
+
+    #[structopt(long = "attachment-types")]
+    /// The list of attachment types to filter to
+    attachment_type_filters: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -246,6 +250,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         to_timestamp,
         path,
         label_filter,
+        attachment_type_filters,
         property_filter: user_property_filter,
         interactive_property_filter: interative_property_filter,
         recipients,
@@ -272,6 +277,10 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
 
     if label_filter.is_some() && dataset.is_none() {
         bail!("Cannot use a label filter when `dataset` is not provided.")
+    }
+
+    if !attachment_type_filters.is_empty() && dataset.is_none() {
+        bail!("Cannot use a attachment type filter when `dataset` is not provided.")
     }
 
     if label_filter.is_some() && reviewed_only {
@@ -316,6 +325,17 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         if label_attribute_filter.is_none() {
             return Ok(());
         }
+    }
+
+    let mut attachment_property_types_filter: Option<AttributeFilter> = None;
+
+    if !attachment_type_filters.is_empty() {
+        attachment_property_types_filter = Some(AttributeFilter {
+            attribute: Attribute::AttachmentPropertyTypes,
+            filter: AttributeFilterEnum::StringAnyOf {
+                any_of: attachment_type_filters.to_vec(),
+            },
+        });
     }
 
     let user_properties_filter = if let Some(filter) = user_property_filter {
@@ -364,6 +384,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         show_progress: !no_progress,
         label_attribute_filter,
         user_properties_filter,
+        attachment_property_types_filter,
         messages_filter: Some(messages_filter),
     };
 
@@ -386,25 +407,18 @@ fn get_label_attribute_filter(
 ) -> Result<Option<AttributeFilter>> {
     let dataset = client.get_dataset(dataset_id)?;
 
-    let label_names: Vec<LabelName> = dataset
+    let label_names: Vec<String> = dataset
         .label_defs
         .into_iter()
         .filter(|label_def| filter.is_match(&label_def.name.0))
-        .map(|label_def| label_def.name)
+        .map(|label_def| label_def.name.0)
         .collect();
 
     if label_names.is_empty() {
         info!("No label names matching the filter '{}'", filter);
         Ok(None)
     } else {
-        info!(
-            "Filtering on label(s):\n- {}",
-            label_names
-                .iter()
-                .map(|label_name| label_name.0.as_str())
-                .collect::<Vec<_>>()
-                .join("\n- ")
-        );
+        info!("Filtering on label(s):\n- {}", label_names.join("\n- "));
         Ok(Some(AttributeFilter {
             attribute: Attribute::Labels,
             filter: AttributeFilterEnum::StringAnyOf {
@@ -422,6 +436,7 @@ struct CommentDownloadOptions {
     timerange: CommentsIterTimerange,
     show_progress: bool,
     label_attribute_filter: Option<AttributeFilter>,
+    attachment_property_types_filter: Option<AttributeFilter>,
     user_properties_filter: Option<UserPropertiesFilter>,
     messages_filter: Option<MessagesFilter>,
 }
@@ -432,6 +447,10 @@ impl CommentDownloadOptions {
 
         if let Some(label_attribute_filter) = &self.label_attribute_filter {
             filters.push(label_attribute_filter.clone());
+        }
+
+        if let Some(attachment_types_attribute_filter) = &self.attachment_property_types_filter {
+            filters.push(attachment_types_attribute_filter.clone())
         }
 
         filters

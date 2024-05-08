@@ -2,6 +2,7 @@
 - Fixes issue when getting streams that have multiple filters on single user property
 - Fixes issue where upper case file names would not be matched in `parse` 
 - Reduce batch size when deleting comment batches
+- Support attachment type filters
 
 # v0.24.0
 - BREAKING: the `--context` option is now required. Users need to opt
