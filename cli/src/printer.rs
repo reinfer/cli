@@ -3,8 +3,8 @@ use colored::Colorize;
 use prettytable::{format, row, Row, Table};
 use reinfer_client::{
     resources::{
-        audit::PrintableAuditEvent, dataset::DatasetAndStats, integration::Integration,
-        quota::Quota,
+        audit::PrintableAuditEvent, bucket_statistics::Statistics as BucketStatistics,
+        dataset::DatasetAndStats, integration::Integration, quota::Quota,
     },
     Bucket, CommentStatistics, Dataset, Project, Source, Stream, User,
 };
@@ -179,6 +179,48 @@ impl DisplayTable for Source {
             },
             self.title,
         ]
+    }
+}
+
+#[derive(Debug)]
+pub struct PrintableBucket {
+    pub bucket: Bucket,
+    pub stats: Option<BucketStatistics>,
+}
+impl DisplayTable for PrintableBucket {
+    fn to_table_headers() -> Row {
+        row![bFg => "Name", "ID", "Created (UTC)", "Transform Tag", "Num Emails"]
+    }
+
+    fn to_table_row(&self) -> Row {
+        let full_name = format!(
+            "{}{}{}",
+            self.bucket.owner.0.dimmed(),
+            "/".dimmed(),
+            self.bucket.name.0
+        );
+        row![
+            full_name,
+            self.bucket.id.0,
+            self.bucket.created_at.format("%Y-%m-%d %H:%M:%S"),
+            match &self.bucket.transform_tag {
+                Some(transform_tag) => transform_tag.0.as_str().into(),
+                None => "missing".dimmed(),
+            },
+            if let Some(stats) = &self.stats {
+                stats.count.to_string().as_str().into()
+            } else {
+                "none".dimmed()
+            }
+        ]
+    }
+}
+impl Serialize for PrintableBucket {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        Serialize::serialize(&self.bucket, serializer)
     }
 }
 
