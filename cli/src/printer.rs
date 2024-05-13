@@ -98,11 +98,19 @@ impl DisplayTable for Bucket {
 
 impl DisplayTable for Quota {
     fn to_table_headers() -> Row {
-        row![bFg => "Kind", "Hard Limit"]
+        row![bFg => "Kind", "Hard Limit", "Usage (Total)", "Usage %"]
     }
 
     fn to_table_row(&self) -> Row {
-        row![self.quota_kind, Thousands(self.hard_limit)]
+        row![
+            self.quota_kind,
+            Thousands(self.hard_limit),
+            Thousands(self.current_max_usage),
+            format!(
+                "{:.0}%",
+                (self.current_max_usage as f64 / self.hard_limit as f64) * 100.0
+            )
+        ]
     }
 }
 

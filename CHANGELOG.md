@@ -4,7 +4,7 @@
 - Reduce batch size when deleting comment batches
 - Support attachment type filters
 - support getting stats for `get buckets` 
-
+- Show usage on `get quotas`
 
 # v0.24.0
 - BREAKING: the `--context` option is now required. Users need to opt

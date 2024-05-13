@@ -1,7 +1,7 @@
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
-use std::{fmt::Display, str::FromStr};
+use std::{fmt::Display, str::FromStr, u64};
 
 #[derive(Debug, Clone, SerializeDisplay, DeserializeFromStr, PartialEq, Eq, Hash, Copy)]
 pub enum TenantQuotaKind {
@@ -106,6 +106,7 @@ pub struct CreateQuota {
 pub struct Quota {
     pub hard_limit: u64,
     pub quota_kind: TenantQuotaKind,
+    pub current_max_usage: u64,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
