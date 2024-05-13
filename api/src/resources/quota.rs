@@ -106,6 +106,7 @@ pub struct CreateQuota {
 pub struct Quota {
     pub hard_limit: u64,
     pub quota_kind: TenantQuotaKind,
+    pub current_max_usage: u64,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
