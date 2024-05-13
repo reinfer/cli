@@ -106,10 +106,14 @@ impl DisplayTable for Quota {
             self.quota_kind,
             Thousands(self.hard_limit),
             Thousands(self.current_max_usage),
-            format!(
-                "{:.0}%",
-                (self.current_max_usage as f64 / self.hard_limit as f64) * 100.0
-            )
+            if self.hard_limit > 0 {
+                format!(
+                    "{:.0}%",
+                    (self.current_max_usage as f64 / self.hard_limit as f64) * 100.0
+                )
+            } else {
+                "N/A".dimmed().to_string()
+            }
         ]
     }
 }

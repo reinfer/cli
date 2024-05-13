@@ -1,7 +1,7 @@
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
-use std::{fmt::Display, str::FromStr, u64};
+use std::{fmt::Display, str::FromStr};
 
 #[derive(Debug, Clone, SerializeDisplay, DeserializeFromStr, PartialEq, Eq, Hash, Copy)]
 pub enum TenantQuotaKind {
