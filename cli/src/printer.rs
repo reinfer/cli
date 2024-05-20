@@ -79,7 +79,7 @@ impl DisplayTable for Integration {
 }
 impl DisplayTable for Bucket {
     fn to_table_headers() -> Row {
-        row![bFg => "Name", "ID", "Created (UTC)", "Transform Tag"]
+        row![bFg => "Name", "ID", "Created (UTC)"]
     }
 
     fn to_table_row(&self) -> Row {
@@ -88,10 +88,6 @@ impl DisplayTable for Bucket {
             full_name,
             self.id.0,
             self.created_at.format("%Y-%m-%d %H:%M:%S"),
-            match &self.transform_tag {
-                Some(transform_tag) => transform_tag.0.as_str().into(),
-                None => "missing".dimmed(),
-            }
         ]
     }
 }
@@ -201,7 +197,7 @@ pub struct PrintableBucket {
 }
 impl DisplayTable for PrintableBucket {
     fn to_table_headers() -> Row {
-        row![bFg => "Name", "ID", "Created (UTC)", "Transform Tag", "Num Emails"]
+        row![bFg => "Name", "ID", "Created (UTC)", "Num Emails"]
     }
 
     fn to_table_row(&self) -> Row {
@@ -215,10 +211,6 @@ impl DisplayTable for PrintableBucket {
             full_name,
             self.bucket.id.0,
             self.bucket.created_at.format("%Y-%m-%d %H:%M:%S"),
-            match &self.bucket.transform_tag {
-                Some(transform_tag) => transform_tag.0.as_str().into(),
-                None => "missing".dimmed(),
-            },
             if let Some(stats) = &self.stats {
                 stats.count.to_string().as_str().into()
             } else {

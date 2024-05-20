@@ -1,7 +1,7 @@
-use crate::{commands::DEFAULT_TRANSFORM_TAG, printer::Printer};
+use crate::printer::Printer;
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::{BucketFullName, BucketType, Client, NewBucket, TransformTag};
+use reinfer_client::{BucketFullName, BucketType, Client, NewBucket};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -17,11 +17,6 @@ pub struct CreateBucketArgs {
     #[structopt(default_value, long = "type")]
     /// Set the type of the new bucket. Currently, this must be "emails".
     bucket_type: BucketType,
-
-    #[structopt(long = "transform-tag")]
-    /// Set the transform tag of the new bucket. You will be given this value
-    /// by a Re:infer engineer.
-    transform_tag: Option<TransformTag>,
 }
 
 pub fn create(client: &Client, args: &CreateBucketArgs, printer: &Printer) -> Result<()> {
@@ -29,12 +24,7 @@ pub fn create(client: &Client, args: &CreateBucketArgs, printer: &Printer) -> Re
         name,
         title,
         bucket_type,
-        transform_tag,
     } = args;
-
-    let transform_tag = transform_tag
-        .clone()
-        .unwrap_or(DEFAULT_TRANSFORM_TAG.clone());
 
     let bucket = client
         .create_bucket(
@@ -42,14 +32,13 @@ pub fn create(client: &Client, args: &CreateBucketArgs, printer: &Printer) -> Re
             NewBucket {
                 title: title.as_deref(),
                 bucket_type: *bucket_type,
-                transform_tag: &transform_tag,
             },
         )
         .context("Operation to create a bucket has failed")?;
     info!(
         "New bucket `{}` [id: {}] created successfully",
         bucket.full_name(),
-        bucket.id
+        bucket.id,
     );
     printer.print_resources(&[bucket])?;
     Ok(())
