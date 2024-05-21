@@ -132,7 +132,7 @@ fn test_create_update_project_custom() {
 
     // Partial update
     cli.run(["update", "project", "--title=updated title", project.name()]);
-    expected_project_info.title = "updated title".to_owned();
+    "updated title".clone_into(&mut expected_project_info.title);
     assert_eq!(get_project_info(), expected_project_info);
 
     // Should be able to update all fields
@@ -143,8 +143,8 @@ fn test_create_update_project_custom() {
         "--description=updated description",
         project.name(),
     ]);
-    expected_project_info.title = "updated title for second time".to_owned();
-    expected_project_info.description = "updated description".to_owned();
+    "updated title for second time".clone_into(&mut expected_project_info.title);
+    "updated description".clone_into(&mut expected_project_info.description);
     assert_eq!(get_project_info(), expected_project_info);
 }
 
