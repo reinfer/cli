@@ -163,7 +163,7 @@ fn test_create_update_source_custom() {
         "--title=updated title",
         source.identifier(),
     ]);
-    expected_source_info.title = "updated title".to_owned();
+    "updated title".clone_into(&mut expected_source_info.title);
     assert_eq!(get_source_info(), expected_source_info);
 
     // Should be able to update all fields
@@ -175,8 +175,8 @@ fn test_create_update_source_custom() {
         "--should-translate=false",
         source.identifier(),
     ]);
-    expected_source_info.title = "updated title".to_owned();
-    expected_source_info.description = "updated description".to_owned();
+    "updated title".clone_into(&mut expected_source_info.title);
+    "updated description".clone_into(&mut expected_source_info.description);
     expected_source_info.should_translate = false;
     assert_eq!(get_source_info(), expected_source_info);
 }

@@ -19,8 +19,6 @@ pub struct Bucket {
     pub name: Name,
     pub owner: Username,
     pub created_at: DateTime<Utc>,
-    #[serde(default)]
-    pub transform_tag: Option<TransformTag>,
 }
 
 impl Bucket {
@@ -40,17 +38,6 @@ pub struct Id(pub String);
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct ModelFamily(pub String);
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-pub struct TransformTag(pub String);
-
-impl FromStr for TransformTag {
-    type Err = Error;
-
-    fn from_str(string: &str) -> Result<Self> {
-        Ok(Self(string.to_owned()))
-    }
-}
 
 // TODO(mcobzarenco)[3963]: Make `Identifier` into a trait (ensure it still implements
 // `FromStr` so we can take T: Identifier as a clap command line argument).
@@ -114,7 +101,6 @@ pub struct NewBucket<'request> {
     pub bucket_type: BucketType,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<&'request str>,
-    pub transform_tag: &'request TransformTag,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]

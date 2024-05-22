@@ -1,3 +1,7 @@
+## Breaking
+
+- The `create bucket` flag `--transform-tag` is now removed.
+
 # v0.25.0
 - Fixes issue when getting streams that have multiple filters on single user property
 - Fixes issue where upper case file names would not be matched in `parse` 

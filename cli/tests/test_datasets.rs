@@ -282,7 +282,7 @@ fn test_create_update_dataset_custom() {
         "--title=updated title",
         dataset.identifier(),
     ]);
-    expected_dataset_info.title = "updated title".to_owned();
+    "updated title".clone_into(&mut expected_dataset_info.title);
     assert_eq!(get_dataset_info(), expected_dataset_info);
 
     // Should be able to update all fields
@@ -297,8 +297,8 @@ fn test_create_update_dataset_custom() {
         dataset.identifier(),
     ]);
 
-    expected_dataset_info.title = "updated title".to_owned();
-    expected_dataset_info.description = "updated description".to_owned();
+    "updated title".clone_into(&mut expected_dataset_info.title);
+    "updated description".clone_into(&mut expected_dataset_info.description);
     expected_dataset_info.source_ids = vec![source.id.0];
     assert_eq!(get_dataset_info(), expected_dataset_info);
 

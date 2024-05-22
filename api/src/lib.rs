@@ -91,7 +91,7 @@ pub use crate::{
     resources::{
         bucket::{
             Bucket, BucketType, FullName as BucketFullName, Id as BucketId,
-            Identifier as BucketIdentifier, Name as BucketName, NewBucket, TransformTag,
+            Identifier as BucketIdentifier, Name as BucketName, NewBucket,
         },
         comment::{
             AnnotatedComment, Comment, CommentFilter, CommentsIterPage, Continuation,
@@ -120,7 +120,7 @@ pub use crate::{
         project::{NewProject, Project, ProjectName, UpdateProject},
         source::{
             FullName as SourceFullName, Id as SourceId, Identifier as SourceIdentifier,
-            Name as SourceName, NewSource, Source, SourceKind, UpdateSource,
+            Name as SourceName, NewSource, Source, SourceKind, TransformTag, UpdateSource,
         },
         statistics::Statistics as CommentStatistics,
         stream::{
