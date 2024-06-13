@@ -1,3 +1,6 @@
+# Unreleased 
+- Alow users to filter get datasets by sources that they reference
+
 # v0.26.0
 ## Breaking
 

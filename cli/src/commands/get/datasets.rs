@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use log::info;
 use reinfer_client::{
     resources::dataset::{DatasetAndStats, DatasetStats, StatisticsRequestParams},
-    Client, CommentFilter, DatasetIdentifier,
+    Client, CommentFilter, DatasetIdentifier, SourceIdentifier,
 };
 use structopt::StructOpt;
 
@@ -17,14 +17,19 @@ pub struct GetDatasetsArgs {
     #[structopt(long = "stats")]
     /// Whether to include dataset statistics in response
     include_stats: bool,
+
+    #[structopt(long = "source")]
+    /// If specified, only list this datasets containing this source (name or id)
+    source_identifier: Option<SourceIdentifier>,
 }
 
 pub fn get(client: &Client, args: &GetDatasetsArgs, printer: &Printer) -> Result<()> {
     let GetDatasetsArgs {
         dataset,
         include_stats,
+        source_identifier,
     } = args;
-    let datasets = if let Some(dataset) = dataset {
+    let mut datasets = if let Some(dataset) = dataset {
         vec![client
             .get_dataset(dataset.clone())
             .context("Operation to list datasets has failed.")?]
@@ -37,6 +42,12 @@ pub fn get(client: &Client, args: &GetDatasetsArgs, printer: &Printer) -> Result
         });
         datasets
     };
+
+    if let Some(source_id) = source_identifier {
+        let source = client.get_source(source_id.clone())?;
+
+        datasets.retain(|d| d.source_ids.contains(&source.id));
+    }
 
     let mut dataset_stats = Vec::new();
     if *include_stats {
@@ -74,6 +85,7 @@ pub fn get(client: &Client, args: &GetDatasetsArgs, printer: &Printer) -> Result
             dataset_stats.push(dataset_and_stats);
             Ok(())
         })?;
+
         printer.print_resources(&dataset_stats)
     } else {
         printer.print_resources(&datasets)
