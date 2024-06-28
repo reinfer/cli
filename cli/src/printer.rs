@@ -3,8 +3,11 @@ use colored::Colorize;
 use prettytable::{format, row, Row, Table};
 use reinfer_client::{
     resources::{
-        audit::PrintableAuditEvent, bucket_statistics::Statistics as BucketStatistics,
-        dataset::DatasetAndStats, integration::Integration, quota::Quota,
+        audit::PrintableAuditEvent,
+        bucket_statistics::{Count, Statistics as BucketStatistics},
+        dataset::DatasetAndStats,
+        integration::Integration,
+        quota::Quota,
     },
     Bucket, CommentStatistics, Dataset, Project, Source, Stream, User,
 };
@@ -207,15 +210,19 @@ impl DisplayTable for PrintableBucket {
             "/".dimmed(),
             self.bucket.name.0
         );
+        let count_str = if let Some(stats) = &self.stats {
+            match &stats.count {
+                Count::LowerBoundBucketCount { value } => format!(">={}", value),
+                Count::ExactBucketCount { value } => format!("={}", value),
+            }
+        } else {
+            "none".dimmed().to_string()
+        };
         row![
             full_name,
             self.bucket.id.0,
             self.bucket.created_at.format("%Y-%m-%d %H:%M:%S"),
-            if let Some(stats) = &self.stats {
-                stats.count.to_string().as_str().into()
-            } else {
-                "none".dimmed()
-            }
+            count_str
         ]
     }
 }

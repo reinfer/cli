@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 
 use colored::Colorize;
-use reinfer_client::{BucketIdentifier, Client};
+use reinfer_client::{resources::bucket_statistics::Count, BucketIdentifier, Client};
 use std::{
     fs::File,
     io::{self, BufWriter, Write},
@@ -63,7 +63,12 @@ fn download_emails(
 
     let statistics = Arc::new(Statistics::new());
 
-    let _progress = get_emails_progress_bar(bucket_statistics.count as u64, &statistics);
+    let progress_bytes = match bucket_statistics.count {
+        Count::LowerBoundBucketCount { value } => value,
+        Count::ExactBucketCount { value } => value,
+    } as u64;
+
+    let _progress = get_emails_progress_bar(progress_bytes, &statistics);
 
     client
         .get_emails_iter(&bucket.full_name(), None)
