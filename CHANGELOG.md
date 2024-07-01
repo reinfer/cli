@@ -1,5 +1,10 @@
 # Unreleased 
+
+# v0.27.0
+## Changed
+
 - Alow users to filter get datasets by sources that they reference
+- Bucket statistics now provide either an exact count of raw emails up to a predefined upper limit, or a lower bound if the count exceeds this limit.
 
 # v0.26.0
 ## Breaking
