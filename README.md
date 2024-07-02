@@ -175,18 +175,14 @@ Adding a context with a name that already exists will allow you to update any of
 
 WIP
 
-# License
-
-This project is licensed under Apache License, Version 2.0 ([LICENSE](LICENSE) or http://www.apache.org/licenses/LICENSE-2.0).
-
-### Contribution
+## Contribution
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the `reinfer-cli` or `reinfer-client` crate, as defined in the
 Apache-2.0 license, shall be licensed as above, without any additional terms or
 conditions.
 
-#### Release Preparation
+### Release Preparation
 
 - Update repo files to represent the new version
   - Bump the version number in both `api/Cargo.toml` and `cli/Cargo.toml`.
@@ -201,3 +197,8 @@ conditions.
   - Use the relevant changelog section as the release description.
   - `Publish release` will upload build artefacts and tag the relevant commit.
   - Check the [Github actions log](https://github.com/reinfer/cli/actions/workflows/publish.yml) to make sure the release was successful.
+
+## License
+
+This project is licensed under Apache License, Version 2.0 ([LICENSE](LICENSE) or http://www.apache.org/licenses/LICENSE-2.0).
+
