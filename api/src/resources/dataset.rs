@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::{Error, Result},
     resources::{
-        entity_def::{EntityDef, NewEntityDef, NewGeneralFieldDef},
+        entity_def::{EntityDef, GeneralFieldDef, NewEntityDef, NewGeneralFieldDef},
         label_def::{LabelDef, NewLabelDef},
         label_group::{LabelGroup, NewLabelGroup},
         source::Id as SourceId,
@@ -33,6 +33,7 @@ pub struct Dataset {
     pub source_ids: Vec<SourceId>,
     pub has_sentiment: bool,
     pub entity_defs: Vec<EntityDef>,
+    pub general_fields: Vec<GeneralFieldDef>,
     pub label_defs: Vec<LabelDef>,
     pub label_groups: Vec<LabelGroup>,
 }

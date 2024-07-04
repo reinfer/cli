@@ -25,6 +25,17 @@ pub struct NewEntityDef {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct GeneralFieldDef {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub field_type_id: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub field_type_name: Option<Name>,
+
+    pub api_name: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct NewGeneralFieldDef {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub field_type_id: Option<String>,
