@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::{Error, Result},
     resources::{
-        entity_def::{EntityDef, NewEntityDef},
+        entity_def::{EntityDef, NewEntityDef, NewGeneralFieldDef},
         label_def::{LabelDef, NewLabelDef},
         label_group::{LabelGroup, NewLabelGroup},
         source::Id as SourceId,
@@ -243,6 +243,9 @@ pub struct NewDataset<'request> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entity_defs: Option<&'request [NewEntityDef]>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub general_fields: Option<&'request [NewGeneralFieldDef]>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label_defs: Option<&'request [NewLabelDef]>,

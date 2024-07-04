@@ -23,3 +23,17 @@ pub struct NewEntityDef {
     pub title: String,
     pub trainable: bool,
 }
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct NewGeneralFieldDef {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub field_type_id: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub field_type_name: Option<Name>,
+
+    pub api_name: String,
+}

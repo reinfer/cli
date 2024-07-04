@@ -2,7 +2,8 @@ use crate::printer::Printer;
 use anyhow::{anyhow, Context, Error, Result};
 use log::info;
 use reinfer_client::{
-    Client, DatasetFullName, NewDataset, NewEntityDef, NewLabelDef, NewLabelGroup, SourceIdentifier,
+    resources::entity_def::NewGeneralFieldDef, Client, DatasetFullName, NewDataset, NewEntityDef,
+    NewLabelDef, NewLabelGroup, SourceIdentifier,
 };
 use serde::Deserialize;
 use std::str::FromStr;
@@ -37,6 +38,10 @@ pub struct CreateDatasetArgs {
     /// Entity defs to create at dataset creation, as json
     entity_defs: VecExt<NewEntityDef>,
 
+    #[structopt(short = "g", long = "general-fields", default_value = "[]")]
+    /// General Fields to create at dataset creation, as json
+    general_fields: VecExt<NewGeneralFieldDef>,
+
     #[structopt(long = "label-defs", default_value = "[]")]
     /// Label defs to create at dataset creation, as json.
     /// Only used if label_groups is not provided.
@@ -63,6 +68,7 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
         has_sentiment,
         sources,
         entity_defs,
+        general_fields,
         label_defs,
         label_groups,
         model_family,
@@ -84,6 +90,7 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
 
     // Unwrap the inner values, we only need the outer for argument parsing
     let entity_defs = &entity_defs.0;
+    let general_fields = &general_fields.0;
     let label_groups = &label_groups.0;
     let label_defs = match (!&label_defs.0.is_empty(), !label_groups.is_empty()) {
         // if we only have label defs, then use them
@@ -103,6 +110,11 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
                     None
                 } else {
                     Some(entity_defs)
+                },
+                general_fields: if general_fields.is_empty() {
+                    None
+                } else {
+                    Some(general_fields)
                 },
                 label_defs,
                 label_groups: if label_groups.is_empty() {
