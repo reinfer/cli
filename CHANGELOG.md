@@ -1,4 +1,5 @@
 # Unreleased 
+- Add general fields to `create dataset`
 
 # v0.27.0
 ## Changed
