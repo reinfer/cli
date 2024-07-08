@@ -1,3 +1,6 @@
+# Unreleased
+- Add `config parse-from-url` command for parsing configuration from a URL
+
 # v0.28.0
 - Add general fields to `create datasets`
 
@@ -14,10 +17,10 @@
 
 # v0.25.0
 - Fixes issue when getting streams that have multiple filters on single user property
-- Fixes issue where upper case file names would not be matched in `parse` 
+- Fixes issue where upper case file names would not be matched in `parse`
 - Reduce batch size when deleting comment batches
 - Support attachment type filters
-- support getting stats for `get buckets` 
+- support getting stats for `get buckets`
 - Show usage on `get quotas`
 
 # v0.24.0
@@ -29,7 +32,7 @@
 
 - Add `get emails`
 - Added support for `--auto-increase-up-to` when creating quotas.
-- Support spans format for entities 
+- Support spans format for entities
 
 # v0.22.2
 

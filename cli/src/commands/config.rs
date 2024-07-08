@@ -76,6 +76,17 @@ pub enum ConfigArgs {
         #[structopt(name = "is-required", parse(try_from_str))]
         is_required: bool,
     },
+
+    #[structopt(name = "parse-from-url")]
+    /// Parse config from a URL
+    ParseFromUrl {
+        /// The URL to be parsed
+        #[structopt(long = "url", short = "u")]
+        url: Option<Url>,
+        /// The reinfer API token that will be used for this context
+        #[structopt(long = "token", short = "t")]
+        token: Option<String>,
+    },
 }
 
 pub fn run(
@@ -206,8 +217,58 @@ pub fn run(
                 }
             }
         }
+        ConfigArgs::ParseFromUrl { url, token } => {
+            parse_context_from_url(url, token, config.clone(), config_path)?;
+        }
     }
     Ok(config)
+}
+
+fn parse_context_from_url(
+    url: &Option<Url>,
+    token: &Option<String>,
+    config: ReinferConfig,
+    config_path: impl AsRef<Path>,
+) -> Result<()> {
+    let mut url: Url = match url {
+        None => loop {
+            match Url::parse(&utils::read_from_stdin("URL", None)?) {
+                Ok(url) => break url,
+                Err(error) => {
+                    error!("Invalid URL: {}", error);
+                }
+            }
+        },
+        Some(url) => url.clone(),
+    };
+    let path_segments: Vec<&str> = match url.path_segments() {
+        None => {
+            return Err(anyhow!(
+                "Invalid URL path, needs to contain <ORG NAME>/<TENANT NAME>/reinfer_/"
+            ))
+        }
+        Some(segments) => segments.collect(),
+    };
+    if path_segments.len() < 3 || path_segments[2] != "reinfer_" {
+        return {
+            Err(anyhow!(
+                "Invalid URL path, needs to contain <ORG NAME>/<TENANT NAME>/reinfer_/"
+            ))
+        };
+    }
+    let name: String = format!("{}/{}", path_segments[0], path_segments[1]);
+    // Remove the path to use the rest as the endpoint
+    url.set_path("");
+
+    add_or_edit_context(
+        &Some(name),
+        token,
+        &Some(url),
+        false,
+        &None,
+        config,
+        config_path,
+    )
 }
 
 fn add_or_edit_context(
