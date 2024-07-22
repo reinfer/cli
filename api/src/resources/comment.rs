@@ -293,10 +293,20 @@ pub enum Sentiment {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct AttachmentReference(pub String);
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct ContentHash(pub String);
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct AttachmentMetadata {
     pub name: String,
     pub size: u64,
     pub content_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attachment_reference: Option<AttachmentReference>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_hash: Option<ContentHash>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Eq)]

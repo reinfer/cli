@@ -1,3 +1,9 @@
+use std::{
+    fs::{create_dir, File},
+    io::{BufWriter, Write},
+    path::PathBuf,
+};
+
 use anyhow::{anyhow, Result};
 use dialoguer::Confirm;
 use once_cell::sync::Lazy;
@@ -39,3 +45,40 @@ Do you want to continue?"#,
 
 static DEFAULT_TRANSFORM_TAG: Lazy<TransformTag> =
     Lazy::new(|| TransformTag("generic.0.CONVKER5".to_string()));
+
+pub struct LocalAttachmentPath {
+    index: usize,
+    name: String,
+    parent_dir: PathBuf,
+}
+
+impl LocalAttachmentPath {
+    fn ensure_parent_dir_exists(&self) -> Result<()> {
+        if !self.parent_dir.exists() {
+            create_dir(&self.parent_dir)?;
+        }
+        Ok(())
+    }
+
+    fn name(&self) -> String {
+        format!("{0}.{1}", self.index, self.name)
+    }
+
+    fn path(&self) -> PathBuf {
+        self.parent_dir.join(self.name())
+    }
+
+    pub fn write(&self, buf_to_write: Vec<u8>) -> Result<bool> {
+        self.ensure_parent_dir_exists()?;
+
+        if !self.path().is_file() {
+            let f = File::create(&self.path()).expect("Could not create attachment output file");
+
+            let mut buf_writer = BufWriter::new(f);
+            buf_writer.write_all(&buf_to_write)?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+}

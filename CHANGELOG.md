@@ -1,5 +1,6 @@
 # Unreleased
 - Add `config parse-from-url` command for parsing configuration from a URL
+- Add ability to download attachments for comments
 
 # v0.28.0
 - Add general fields to `create datasets`

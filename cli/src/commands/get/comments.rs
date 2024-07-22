@@ -17,16 +17,17 @@ use reinfer_client::{
         },
         source::StatisticsRequestParams as SourceStatisticsRequestParams,
     },
-    AnnotatedComment, Client, CommentFilter, CommentId, CommentsIterTimerange, DatasetFullName,
-    DatasetIdentifier, Entities, HasAnnotations, LabelName, Labelling, ModelVersion,
-    PredictedLabel, PropertyValue, Source, SourceIdentifier, DEFAULT_LABEL_GROUP_NAME,
+    AnnotatedComment, Client, Comment, CommentFilter, CommentId, CommentsIterTimerange,
+    DatasetFullName, DatasetIdentifier, Entities, HasAnnotations, LabelName, Labelling,
+    ModelVersion, PredictedLabel, PropertyValue, Source, SourceIdentifier,
+    DEFAULT_LABEL_GROUP_NAME,
 };
 use serde::Deserialize;
 use std::{
     collections::HashMap,
-    fs::File,
+    fs::{create_dir, File},
     io::{self, BufWriter, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
     str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -36,6 +37,7 @@ use std::{
 use structopt::StructOpt;
 
 use crate::{
+    commands::LocalAttachmentPath,
     printer::print_resources_as_json,
     progress::{Options as ProgressOptions, Progress},
 };
@@ -116,6 +118,10 @@ pub struct GetManyCommentsArgs {
     #[structopt(long = "attachment-types")]
     /// The list of attachment types to filter to
     attachment_type_filters: Vec<String>,
+
+    #[structopt(long = "attachments")]
+    /// Save attachment content for each comment
+    include_attachment_content: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -238,6 +244,43 @@ fn get_user_properties_filter_interactively(
     Ok(UserPropertiesFilter(filters))
 }
 
+#[derive(Default)]
+struct OutputLocations {
+    jsonl_file: Option<BufWriter<std::fs::File>>,
+    attachments_dir: Option<PathBuf>,
+}
+
+fn get_output_locations(path: &Option<PathBuf>) -> Result<OutputLocations> {
+    if let Some(path) = path {
+        let jsonl_file = Some(
+            File::create(path)
+                .with_context(|| format!("Could not open file for writing `{}`", path.display()))
+                .map(BufWriter::new)?,
+        );
+
+        let attachments_dir = path
+            .parent()
+            .context("Could not get attachments directory")?
+            .join(format!(
+                "{0}.attachments",
+                path.file_name()
+                    .context("Could not get output file name")?
+                    .to_string_lossy()
+            ));
+
+        if !attachments_dir.exists() {
+            create_dir(&attachments_dir)?;
+        }
+
+        Ok(OutputLocations {
+            jsonl_file,
+            attachments_dir: Some(attachments_dir),
+        })
+    } else {
+        Ok(OutputLocations::default())
+    }
+}
+
 pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
     let GetManyCommentsArgs {
         source,
@@ -255,6 +298,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         interactive_property_filter: interative_property_filter,
         recipients,
         senders,
+        include_attachment_content,
     } = args;
 
     let by_timerange = from_timestamp.is_some() || to_timestamp.is_some();
@@ -309,14 +353,14 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         bail!("Cannot filter on `senders` or `recipients` when `dataset` is not provided")
     }
 
-    let file = match path {
-        Some(path) => Some(
-            File::create(path)
-                .with_context(|| format!("Could not open file for writing `{}`", path.display()))
-                .map(BufWriter::new)?,
-        ),
-        None => None,
-    };
+    if path.is_none() && include_attachment_content.is_some() {
+        bail!("Cannot include attachment content when no file is provided")
+    }
+
+    let OutputLocations {
+        jsonl_file,
+        attachments_dir,
+    } = get_output_locations(path)?;
 
     let mut label_attribute_filter: Option<AttributeFilter> = None;
     if let (Some(dataset_id), Some(filter)) = (dataset, label_filter) {
@@ -386,9 +430,10 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         user_properties_filter,
         attachment_property_types_filter,
         messages_filter: Some(messages_filter),
+        attachments_dir,
     };
 
-    if let Some(file) = file {
+    if let Some(file) = jsonl_file {
         download_comments(client, source.clone(), file, download_options)
     } else {
         download_comments(
@@ -439,6 +484,7 @@ struct CommentDownloadOptions {
     attachment_property_types_filter: Option<AttributeFilter>,
     user_properties_filter: Option<UserPropertiesFilter>,
     messages_filter: Option<MessagesFilter>,
+    attachments_dir: Option<PathBuf>,
 }
 
 impl CommentDownloadOptions {
@@ -508,6 +554,7 @@ fn download_comments(
             },
             &statistics,
             dataset_name.is_some(),
+            options.attachments_dir.is_some(),
         ))
     };
 
@@ -529,6 +576,7 @@ fn download_comments(
                 source,
                 &statistics,
                 options.include_predictions,
+                options.attachments_dir,
                 writer,
             )?;
         } else {
@@ -554,6 +602,13 @@ fn download_comments(
             .try_for_each(|page| {
                 let page = page.context("Operation to get comments has failed.")?;
                 statistics.add_comments(page.len());
+
+                if let Some(attachments_dir) = &options.attachments_dir {
+                    page.iter().try_for_each(|comment| -> Result<()> {
+                        download_comment_attachments(client, attachments_dir, comment, &statistics)
+                    })?;
+                }
+
                 print_resources_as_json(
                     page.into_iter().map(|comment| AnnotatedComment {
                         comment,
@@ -625,7 +680,7 @@ fn get_comments_from_uids(
                     .context("Operation to get predictions has failed.")?;
                 // since predict-comments endpoint doesn't return some fields,
                 // they are set to None or [] here
-                let comments =
+                let mut comments =
                     page.into_iter()
                         .zip(predictions.into_iter())
                         .map(|(comment, prediction)| AnnotatedComment {
@@ -659,9 +714,20 @@ fn get_comments_from_uids(
                             moon_forms: None,
                             label_properties: None,
                         });
+
+                if let Some(attachments_dir) = &options.attachments_dir {
+                    comments.try_for_each(|comment| -> Result<()> {
+                        download_comment_attachments(
+                            client,
+                            attachments_dir,
+                            &comment.comment,
+                            statistics,
+                        )
+                    })?;
+                }
                 print_resources_as_json(comments, &mut writer)
             } else {
-                let comments = page.into_iter().map(|mut annotated_comment| {
+                let mut comments = page.into_iter().map(|mut annotated_comment| {
                     if !include_predictions {
                         annotated_comment = annotated_comment.without_predictions();
                     }
@@ -670,8 +736,47 @@ fn get_comments_from_uids(
                     }
                     annotated_comment
                 });
+                if let Some(attachments_dir) = &options.attachments_dir {
+                    comments.try_for_each(|comment| -> Result<()> {
+                        download_comment_attachments(
+                            client,
+                            attachments_dir,
+                            &comment.comment,
+                            statistics,
+                        )
+                    })?;
+                }
                 print_resources_as_json(comments, &mut writer)
             }
+        })?;
+    Ok(())
+}
+
+fn download_comment_attachments(
+    client: &Client,
+    attachments_dir: &Path,
+    comment: &Comment,
+    statistics: &Arc<Statistics>,
+) -> Result<()> {
+    comment
+        .attachments
+        .iter()
+        .enumerate()
+        .try_for_each(|(idx, attachment)| -> Result<()> {
+            if let Some(attachment_reference) = &attachment.attachment_reference {
+                let local_attachment = LocalAttachmentPath {
+                    index: idx,
+                    name: attachment.name.clone(),
+                    parent_dir: attachments_dir.join(&comment.id.0),
+                };
+
+                let attachment_buf = client.get_attachment(attachment_reference)?;
+
+                if local_attachment.write(attachment_buf)? {
+                    statistics.add_attachments(1);
+                };
+            }
+            Ok(())
         })?;
     Ok(())
 }
@@ -682,6 +787,7 @@ fn get_reviewed_comments_in_bulk(
     source: Source,
     statistics: &Arc<Statistics>,
     include_predictions: bool,
+    attachments_dir: Option<PathBuf>,
     mut writer: impl Write,
 ) -> Result<()> {
     client
@@ -690,6 +796,18 @@ fn get_reviewed_comments_in_bulk(
             let page = page.context("Operation to get labellings has failed.")?;
             statistics.add_comments(page.len());
             statistics.add_annotated(page.len());
+
+            if let Some(attachments_dir) = &attachments_dir {
+                page.iter().try_for_each(|comment| -> Result<()> {
+                    download_comment_attachments(
+                        client,
+                        attachments_dir,
+                        &comment.comment,
+                        statistics,
+                    )
+                })?;
+            }
+
             let comments = page.into_iter().map(|comment| {
                 if !include_predictions {
                     comment.without_predictions()
@@ -697,6 +815,7 @@ fn get_reviewed_comments_in_bulk(
                     comment
                 }
             });
+
             print_resources_as_json(comments, &mut writer)
         })?;
     Ok(())
@@ -706,6 +825,7 @@ fn get_reviewed_comments_in_bulk(
 pub struct Statistics {
     downloaded: AtomicUsize,
     annotated: AtomicUsize,
+    attachments: AtomicUsize,
 }
 
 impl Statistics {
@@ -713,12 +833,18 @@ impl Statistics {
         Self {
             downloaded: AtomicUsize::new(0),
             annotated: AtomicUsize::new(0),
+            attachments: AtomicUsize::new(0),
         }
     }
 
     #[inline]
     fn add_comments(&self, num_downloaded: usize) {
         self.downloaded.fetch_add(num_downloaded, Ordering::SeqCst);
+    }
+
+    #[inline]
+    fn add_attachments(&self, num_downloaded: usize) {
+        self.attachments.fetch_add(num_downloaded, Ordering::SeqCst);
     }
 
     #[inline]
@@ -732,6 +858,11 @@ impl Statistics {
     }
 
     #[inline]
+    fn num_attachments(&self) -> usize {
+        self.attachments.load(Ordering::SeqCst)
+    }
+
+    #[inline]
     fn num_annotated(&self) -> usize {
         self.annotated.load(Ordering::SeqCst)
     }
@@ -741,19 +872,26 @@ fn get_comments_progress_bar(
     total_bytes: u64,
     statistics: &Arc<Statistics>,
     show_annotated: bool,
+    show_attachments: bool,
 ) -> Progress {
     Progress::new(
         move |statistics| {
             let num_downloaded = statistics.num_downloaded();
             let num_annotated = statistics.num_annotated();
+            let num_attachments = statistics.num_attachments();
             (
                 num_downloaded as u64,
                 format!(
-                    "{} {}{}",
+                    "{} {}{}{}",
                     num_downloaded.to_string().bold(),
                     "comments".dimmed(),
                     if show_annotated {
                         format!(" [{} {}]", num_annotated, "annotated".dimmed())
+                    } else {
+                        "".into()
+                    },
+                    if show_attachments {
+                        format!(" [{} {}]", num_attachments, "attachments".dimmed())
                     } else {
                         "".into()
                     }
