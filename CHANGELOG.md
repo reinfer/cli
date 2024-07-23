@@ -1,5 +1,7 @@
 # Unreleased
 - Add `config parse-from-url` command for parsing configuration from a URL
+- Increase default http timeout to 120s
+
 
 # v0.28.0
 - Add general fields to `create datasets`
