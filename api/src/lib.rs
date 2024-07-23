@@ -1844,13 +1844,13 @@ impl Endpoints {
     }
 }
 
-const DEFAULT_HTTP_TIMEOUT: Lazy<Option<Duration>> = Lazy::new(|| Some(Duration::from_secs(120)));
+const DEFAULT_HTTP_TIMEOUT_SECONDS: u64 = 120;
 
 fn build_http_client(config: &Config) -> Result<HttpClient> {
     let mut builder = HttpClient::builder()
         .gzip(true)
         .danger_accept_invalid_certs(config.accept_invalid_certificates)
-        .timeout(DEFAULT_HTTP_TIMEOUT.clone());
+        .timeout(Some(Duration::from_secs(DEFAULT_HTTP_TIMEOUT_SECONDS)));
 
     if let Some(proxy) = config.proxy.clone() {
         builder = builder.proxy(Proxy::all(proxy).map_err(Error::BuildHttpClient)?);
