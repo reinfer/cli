@@ -203,15 +203,26 @@ fn find_configuration(args: &Args) -> Result<PathBuf> {
     Ok(config_path)
 }
 
+pub fn print_error_as_warning(error: &anyhow::Error) {
+    warn!("An error occurred. Resuming...:");
+    for cause in error.chain() {
+        warn!(" |- {}", cause);
+    }
+}
+
+pub fn print_error(error: &anyhow::Error) {
+    error!("An error occurred:");
+    for cause in error.chain() {
+        error!(" |- {}", cause);
+    }
+}
+
 fn main() {
     let args = Args::from_args();
     utils::init_env_logger(args.verbose);
 
     if let Err(error) = run(args) {
-        error!("An error occurred:");
-        for cause in error.chain() {
-            error!(" |- {}", cause);
-        }
+        print_error(&error);
 
         #[cfg(feature = "backtrace")]
         {

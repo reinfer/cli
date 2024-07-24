@@ -74,6 +74,10 @@ pub struct CreateCommentsArgs {
     #[structopt(short = "y", long = "yes")]
     /// Consent to ai unit charge. Suppresses confirmation prompt.
     yes: bool,
+
+    #[structopt(long)]
+    /// Whether to attempt to resume processing on error
+    lossy: bool,
 }
 
 pub fn create(client: &Client, args: &CreateCommentsArgs, pool: &mut Pool) -> Result<()> {
@@ -152,6 +156,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs, pool: &mut Pool) -> Re
                 args.use_moon_forms,
                 args.no_charge,
                 pool,
+                args.lossy,
             )?;
             if let Some(mut progress) = progress {
                 progress.done();
@@ -180,6 +185,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs, pool: &mut Pool) -> Re
                 args.use_moon_forms,
                 args.no_charge,
                 pool,
+                args.lossy,
             )?;
             statistics
         }
@@ -330,6 +336,7 @@ fn upload_comments_from_reader(
     use_moon_forms: bool,
     no_charge: bool,
     pool: &mut Pool,
+    lossy: bool,
 ) -> Result<()> {
     assert!(batch_size > 0);
 
@@ -415,6 +422,7 @@ fn upload_comments_from_reader(
                     dataset_name,
                     use_moon_forms,
                     pool,
+                    lossy,
                 )?;
             }
         }
@@ -442,6 +450,7 @@ fn upload_comments_from_reader(
                 dataset_name,
                 use_moon_forms,
                 pool,
+                lossy,
             )?;
         }
     }

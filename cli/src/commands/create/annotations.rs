@@ -1,4 +1,7 @@
-use crate::progress::{Options as ProgressOptions, Progress};
+use crate::{
+    print_error_as_warning,
+    progress::{Options as ProgressOptions, Progress},
+};
 use anyhow::{Context, Result};
 use colored::Colorize;
 use log::info;
@@ -47,6 +50,10 @@ pub struct CreateAnnotationsArgs {
     #[structopt(long = "batch-size", default_value = "128")]
     /// Number of comments to batch in a single request.
     batch_size: usize,
+
+    #[structopt(long)]
+    /// Whether to attempt to resume processing on error
+    lossy: bool,
 }
 
 pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) -> Result<()> {
@@ -95,6 +102,7 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
                 args.use_moon_forms,
                 args.batch_size,
                 pool,
+                args.lossy,
             )?;
             if let Some(mut progress) = progress {
                 progress.done();
@@ -117,6 +125,7 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
                 args.use_moon_forms,
                 args.batch_size,
                 pool,
+                args.lossy,
             )?;
             statistics
         }
@@ -133,6 +142,7 @@ pub trait AnnotationStatistic {
     fn add_annotation(&self);
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn upload_batch_of_annotations(
     annotations_to_upload: &mut Vec<NewAnnotation>,
     client: &Client,
@@ -141,6 +151,7 @@ pub fn upload_batch_of_annotations(
     dataset_name: &DatasetFullName,
     use_moon_forms: bool,
     pool: &mut Pool,
+    lossy: bool,
 ) -> Result<()> {
     let (error_sender, error_receiver) = channel();
 
@@ -190,7 +201,12 @@ pub fn upload_batch_of_annotations(
     });
 
     if let Ok(error) = error_receiver.try_recv() {
-        Err(error)
+        if lossy {
+            print_error_as_warning(&error);
+            Ok(())
+        } else {
+            Err(error)
+        }
     } else {
         annotations_to_upload.clear();
         Ok(())
@@ -207,6 +223,7 @@ fn upload_annotations_from_reader(
     use_moon_forms: bool,
     batch_size: usize,
     pool: &mut Pool,
+    lossy: bool,
 ) -> Result<()> {
     let mut annotations_to_upload = Vec::new();
 
@@ -224,6 +241,7 @@ fn upload_annotations_from_reader(
                     dataset_name,
                     use_moon_forms,
                     pool,
+                    lossy,
                 )?;
             }
         }
@@ -238,6 +256,7 @@ fn upload_annotations_from_reader(
             dataset_name,
             use_moon_forms,
             pool,
+            lossy,
         )?;
     }
 
