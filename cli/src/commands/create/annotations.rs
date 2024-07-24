@@ -201,6 +201,7 @@ pub fn upload_batch_of_annotations(
 
     if let Ok(error) = error_receiver.try_recv() {
         if resume_on_error {
+            annotations_to_upload.clear();
             Ok(())
         } else {
             Err(error)
