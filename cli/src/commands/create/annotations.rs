@@ -1,7 +1,4 @@
-use crate::{
-    print_error_as_warning,
-    progress::{Options as ProgressOptions, Progress},
-};
+use crate::progress::{Options as ProgressOptions, Progress};
 use anyhow::{Context, Result};
 use colored::Colorize;
 use log::info;
@@ -51,9 +48,9 @@ pub struct CreateAnnotationsArgs {
     /// Number of comments to batch in a single request.
     batch_size: usize,
 
-    #[structopt(long)]
+    #[structopt(long = "resume-on-error")]
     /// Whether to attempt to resume processing on error
-    lossy: bool,
+    resume_on_error: bool,
 }
 
 pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) -> Result<()> {
@@ -102,7 +99,7 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
                 args.use_moon_forms,
                 args.batch_size,
                 pool,
-                args.lossy,
+                args.resume_on_error,
             )?;
             if let Some(mut progress) = progress {
                 progress.done();
@@ -125,7 +122,7 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
                 args.use_moon_forms,
                 args.batch_size,
                 pool,
-                args.lossy,
+                args.resume_on_error,
             )?;
             statistics
         }
@@ -152,7 +149,7 @@ pub fn upload_batch_of_annotations(
     dataset_name: &DatasetFullName,
     use_moon_forms: bool,
     pool: &mut Pool,
-    lossy: bool,
+    resume_on_error: bool,
 ) -> Result<()> {
     let (error_sender, error_receiver) = channel();
 
@@ -203,8 +200,7 @@ pub fn upload_batch_of_annotations(
     });
 
     if let Ok(error) = error_receiver.try_recv() {
-        if lossy {
-            print_error_as_warning(&error);
+        if resume_on_error {
             Ok(())
         } else {
             Err(error)
@@ -225,7 +221,7 @@ fn upload_annotations_from_reader(
     use_moon_forms: bool,
     batch_size: usize,
     pool: &mut Pool,
-    lossy: bool,
+    resume_on_error: bool,
 ) -> Result<()> {
     let mut annotations_to_upload = Vec::new();
 
@@ -243,7 +239,7 @@ fn upload_annotations_from_reader(
                     dataset_name,
                     use_moon_forms,
                     pool,
-                    lossy,
+                    resume_on_error,
                 )?;
             }
         }
@@ -258,7 +254,7 @@ fn upload_annotations_from_reader(
             dataset_name,
             use_moon_forms,
             pool,
-            lossy,
+            resume_on_error,
         )?;
     }
 
@@ -374,17 +370,20 @@ fn basic_statistics(statistics: &Statistics) -> (u64, String) {
     let bytes_read = statistics.bytes_read();
     let num_annotations = statistics.num_annotations();
     let num_failed_annotations = statistics.num_failed_annotations();
+
+    let failed_annotations_string = if num_failed_annotations > 0 {
+        format!(" {num_failed_annotations} {}", "skipped".dimmed())
+    } else {
+        String::new()
+    };
+
     (
         bytes_read as u64,
         format!(
             "{} {}{}",
             num_annotations,
             "annotations".dimmed(),
-            if num_failed_annotations > 0 {
-                format!(" {} {}", num_failed_annotations, "skipped".dimmed())
-            } else {
-                "".to_string()
-            }
+            failed_annotations_string
         ),
     )
 }

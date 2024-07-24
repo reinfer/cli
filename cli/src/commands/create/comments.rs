@@ -75,9 +75,9 @@ pub struct CreateCommentsArgs {
     /// Consent to ai unit charge. Suppresses confirmation prompt.
     yes: bool,
 
-    #[structopt(long)]
+    #[structopt(long = "resume-on-error")]
     /// Whether to attempt to resume processing on error
-    lossy: bool,
+    resume_on_error: bool,
 }
 
 pub fn create(client: &Client, args: &CreateCommentsArgs, pool: &mut Pool) -> Result<()> {
@@ -156,7 +156,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs, pool: &mut Pool) -> Re
                 args.use_moon_forms,
                 args.no_charge,
                 pool,
-                args.lossy,
+                args.resume_on_error,
             )?;
             if let Some(mut progress) = progress {
                 progress.done();
@@ -185,7 +185,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs, pool: &mut Pool) -> Re
                 args.use_moon_forms,
                 args.no_charge,
                 pool,
-                args.lossy,
+                args.resume_on_error,
             )?;
             statistics
         }
@@ -336,7 +336,7 @@ fn upload_comments_from_reader(
     use_moon_forms: bool,
     no_charge: bool,
     pool: &mut Pool,
-    lossy: bool,
+    resume_on_error: bool,
 ) -> Result<()> {
     assert!(batch_size > 0);
 
@@ -422,7 +422,7 @@ fn upload_comments_from_reader(
                     dataset_name,
                     use_moon_forms,
                     pool,
-                    lossy,
+                    resume_on_error,
                 )?;
             }
         }
@@ -450,7 +450,7 @@ fn upload_comments_from_reader(
                 dataset_name,
                 use_moon_forms,
                 pool,
-                lossy,
+                resume_on_error,
             )?;
         }
     }
@@ -557,6 +557,12 @@ fn detailed_statistics(statistics: &Statistics) -> (u64, String) {
     let num_unchanged = statistics.num_unchanged();
     let num_annotations = statistics.num_annotations();
     let num_failed_annotations = statistics.num_failed_annotations();
+    let failed_annotations_string = if num_failed_annotations > 0 {
+        format!(" {num_failed_annotations} {}", "skipped".dimmed())
+    } else {
+        String::new()
+    };
+
     (
         bytes_read as u64,
         format!(
@@ -571,11 +577,7 @@ fn detailed_statistics(statistics: &Statistics) -> (u64, String) {
             "nop".dimmed(),
             num_annotations,
             "annotations".dimmed(),
-            if num_failed_annotations > 0 {
-                format!(" {} {}", num_failed_annotations, "skipped".dimmed())
-            } else {
-                "".to_string()
-            }
+            failed_annotations_string
         ),
     )
 }
@@ -586,6 +588,12 @@ fn basic_statistics(statistics: &Statistics) -> (u64, String) {
     let num_uploaded = statistics.num_uploaded();
     let num_annotations = statistics.num_annotations();
     let num_failed_annotations = statistics.num_failed_annotations();
+    let failed_annotations_string = if num_failed_annotations > 0 {
+        format!(" {num_failed_annotations} {}", "skipped".dimmed())
+    } else {
+        String::new()
+    };
+
     (
         bytes_read as u64,
         format!(
@@ -594,11 +602,7 @@ fn basic_statistics(statistics: &Statistics) -> (u64, String) {
             "comments".dimmed(),
             num_annotations,
             "annotations".dimmed(),
-            if num_failed_annotations > 0 {
-                format!(" {} {}", num_failed_annotations, "skipped".dimmed())
-            } else {
-                "".to_string()
-            }
+            failed_annotations_string
         ),
     )
 }
