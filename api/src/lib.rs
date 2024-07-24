@@ -14,7 +14,7 @@ use reqwest::{
 };
 use resources::{
     bucket_statistics::GetBucketStatisticsResponse,
-    comment::CommentTimestampFilter,
+    comment::{AttachmentReference, CommentTimestampFilter},
     dataset::{
         QueryRequestParams, QueryResponse,
         StatisticsRequestParams as DatasetStatisticsRequestParams, SummaryRequestParams,
@@ -36,7 +36,7 @@ use resources::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{cell::Cell, fmt::Display, path::Path, time::Duration};
+use std::{cell::Cell, fmt::Display, io::Read, path::Path, time::Duration};
 use url::Url;
 
 use crate::resources::{
@@ -622,6 +622,27 @@ impl Client {
         Ok(())
     }
 
+    pub fn get_attachment(&self, reference: &AttachmentReference) -> Result<Vec<u8>> {
+        let mut response = self.raw_request(
+            &Method::GET,
+            &self.endpoints.attachment(reference)?,
+            &None::<()>,
+            &None::<()>,
+            &Retry::Yes,
+        )?;
+
+        let mut buffer = Vec::new();
+
+        response
+            .read_to_end(&mut buffer)
+            .map_err(|source| Error::Unknown {
+                message: "Failed to read buffer".to_string(),
+                source: Box::new(source),
+            })?;
+
+        Ok(buffer)
+    }
+
     pub fn get_integrations(&self) -> Result<Vec<Integration>> {
         Ok(self
             .get::<_, GetIntegrationsResponse>(self.endpoints.integrations()?)?
@@ -1152,21 +1173,19 @@ impl Client {
         self.request(Method::PUT, url, Some(request), None::<()>, Retry::Yes)
     }
 
-    fn request<LocationT, RequestT, SuccessT, QueryT>(
+    fn raw_request<LocationT, RequestT, QueryT>(
         &self,
-        method: Method,
-        url: LocationT,
-        body: Option<RequestT>,
-        query: Option<QueryT>,
-        retry: Retry,
-    ) -> Result<SuccessT>
+        method: &Method,
+        url: &LocationT,
+        body: &Option<RequestT>,
+        query: &Option<QueryT>,
+        retry: &Retry,
+    ) -> Result<reqwest::blocking::Response>
     where
         LocationT: IntoUrl + Display + Clone,
         RequestT: Serialize,
         QueryT: Serialize,
-        for<'de> SuccessT: Deserialize<'de>,
     {
-        debug!("Attempting {} `{}`", method, url);
         let do_request = || {
             let request = self
                 .http_client
@@ -1191,6 +1210,26 @@ impl Client {
             source,
             message: format!("{method} operation failed."),
         })?;
+
+        Ok(http_response)
+    }
+
+    fn request<LocationT, RequestT, SuccessT, QueryT>(
+        &self,
+        method: Method,
+        url: LocationT,
+        body: Option<RequestT>,
+        query: Option<QueryT>,
+        retry: Retry,
+    ) -> Result<SuccessT>
+    where
+        LocationT: IntoUrl + Display + Clone,
+        RequestT: Serialize,
+        QueryT: Serialize,
+        for<'de> SuccessT: Deserialize<'de>,
+    {
+        debug!("Attempting {} `{}`", method, url);
+        let http_response = self.raw_request(&method, &url, &body, &query, &retry)?;
 
         let status = http_response.status();
 
@@ -1487,6 +1526,10 @@ impl Endpoints {
 
     fn integration(&self, name: &IntegrationFullName) -> Result<Url> {
         construct_endpoint(&self.base, &["api", "_private", "integrations", &name.0])
+    }
+
+    fn attachment(&self, reference: &AttachmentReference) -> Result<Url> {
+        construct_endpoint(&self.base, &["api", "v1", "attachments", &reference.0])
     }
 
     fn validation(
