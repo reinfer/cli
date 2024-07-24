@@ -36,7 +36,13 @@ use resources::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{cell::Cell, fmt::Display, io::Read, path::Path, time::Duration};
+use std::{
+    cell::Cell,
+    fmt::{Debug, Display},
+    io::Read,
+    path::Path,
+    time::Duration,
+};
 use url::Url;
 
 use crate::resources::{
@@ -136,6 +142,38 @@ pub use crate::{
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Token(pub String);
+
+pub trait SplittableRequest {
+    fn split(self) -> impl Iterator<Item = Self>
+    where
+        Self: Sized;
+
+    fn count(&self) -> usize;
+}
+
+pub struct SplitableRequestResponse<ResponseT>
+where
+    for<'de> ResponseT: Deserialize<'de> + ReducibleResponse,
+{
+    pub response: ResponseT,
+    pub num_failed: usize,
+}
+
+pub trait ReducibleResponse {
+    fn merge(self, _b: Self) -> Self
+    where
+        Self: std::default::Default,
+    {
+        Default::default()
+    }
+
+    fn empty() -> Self
+    where
+        Self: std::default::Default,
+    {
+        Default::default()
+    }
+}
 
 pub struct Config {
     pub endpoint: Url,
@@ -434,13 +472,13 @@ impl Client {
         integration: &NewIntegration,
     ) -> Result<PostIntegrationResponse> {
         self.request(
-            Method::POST,
-            self.endpoints.integration(name)?,
-            Some(PostIntegrationRequest {
+            &Method::POST,
+            &self.endpoints.integration(name)?,
+            &Some(PostIntegrationRequest {
                 integration: integration.clone(),
             }),
-            None::<()>,
-            Retry::No,
+            &None::<()>,
+            &Retry::No,
         )
     }
 
@@ -450,12 +488,27 @@ impl Client {
         integration: &NewIntegration,
     ) -> Result<PutIntegrationResponse> {
         self.request(
-            Method::PUT,
-            self.endpoints.integration(name)?,
-            Some(PutIntegrationRequest {
+            &Method::PUT,
+            &self.endpoints.integration(name)?,
+            &Some(PutIntegrationRequest {
                 integration: integration.clone(),
             }),
-            None::<()>,
+            &None::<()>,
+            &Retry::No,
+        )
+    }
+
+    pub fn put_comments_split_on_failure(
+        &self,
+        source_name: &SourceFullName,
+        comments: Vec<NewComment>,
+        no_charge: bool,
+    ) -> Result<SplitableRequestResponse<PutCommentsResponse>> {
+        self.splitable_request(
+            Method::PUT,
+            self.endpoints.put_comments(source_name)?,
+            PutCommentsRequest { comments },
+            Some(NoChargeQuery { no_charge }),
             Retry::No,
         )
     }
@@ -463,15 +516,15 @@ impl Client {
     pub fn put_comments(
         &self,
         source_name: &SourceFullName,
-        comments: &[NewComment],
+        comments: Vec<NewComment>,
         no_charge: bool,
     ) -> Result<PutCommentsResponse> {
         self.request(
-            Method::PUT,
-            self.endpoints.put_comments(source_name)?,
-            Some(PutCommentsRequest { comments }),
-            Some(NoChargeQuery { no_charge }),
-            Retry::No,
+            &Method::PUT,
+            &self.endpoints.put_comments(source_name)?,
+            &Some(PutCommentsRequest { comments }),
+            &Some(NoChargeQuery { no_charge }),
+            &Retry::No,
         )
     }
 
@@ -536,13 +589,28 @@ impl Client {
     pub fn sync_comments(
         &self,
         source_name: &SourceFullName,
-        comments: &[NewComment],
+        comments: Vec<NewComment>,
         no_charge: bool,
     ) -> Result<SyncCommentsResponse> {
         self.request(
+            &Method::POST,
+            &self.endpoints.sync_comments(source_name)?,
+            &Some(SyncCommentsRequest { comments }),
+            &Some(NoChargeQuery { no_charge }),
+            &Retry::Yes,
+        )
+    }
+
+    pub fn sync_comments_split_on_failure(
+        &self,
+        source_name: &SourceFullName,
+        comments: Vec<NewComment>,
+        no_charge: bool,
+    ) -> Result<SplitableRequestResponse<SyncCommentsResponse>> {
+        self.splitable_request(
             Method::POST,
             self.endpoints.sync_comments(source_name)?,
-            Some(SyncCommentsRequest { comments }),
+            SyncCommentsRequest { comments },
             Some(NoChargeQuery { no_charge }),
             Retry::Yes,
         )
@@ -557,13 +625,28 @@ impl Client {
         no_charge: bool,
     ) -> Result<SyncRawEmailsResponse> {
         self.request(
-            Method::POST,
-            self.endpoints.sync_comments_raw_emails(source_name)?,
-            Some(SyncRawEmailsRequest {
+            &Method::POST,
+            &self.endpoints.sync_comments_raw_emails(source_name)?,
+            &Some(SyncRawEmailsRequest {
                 documents,
                 transform_tag,
                 include_comments,
             }),
+            &Some(NoChargeQuery { no_charge }),
+            &Retry::Yes,
+        )
+    }
+
+    pub fn put_emails_split_on_failure(
+        &self,
+        bucket_name: &BucketFullName,
+        emails: Vec<NewEmail>,
+        no_charge: bool,
+    ) -> Result<SplitableRequestResponse<PutEmailsResponse>> {
+        self.splitable_request(
+            Method::PUT,
+            self.endpoints.put_emails(bucket_name)?,
+            PutEmailsRequest { emails },
             Some(NoChargeQuery { no_charge }),
             Retry::Yes,
         )
@@ -572,15 +655,15 @@ impl Client {
     pub fn put_emails(
         &self,
         bucket_name: &BucketFullName,
-        emails: &[NewEmail],
+        emails: Vec<NewEmail>,
         no_charge: bool,
     ) -> Result<PutEmailsResponse> {
         self.request(
-            Method::PUT,
-            self.endpoints.put_emails(bucket_name)?,
-            Some(PutEmailsRequest { emails }),
-            Some(NoChargeQuery { no_charge }),
-            Retry::Yes,
+            &Method::PUT,
+            &self.endpoints.put_emails(bucket_name)?,
+            &Some(PutEmailsRequest { emails }),
+            &Some(NoChargeQuery { no_charge }),
+            &Retry::Yes,
         )
     }
 
@@ -1079,7 +1162,7 @@ impl Client {
         LocationT: IntoUrl + Display + Clone,
         for<'de> SuccessT: Deserialize<'de>,
     {
-        self.request(Method::GET, url, None::<()>, None::<()>, Retry::Yes)
+        self.request(&Method::GET, &url, &None::<()>, &None::<()>, &Retry::Yes)
     }
 
     fn get_query<LocationT, QueryT, SuccessT>(
@@ -1092,7 +1175,7 @@ impl Client {
         QueryT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
     {
-        self.request(Method::GET, url, None::<()>, Some(query), Retry::Yes)
+        self.request(&Method::GET, &url, &None::<()>, &Some(query), &Retry::Yes)
     }
 
     fn delete<LocationT>(&self, url: LocationT) -> Result<()>
@@ -1157,7 +1240,7 @@ impl Client {
         RequestT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
     {
-        self.request(Method::POST, url, Some(request), None::<()>, retry)
+        self.request(&Method::POST, &url, &Some(request), &None::<()>, &retry)
     }
 
     fn put<LocationT, RequestT, SuccessT>(
@@ -1170,7 +1253,7 @@ impl Client {
         RequestT: Serialize,
         for<'de> SuccessT: Deserialize<'de>,
     {
-        self.request(Method::PUT, url, Some(request), None::<()>, Retry::Yes)
+        self.request(&Method::PUT, &url, &Some(request), &None::<()>, &Retry::Yes)
     }
 
     fn raw_request<LocationT, RequestT, QueryT>(
@@ -1214,22 +1297,80 @@ impl Client {
         Ok(http_response)
     }
 
-    fn request<LocationT, RequestT, SuccessT, QueryT>(
+    fn splitable_request<LocationT, RequestT, SuccessT, QueryT>(
         &self,
         method: Method,
         url: LocationT,
-        body: Option<RequestT>,
+        body: RequestT,
         query: Option<QueryT>,
         retry: Retry,
+    ) -> Result<SplitableRequestResponse<SuccessT>>
+    where
+        LocationT: IntoUrl + Display + Clone,
+        RequestT: Serialize + SplittableRequest + Clone,
+        QueryT: Serialize + Clone,
+        for<'de> SuccessT: Deserialize<'de> + ReducibleResponse + Clone + Default,
+    {
+        debug!("Attempting {method} `{url}`");
+        let result: Result<SuccessT> =
+            self.request(&method, &url, &Some(body.clone()), &query, &retry);
+
+        fn should_split(error: &Error) -> bool {
+            if let Error::Api { status_code, .. } = error {
+                *status_code == reqwest::StatusCode::UNPROCESSABLE_ENTITY
+                    || *status_code == reqwest::StatusCode::BAD_REQUEST
+            } else {
+                false
+            }
+        }
+
+        match result {
+            Ok(response) => Ok(SplitableRequestResponse {
+                response,
+                num_failed: 0,
+            }),
+            Err(error) if should_split(&error) => {
+                let mut num_failed = 0;
+                let response = body
+                    .split()
+                    .filter_map(|request| {
+                        match self.request(&method, &url, &Some(request), &query, &retry) {
+                            Ok(response) => Some(response),
+                            Err(_) => {
+                                num_failed += 1;
+                                None
+                            }
+                        }
+                    })
+                    .fold(SuccessT::empty(), |merged, next: SuccessT| {
+                        merged.merge(next)
+                    });
+
+                Ok(SplitableRequestResponse {
+                    num_failed,
+                    response,
+                })
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    fn request<LocationT, RequestT, SuccessT, QueryT>(
+        &self,
+        method: &Method,
+        url: &LocationT,
+        body: &Option<RequestT>,
+        query: &Option<QueryT>,
+        retry: &Retry,
     ) -> Result<SuccessT>
     where
         LocationT: IntoUrl + Display + Clone,
         RequestT: Serialize,
-        QueryT: Serialize,
+        QueryT: Serialize + Clone,
         for<'de> SuccessT: Deserialize<'de>,
     {
         debug!("Attempting {} `{}`", method, url);
-        let http_response = self.raw_request(&method, &url, &body, &query, &retry)?;
+        let http_response = self.raw_request(method, url, body, query, retry)?;
 
         let status = http_response.status();
 
@@ -1250,6 +1391,7 @@ impl Client {
     }
 }
 
+#[derive(Copy, Clone)]
 enum Retry {
     Yes,
     No,
@@ -1473,7 +1615,7 @@ struct Endpoints {
     projects: Url,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone, Copy)]
 struct NoChargeQuery {
     no_charge: bool,
 }

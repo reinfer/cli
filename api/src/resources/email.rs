@@ -1,3 +1,4 @@
+use crate::{ReducibleResponse, SplittableRequest};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -50,12 +51,29 @@ pub struct NewEmail {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-pub(crate) struct PutEmailsRequest<'request> {
-    pub emails: &'request [NewEmail],
+pub(crate) struct PutEmailsRequest {
+    pub emails: Vec<NewEmail>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+impl SplittableRequest for PutEmailsRequest {
+    fn split(self) -> impl Iterator<Item = Self>
+    where
+        Self: Sized,
+    {
+        self.emails.into_iter().map(|email| Self {
+            emails: vec![email],
+        })
+    }
+
+    fn count(&self) -> usize {
+        self.emails.len()
+    }
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq, Eq)]
 pub struct PutEmailsResponse {}
+
+impl ReducibleResponse for PutEmailsResponse {}
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Continuation(pub String);

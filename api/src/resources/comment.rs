@@ -4,7 +4,7 @@ use crate::{
     resources::label_def::Name as LabelName,
     resources::label_group::Name as LabelGroupName,
     resources::label_group::DEFAULT_LABEL_GROUP_NAME,
-    SourceId,
+    ReducibleResponse, SourceId, SplittableRequest,
 };
 use chrono::{DateTime, Utc};
 use ordered_float::NotNan;
@@ -170,23 +170,69 @@ pub struct CommentsIterPage {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct PutCommentsRequest<'request> {
-    pub comments: &'request [NewComment],
+pub(crate) struct PutCommentsRequest {
+    pub comments: Vec<NewComment>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+impl SplittableRequest for PutCommentsRequest {
+    fn split(self) -> impl Iterator<Item = Self> {
+        self.comments.into_iter().map(|comment| Self {
+            comments: vec![comment],
+        })
+    }
+
+    fn count(&self) -> usize {
+        self.comments.len()
+    }
+}
+
+#[derive(Default, Debug, Copy, Clone, Deserialize)]
 pub struct PutCommentsResponse;
 
+impl ReducibleResponse for PutCommentsResponse {}
+
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct SyncCommentsRequest<'request> {
-    pub comments: &'request [NewComment],
+pub(crate) struct SyncCommentsRequest {
+    pub comments: Vec<NewComment>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+impl SplittableRequest for SyncCommentsRequest {
+    fn split(self) -> impl Iterator<Item = Self>
+    where
+        Self: Sized,
+    {
+        self.comments.into_iter().map(|comment| Self {
+            comments: vec![comment],
+        })
+    }
+
+    fn count(&self) -> usize {
+        self.comments.len()
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct SyncCommentsResponse {
     pub new: usize,
     pub updated: usize,
     pub unchanged: usize,
+}
+
+impl ReducibleResponse for SyncCommentsResponse {
+    fn empty() -> Self {
+        Self {
+            new: 0,
+            updated: 0,
+            unchanged: 0,
+        }
+    }
+    fn merge(self, b: Self) -> Self {
+        Self {
+            new: self.new + b.new,
+            updated: self.updated + b.updated,
+            unchanged: self.unchanged + b.unchanged,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]

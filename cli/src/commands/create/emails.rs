@@ -43,6 +43,10 @@ pub struct CreateEmailsArgs {
     #[structopt(short = "y", long = "yes")]
     /// Consent to ai unit charge. Suppresses confirmation prompt.
     yes: bool,
+
+    #[structopt(long = "resume-on-error")]
+    /// Whether to attempt to resume processing on error
+    resume_on_error: bool,
 }
 
 pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
@@ -85,6 +89,7 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
                 args.batch_size,
                 &statistics,
                 args.no_charge,
+                args.resume_on_error,
             )?;
             if let Some(mut progress) = progress {
                 progress.done();
@@ -105,6 +110,7 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
                 args.batch_size,
                 &statistics,
                 args.no_charge,
+                args.resume_on_error,
             )?;
             statistics
         }
@@ -125,6 +131,7 @@ fn upload_emails_from_reader(
     batch_size: usize,
     statistics: &Statistics,
     no_charge: bool,
+    resume_on_error: bool,
 ) -> Result<()> {
     assert!(batch_size > 0);
     let mut line_number = 1;
@@ -150,13 +157,26 @@ fn upload_emails_from_reader(
 
         if batch.len() == batch_size || (!batch.is_empty() && eof) {
             // Upload emails
-            client
-                .put_emails(&bucket.full_name(), &batch, no_charge)
-                .context("Could not upload batch of emails")?;
-            statistics.add_emails(StatisticsUpdate {
-                uploaded: batch.len(),
-            });
-            batch.clear();
+
+            if resume_on_error {
+                let result = client
+                    .put_emails_split_on_failure(&bucket.full_name(), batch.to_vec(), no_charge)
+                    .context("Could not upload batch of emails")?;
+                statistics.add_emails(StatisticsUpdate {
+                    uploaded: batch.len() - result.num_failed,
+                    failed: result.num_failed,
+                });
+                batch.clear();
+            } else {
+                client
+                    .put_emails(&bucket.full_name(), batch.to_vec(), no_charge)
+                    .context("Could not upload batch of emails")?;
+                statistics.add_emails(StatisticsUpdate {
+                    uploaded: batch.len(),
+                    failed: 0,
+                });
+                batch.clear();
+            }
         }
 
         line_number += 1;
@@ -168,12 +188,14 @@ fn upload_emails_from_reader(
 #[derive(Debug)]
 pub struct StatisticsUpdate {
     uploaded: usize,
+    failed: usize,
 }
 
 #[derive(Debug)]
 pub struct Statistics {
     bytes_read: AtomicUsize,
     uploaded: AtomicUsize,
+    failed: AtomicUsize,
 }
 
 impl Statistics {
@@ -181,6 +203,7 @@ impl Statistics {
         Self {
             bytes_read: AtomicUsize::new(0),
             uploaded: AtomicUsize::new(0),
+            failed: AtomicUsize::new(0),
         }
     }
 
@@ -192,6 +215,7 @@ impl Statistics {
     #[inline]
     fn add_emails(&self, update: StatisticsUpdate) {
         self.uploaded.fetch_add(update.uploaded, Ordering::SeqCst);
+        self.failed.fetch_add(update.failed, Ordering::SeqCst);
     }
 
     #[inline]
@@ -203,6 +227,11 @@ impl Statistics {
     fn num_uploaded(&self) -> usize {
         self.uploaded.load(Ordering::SeqCst)
     }
+
+    #[inline]
+    fn num_failed(&self) -> usize {
+        self.failed.load(Ordering::SeqCst)
+    }
 }
 
 fn progress_bar(total_bytes: u64, statistics: &Arc<Statistics>) -> Progress {
@@ -210,9 +239,22 @@ fn progress_bar(total_bytes: u64, statistics: &Arc<Statistics>) -> Progress {
         move |statistics| {
             let bytes_read = statistics.bytes_read();
             let num_uploaded = statistics.num_uploaded();
+            let num_failed = statistics.num_failed();
+
+            let failed_emails_string = if num_failed > 0 {
+                format!(" {num_failed} {}", "skipped".dimmed())
+            } else {
+                String::new()
+            };
+
             (
                 bytes_read as u64,
-                format!("{} {}", num_uploaded.to_string().bold(), "emails".dimmed()),
+                format!(
+                    "{} {}{}",
+                    num_uploaded.to_string().bold(),
+                    "emails".dimmed(),
+                    failed_emails_string
+                ),
             )
         },
         statistics,

@@ -187,22 +187,24 @@ pub fn create(client: &Client, args: &CreateCommentsArgs, pool: &mut Pool) -> Re
     if args.overwrite {
         info!(
             concat!(
-                "Successfully uploaded {} comments [{} new | {} updated | {} unchanged] ",
+                "Successfully uploaded {} comments [{} new | {} updated | {} unchanged | {} skipped] ",
                 "of which {} are annotated."
             ),
             statistics.num_uploaded(),
             statistics.num_new(),
             statistics.num_updated(),
             statistics.num_unchanged(),
+            statistics.num_failed_comments(),
             statistics.num_annotations(),
         );
     } else {
         // PUT comments endpoint doesn't return statistics, so can't give the breakdown when not
         // forcing everything the sync endpoint (via --overwrite)
         info!(
-            "Successfully uploaded {} comments (of which {} are annotated).",
+            "Successfully uploaded {} comments (of which {} are annotated). {} skipped",
             statistics.num_uploaded(),
             statistics.num_annotations(),
+            statistics.num_failed_comments()
         );
     }
 
@@ -264,27 +266,51 @@ fn upload_batch_of_comments(
     comments_to_sync: &mut Vec<NewComment>,
     audio_paths: &mut Vec<(CommentId, PathBuf)>,
     no_charge: bool,
+    resume_on_error: bool,
 ) -> Result<()> {
     let mut uploaded = 0;
     let mut new = 0;
     let mut updated = 0;
     let mut unchanged = 0;
+    let mut failed = 0;
 
     // Upload comments
     if !comments_to_put.is_empty() {
-        client
-            .put_comments(&source.full_name(), comments_to_put, no_charge)
-            .context("Could not put batch of comments")?;
-
-        uploaded += comments_to_put.len();
+        if resume_on_error {
+            let result = client
+                .put_comments_split_on_failure(
+                    &source.full_name(),
+                    comments_to_put.to_vec(),
+                    no_charge,
+                )
+                .context("Could not put batch of comments")?;
+            failed += result.num_failed;
+        } else {
+            client
+                .put_comments(&source.full_name(), comments_to_put.to_vec(), no_charge)
+                .context("Could not put batch of comments")?;
+        }
+        uploaded += comments_to_put.len() - failed;
     }
 
     if !comments_to_sync.is_empty() {
-        let result = client
-            .sync_comments(&source.full_name(), comments_to_sync, no_charge)
-            .context("Could not sync batch of comments")?;
+        let result = if resume_on_error {
+            let result = client
+                .sync_comments_split_on_failure(
+                    &source.full_name(),
+                    comments_to_sync.to_vec(),
+                    no_charge,
+                )
+                .context("Could not sync batch of comments")?;
+            failed += result.num_failed;
+            result.response
+        } else {
+            client
+                .sync_comments(&source.full_name(), comments_to_sync.to_vec(), no_charge)
+                .context("Could not sync batch of comments")?
+        };
 
-        uploaded += comments_to_sync.len();
+        uploaded += comments_to_sync.len() - failed;
         new += result.new;
         updated += result.updated;
         unchanged += result.unchanged;
@@ -295,6 +321,7 @@ fn upload_batch_of_comments(
         new,
         updated,
         unchanged,
+        failed,
     });
 
     // Upload audio
@@ -380,6 +407,7 @@ fn upload_comments_from_reader(
                 &mut comments_to_sync,
                 &mut audio_paths,
                 no_charge,
+                resume_on_error,
             )?;
         }
 
@@ -393,6 +421,7 @@ fn upload_comments_from_reader(
                     &mut comments_to_sync,
                     &mut audio_paths,
                     no_charge,
+                    resume_on_error,
                 )?;
 
                 upload_batch_of_annotations(
@@ -417,6 +446,7 @@ fn upload_comments_from_reader(
             &mut comments_to_sync,
             &mut audio_paths,
             no_charge,
+            resume_on_error,
         )?;
     }
 
@@ -442,6 +472,7 @@ pub struct StatisticsUpdate {
     new: usize,
     updated: usize,
     unchanged: usize,
+    failed: usize,
 }
 
 #[derive(Debug)]
@@ -453,6 +484,7 @@ pub struct Statistics {
     unchanged: AtomicUsize,
     annotations: AtomicUsize,
     failed_annotations: AtomicUsize,
+    failed_comments: AtomicUsize,
 }
 
 impl AnnotationStatistic for Statistics {
@@ -474,6 +506,7 @@ impl Statistics {
             unchanged: AtomicUsize::new(0),
             annotations: AtomicUsize::new(0),
             failed_annotations: AtomicUsize::new(0),
+            failed_comments: AtomicUsize::new(0),
         }
     }
 
@@ -488,6 +521,8 @@ impl Statistics {
         self.new.fetch_add(update.new, Ordering::SeqCst);
         self.updated.fetch_add(update.updated, Ordering::SeqCst);
         self.unchanged.fetch_add(update.unchanged, Ordering::SeqCst);
+        self.failed_comments
+            .fetch_add(update.failed, Ordering::SeqCst);
     }
 
     #[inline]
@@ -524,6 +559,11 @@ impl Statistics {
     fn num_failed_annotations(&self) -> usize {
         self.failed_annotations.load(Ordering::SeqCst)
     }
+
+    #[inline]
+    fn num_failed_comments(&self) -> usize {
+        self.failed_comments.load(Ordering::SeqCst)
+    }
 }
 
 /// Detailed statistics - only make sense if using --overwrite (i.e. exclusively sync endpoint)
@@ -536,8 +576,16 @@ fn detailed_statistics(statistics: &Statistics) -> (u64, String) {
     let num_unchanged = statistics.num_unchanged();
     let num_annotations = statistics.num_annotations();
     let num_failed_annotations = statistics.num_failed_annotations();
+    let num_failed_comments = statistics.num_failed_comments();
+
     let failed_annotations_string = if num_failed_annotations > 0 {
         format!(" {num_failed_annotations} {}", "skipped".dimmed())
+    } else {
+        String::new()
+    };
+
+    let failed_comments_string = if num_failed_comments > 0 {
+        format!(" {num_failed_comments} {}", "skipped".dimmed())
     } else {
         String::new()
     };
@@ -545,7 +593,7 @@ fn detailed_statistics(statistics: &Statistics) -> (u64, String) {
     (
         bytes_read as u64,
         format!(
-            "{} {}: {} {} {} {} {} {} [{} {}{}]",
+            "{} {}: {} {} {} {} {} {}{} [{} {}{}]",
             num_uploaded.to_string().bold(),
             "comments".dimmed(),
             num_new,
@@ -554,6 +602,7 @@ fn detailed_statistics(statistics: &Statistics) -> (u64, String) {
             "upd".dimmed(),
             num_unchanged,
             "nop".dimmed(),
+            failed_comments_string,
             num_annotations,
             "annotations".dimmed(),
             failed_annotations_string
@@ -567,18 +616,26 @@ fn basic_statistics(statistics: &Statistics) -> (u64, String) {
     let num_uploaded = statistics.num_uploaded();
     let num_annotations = statistics.num_annotations();
     let num_failed_annotations = statistics.num_failed_annotations();
+    let num_failed_comments = statistics.num_failed_comments();
+
     let failed_annotations_string = if num_failed_annotations > 0 {
         format!(" {num_failed_annotations} {}", "skipped".dimmed())
     } else {
         String::new()
     };
 
+    let failed_comments_string = if num_failed_comments > 0 {
+        format!(" {num_failed_comments} {}", "skipped".dimmed())
+    } else {
+        String::new()
+    };
     (
         bytes_read as u64,
         format!(
-            "{} {} [{} {}{}]",
+            "{} {}{} [{} {}{}]",
             num_uploaded.to_string().bold(),
             "comments".dimmed(),
+            failed_comments_string,
             num_annotations,
             "annotations".dimmed(),
             failed_annotations_string
