@@ -473,11 +473,15 @@ pub struct Statistics {
     updated: AtomicUsize,
     unchanged: AtomicUsize,
     annotations: AtomicUsize,
+    failed_annotations: AtomicUsize,
 }
 
 impl AnnotationStatistic for Statistics {
     fn add_annotation(&self) {
         self.annotations.fetch_add(1, Ordering::SeqCst);
+    }
+    fn add_failed_annotation(&self) {
+        self.failed_annotations.fetch_add(1, Ordering::SeqCst);
     }
 }
 
@@ -490,6 +494,7 @@ impl Statistics {
             updated: AtomicUsize::new(0),
             unchanged: AtomicUsize::new(0),
             annotations: AtomicUsize::new(0),
+            failed_annotations: AtomicUsize::new(0),
         }
     }
 
@@ -535,6 +540,11 @@ impl Statistics {
     fn num_annotations(&self) -> usize {
         self.annotations.load(Ordering::SeqCst)
     }
+
+    #[inline]
+    fn num_failed_annotations(&self) -> usize {
+        self.failed_annotations.load(Ordering::SeqCst)
+    }
 }
 
 /// Detailed statistics - only make sense if using --overwrite (i.e. exclusively sync endpoint)
@@ -546,10 +556,11 @@ fn detailed_statistics(statistics: &Statistics) -> (u64, String) {
     let num_updated = statistics.num_updated();
     let num_unchanged = statistics.num_unchanged();
     let num_annotations = statistics.num_annotations();
+    let num_failed_annotations = statistics.num_failed_annotations();
     (
         bytes_read as u64,
         format!(
-            "{} {}: {} {} {} {} {} {} [{} {}]",
+            "{} {}: {} {} {} {} {} {} [{} {}{}]",
             num_uploaded.to_string().bold(),
             "comments".dimmed(),
             num_new,
@@ -560,6 +571,11 @@ fn detailed_statistics(statistics: &Statistics) -> (u64, String) {
             "nop".dimmed(),
             num_annotations,
             "annotations".dimmed(),
+            if num_failed_annotations > 0 {
+                format!(" {} {}", num_failed_annotations, "skipped".dimmed())
+            } else {
+                "".to_string()
+            }
         ),
     )
 }
@@ -569,14 +585,20 @@ fn basic_statistics(statistics: &Statistics) -> (u64, String) {
     let bytes_read = statistics.bytes_read();
     let num_uploaded = statistics.num_uploaded();
     let num_annotations = statistics.num_annotations();
+    let num_failed_annotations = statistics.num_failed_annotations();
     (
         bytes_read as u64,
         format!(
-            "{} {} [{} {}]",
+            "{} {} [{} {}{}]",
             num_uploaded.to_string().bold(),
             "comments".dimmed(),
             num_annotations,
             "annotations".dimmed(),
+            if num_failed_annotations > 0 {
+                format!(" {} {}", num_failed_annotations, "skipped".dimmed())
+            } else {
+                "".to_string()
+            }
         ),
     )
 }

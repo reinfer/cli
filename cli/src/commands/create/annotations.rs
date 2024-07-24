@@ -140,6 +140,7 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
 
 pub trait AnnotationStatistic {
     fn add_annotation(&self);
+    fn add_failed_annotation(&self);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -193,9 +194,10 @@ pub fn upload_batch_of_annotations(
 
                 if let Err(error) = result {
                     error_sender.send(error).expect("Could not send error");
+                    statistics.add_failed_annotation();
+                } else {
+                    statistics.add_annotation();
                 }
-
-                statistics.add_annotation();
             });
         })
     });
@@ -326,11 +328,15 @@ fn read_annotations_iter<'a>(
 pub struct Statistics {
     bytes_read: AtomicUsize,
     annotations: AtomicUsize,
+    failed_annotations: AtomicUsize,
 }
 
 impl AnnotationStatistic for Statistics {
     fn add_annotation(&self) {
         self.annotations.fetch_add(1, Ordering::SeqCst);
+    }
+    fn add_failed_annotation(&self) {
+        self.failed_annotations.fetch_add(1, Ordering::SeqCst);
     }
 }
 
@@ -339,6 +345,7 @@ impl Statistics {
         Self {
             bytes_read: AtomicUsize::new(0),
             annotations: AtomicUsize::new(0),
+            failed_annotations: AtomicUsize::new(0),
         }
     }
 
@@ -356,14 +363,29 @@ impl Statistics {
     pub fn num_annotations(&self) -> usize {
         self.annotations.load(Ordering::SeqCst)
     }
+
+    #[inline]
+    pub fn num_failed_annotations(&self) -> usize {
+        self.failed_annotations.load(Ordering::SeqCst)
+    }
 }
 
 fn basic_statistics(statistics: &Statistics) -> (u64, String) {
     let bytes_read = statistics.bytes_read();
     let num_annotations = statistics.num_annotations();
+    let num_failed_annotations = statistics.num_failed_annotations();
     (
         bytes_read as u64,
-        format!("{} {}", num_annotations, "annotations".dimmed(),),
+        format!(
+            "{} {}{}",
+            num_annotations,
+            "annotations".dimmed(),
+            if num_failed_annotations > 0 {
+                format!(" {} {}", num_failed_annotations, "skipped".dimmed())
+            } else {
+                "".to_string()
+            }
+        ),
     )
 }
 
