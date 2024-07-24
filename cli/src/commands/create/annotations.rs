@@ -47,6 +47,10 @@ pub struct CreateAnnotationsArgs {
     #[structopt(long = "batch-size", default_value = "128")]
     /// Number of comments to batch in a single request.
     batch_size: usize,
+
+    #[structopt(long = "resume-on-error")]
+    /// Whether to attempt to resume processing on error
+    resume_on_error: bool,
 }
 
 pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) -> Result<()> {
@@ -95,6 +99,7 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
                 args.use_moon_forms,
                 args.batch_size,
                 pool,
+                args.resume_on_error,
             )?;
             if let Some(mut progress) = progress {
                 progress.done();
@@ -117,6 +122,7 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
                 args.use_moon_forms,
                 args.batch_size,
                 pool,
+                args.resume_on_error,
             )?;
             statistics
         }
@@ -131,8 +137,10 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
 
 pub trait AnnotationStatistic {
     fn add_annotation(&self);
+    fn add_failed_annotation(&self);
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn upload_batch_of_annotations(
     annotations_to_upload: &mut Vec<NewAnnotation>,
     client: &Client,
@@ -141,6 +149,7 @@ pub fn upload_batch_of_annotations(
     dataset_name: &DatasetFullName,
     use_moon_forms: bool,
     pool: &mut Pool,
+    resume_on_error: bool,
 ) -> Result<()> {
     let (error_sender, error_receiver) = channel();
 
@@ -182,15 +191,21 @@ pub fn upload_batch_of_annotations(
 
                 if let Err(error) = result {
                     error_sender.send(error).expect("Could not send error");
+                    statistics.add_failed_annotation();
+                } else {
+                    statistics.add_annotation();
                 }
-
-                statistics.add_annotation();
             });
         })
     });
 
     if let Ok(error) = error_receiver.try_recv() {
-        Err(error)
+        if resume_on_error {
+            annotations_to_upload.clear();
+            Ok(())
+        } else {
+            Err(error)
+        }
     } else {
         annotations_to_upload.clear();
         Ok(())
@@ -207,6 +222,7 @@ fn upload_annotations_from_reader(
     use_moon_forms: bool,
     batch_size: usize,
     pool: &mut Pool,
+    resume_on_error: bool,
 ) -> Result<()> {
     let mut annotations_to_upload = Vec::new();
 
@@ -224,6 +240,7 @@ fn upload_annotations_from_reader(
                     dataset_name,
                     use_moon_forms,
                     pool,
+                    resume_on_error,
                 )?;
             }
         }
@@ -238,6 +255,7 @@ fn upload_annotations_from_reader(
             dataset_name,
             use_moon_forms,
             pool,
+            resume_on_error,
         )?;
     }
 
@@ -307,11 +325,15 @@ fn read_annotations_iter<'a>(
 pub struct Statistics {
     bytes_read: AtomicUsize,
     annotations: AtomicUsize,
+    failed_annotations: AtomicUsize,
 }
 
 impl AnnotationStatistic for Statistics {
     fn add_annotation(&self) {
         self.annotations.fetch_add(1, Ordering::SeqCst);
+    }
+    fn add_failed_annotation(&self) {
+        self.failed_annotations.fetch_add(1, Ordering::SeqCst);
     }
 }
 
@@ -320,6 +342,7 @@ impl Statistics {
         Self {
             bytes_read: AtomicUsize::new(0),
             annotations: AtomicUsize::new(0),
+            failed_annotations: AtomicUsize::new(0),
         }
     }
 
@@ -337,14 +360,32 @@ impl Statistics {
     pub fn num_annotations(&self) -> usize {
         self.annotations.load(Ordering::SeqCst)
     }
+
+    #[inline]
+    pub fn num_failed_annotations(&self) -> usize {
+        self.failed_annotations.load(Ordering::SeqCst)
+    }
 }
 
 fn basic_statistics(statistics: &Statistics) -> (u64, String) {
     let bytes_read = statistics.bytes_read();
     let num_annotations = statistics.num_annotations();
+    let num_failed_annotations = statistics.num_failed_annotations();
+
+    let failed_annotations_string = if num_failed_annotations > 0 {
+        format!(" {num_failed_annotations} {}", "skipped".dimmed())
+    } else {
+        String::new()
+    };
+
     (
         bytes_read as u64,
-        format!("{} {}", num_annotations, "annotations".dimmed(),),
+        format!(
+            "{} {}{}",
+            num_annotations,
+            "annotations".dimmed(),
+            failed_annotations_string
+        ),
     )
 }
 

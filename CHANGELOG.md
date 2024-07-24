@@ -2,6 +2,7 @@
 - Add `config parse-from-url` command for parsing configuration from a URL
 - Add ability to download attachments for comments
 - Increase default http timeout to 120s
+- Add `--resume-on-error` flag when creating annotations
 
 # v0.28.0
 - Add general fields to `create datasets`
