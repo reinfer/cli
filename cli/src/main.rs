@@ -204,7 +204,7 @@ fn find_configuration(args: &Args) -> Result<PathBuf> {
 }
 
 pub fn print_error_as_warning(error: &anyhow::Error) {
-    warn!("An error occurred. Resuming...:");
+    warn!("An error occurred. Resuming...");
     for cause in error.chain() {
         warn!(" |- {}", cause);
     }
