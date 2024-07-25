@@ -250,7 +250,7 @@ struct OutputLocations {
     attachments_dir: Option<PathBuf>,
 }
 
-fn get_output_locations(path: &Option<PathBuf>) -> Result<OutputLocations> {
+fn get_output_locations(path: &Option<PathBuf>, attachments: bool) -> Result<OutputLocations> {
     if let Some(path) = path {
         let jsonl_file = Some(
             File::create(path)
@@ -258,23 +258,28 @@ fn get_output_locations(path: &Option<PathBuf>) -> Result<OutputLocations> {
                 .map(BufWriter::new)?,
         );
 
-        let attachments_dir = path
-            .parent()
-            .context("Could not get attachments directory")?
-            .join(format!(
-                "{0}.attachments",
-                path.file_name()
-                    .context("Could not get output file name")?
-                    .to_string_lossy()
-            ));
+        let attachments_dir = if attachments {
+            let attachments_dir = path
+                .parent()
+                .context("Could not get attachments directory")?
+                .join(format!(
+                    "{0}.attachments",
+                    path.file_name()
+                        .context("Could not get output file name")?
+                        .to_string_lossy()
+                ));
 
-        if !attachments_dir.exists() {
-            create_dir(&attachments_dir)?;
-        }
+            if !attachments_dir.exists() {
+                create_dir(&attachments_dir)?;
+            }
+            Some(attachments_dir)
+        } else {
+            None
+        };
 
         Ok(OutputLocations {
             jsonl_file,
-            attachments_dir: Some(attachments_dir),
+            attachments_dir,
         })
     } else {
         Ok(OutputLocations::default())
@@ -360,7 +365,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
     let OutputLocations {
         jsonl_file,
         attachments_dir,
-    } = get_output_locations(path)?;
+    } = get_output_locations(path, include_attachment_content.unwrap_or_default())?;
 
     let mut label_attribute_filter: Option<AttributeFilter> = None;
     if let (Some(dataset_id), Some(filter)) = (dataset, label_filter) {
