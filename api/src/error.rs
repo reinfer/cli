@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use reqwest::StatusCode;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -15,6 +17,9 @@ pub enum Error {
 
     #[error("Bad token: {}", token)]
     BadToken { token: String },
+
+    #[error("File does not exist : {}", path.to_string_lossy())]
+    FileDoesNotExist { path: PathBuf },
 
     #[error("Expected <owner>/<name> or a source id, got: {}", identifier)]
     BadSourceIdentifier { identifier: String },

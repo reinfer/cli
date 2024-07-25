@@ -13,6 +13,7 @@ use reqwest::{
     IntoUrl, Proxy, Result as ReqwestResult,
 };
 use resources::{
+    attachments::UploadAttachmentResponse,
     bucket_statistics::GetBucketStatisticsResponse,
     comment::{AttachmentReference, CommentTimestampFilter},
     dataset::{
@@ -40,7 +41,7 @@ use std::{
     cell::Cell,
     fmt::{Debug, Display},
     io::Read,
-    path::Path,
+    path::{Path, PathBuf},
     time::Duration,
 };
 use url::Url;
@@ -705,10 +706,59 @@ impl Client {
         Ok(())
     }
 
+    pub fn upload_comment_attachment(
+        &self,
+        source_id: &SourceId,
+        comment_id: &CommentId,
+        attachment_index: usize,
+        attachment: &PathBuf,
+    ) -> Result<UploadAttachmentResponse> {
+        let url = self
+            .endpoints
+            .attachment_upload(source_id, comment_id, attachment_index)?;
+
+        if !attachment.is_file() || !attachment.exists() {
+            return Err(Error::FileDoesNotExist {
+                path: attachment.clone(),
+            });
+        }
+
+        let do_request = || {
+            let form = Form::new()
+                .file("file", attachment)
+                .map_err(|source| Error::Unknown {
+                    message: "PUT comment attachment operation failed".to_owned(),
+                    source: source.into(),
+                })
+                .unwrap();
+            let request = self
+                .http_client
+                .request(Method::PUT, url.clone())
+                .multipart(form)
+                .headers(self.headers.clone());
+
+            request.send()
+        };
+
+        let result = self.with_retries(do_request);
+
+        let http_response = result.map_err(|source| Error::ReqwestError {
+            source,
+            message: "Operation failed.".to_string(),
+        })?;
+
+        let status = http_response.status();
+
+        http_response
+            .json::<Response<UploadAttachmentResponse>>()
+            .map_err(Error::BadJsonResponse)?
+            .into_result(status)
+    }
+
     pub fn get_attachment(&self, reference: &AttachmentReference) -> Result<Vec<u8>> {
         let mut response = self.raw_request(
             &Method::GET,
-            &self.endpoints.attachment(reference)?,
+            &self.endpoints.attachment_reference(reference)?,
             &None::<()>,
             &None::<()>,
             &Retry::Yes,
@@ -1670,8 +1720,29 @@ impl Endpoints {
         construct_endpoint(&self.base, &["api", "_private", "integrations", &name.0])
     }
 
-    fn attachment(&self, reference: &AttachmentReference) -> Result<Url> {
+    fn attachment_reference(&self, reference: &AttachmentReference) -> Result<Url> {
         construct_endpoint(&self.base, &["api", "v1", "attachments", &reference.0])
+    }
+
+    fn attachment_upload(
+        &self,
+        source_id: &SourceId,
+        comment_id: &CommentId,
+        attachment_index: usize,
+    ) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "sources",
+                &format!("id:{}", source_id.0),
+                "comments",
+                &comment_id.0,
+                "attachments",
+                &attachment_index.to_string(),
+            ],
+        )
     }
 
     fn validation(
