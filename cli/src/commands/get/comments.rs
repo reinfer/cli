@@ -365,7 +365,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
     let OutputLocations {
         jsonl_file,
         attachments_dir,
-    } = get_output_locations(path, include_attachment_content.is_some_and(|v| v))?;
+    } = get_output_locations(path, include_attachment_content.unwrap_or_default())?;
 
     let mut label_attribute_filter: Option<AttributeFilter> = None;
     if let (Some(dataset_id), Some(filter)) = (dataset, label_filter) {
