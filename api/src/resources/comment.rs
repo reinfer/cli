@@ -782,7 +782,7 @@ pub struct MoonFormLabelCaptures {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct MoonForm {
     pub group: LabelGroupName,
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    #[serde(default)]
     pub assigned: Vec<MoonFormLabelCaptures>,
     #[serde(skip_serializing_if = "should_skip_serializing_optional_vec", default)]
     pub predicted: Option<Vec<MoonFormLabelCaptures>>,
@@ -804,7 +804,7 @@ pub struct NewMoonFormLabelCaptures {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct NewMoonForm {
     pub group: LabelGroupName,
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    #[serde(default)]
     pub assigned: Vec<NewMoonFormLabelCaptures>,
 }
 
