@@ -5,6 +5,7 @@
 - Add `--resume-on-error` flag when creating annotations
 - Remove `--use-moon-forms` flag
 - Add `--resume-on-error` flag when creating comments / emails
+- Serialize assigned on moon_forms if empty vec
 
 # v0.28.0
 - Add general fields to `create datasets`
