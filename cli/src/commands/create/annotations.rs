@@ -170,7 +170,7 @@ pub fn upload_batch_of_annotations(
                         dataset_name,
                         &comment_uid,
                         None,
-                        None,
+                        new_comment.entities.as_ref(),
                         new_comment.moon_forms.as_deref(),
                     )
                 })
