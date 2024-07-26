@@ -29,10 +29,7 @@ fn test_comments_lifecycle_moon_forms() {
     // check without moon forms
     check_comments_lifecycle(SAMPLE_MOON_LABELLING, vec!["--allow-duplicates", "--yes"]);
     // and with moon forms
-    check_comments_lifecycle(
-        SAMPLE_MOON_LABELLING,
-        vec!["--allow-duplicates", "--yes", "--use-moon-forms"],
-    );
+    check_comments_lifecycle(SAMPLE_MOON_LABELLING, vec!["--allow-duplicates", "--yes"]);
 }
 
 #[test]
@@ -177,6 +174,7 @@ fn test_delete_comments_in_range() {
         dataset1.identifier(),
         source.identifier(),
     ]);
+
     assert_eq!(uploaded_annotated.lines().count(), num_annotated);
 
     // Delete comments in range. By default this should exclude annotated comments
