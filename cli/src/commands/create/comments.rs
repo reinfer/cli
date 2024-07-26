@@ -62,11 +62,6 @@ pub struct CreateCommentsArgs {
     /// which is already associated to different data on the platform.
     overwrite: bool,
 
-    #[structopt(long)]
-    /// Whether to use the moon_forms field when creating annotations
-    /// for a comment.
-    use_moon_forms: bool,
-
     #[structopt(short = "n", long = "no-charge")]
     /// Whether to attempt to bypass billing (internal only)
     no_charge: bool,
@@ -153,7 +148,6 @@ pub fn create(client: &Client, args: &CreateCommentsArgs, pool: &mut Pool) -> Re
                 dataset_name.as_ref(),
                 args.overwrite,
                 args.allow_duplicates,
-                args.use_moon_forms,
                 args.no_charge,
                 pool,
                 args.resume_on_error,
@@ -182,7 +176,6 @@ pub fn create(client: &Client, args: &CreateCommentsArgs, pool: &mut Pool) -> Re
                 dataset_name.as_ref(),
                 args.overwrite,
                 args.allow_duplicates,
-                args.use_moon_forms,
                 args.no_charge,
                 pool,
                 args.resume_on_error,
@@ -333,7 +326,6 @@ fn upload_comments_from_reader(
     dataset_name: Option<&DatasetFullName>,
     overwrite: bool,
     allow_duplicates: bool,
-    use_moon_forms: bool,
     no_charge: bool,
     pool: &mut Pool,
     resume_on_error: bool,
@@ -359,25 +351,14 @@ fn upload_comments_from_reader(
         let new_comment = read_comment_result?;
 
         if dataset_name.is_some() && new_comment.has_annotations() {
-            if !use_moon_forms {
-                annotations.push(NewAnnotation {
-                    comment: CommentIdComment {
-                        id: new_comment.comment.id.clone(),
-                    },
-                    labelling: new_comment.labelling.map(Into::into),
-                    entities: new_comment.entities,
-                    moon_forms: None,
-                });
-            } else {
-                annotations.push(NewAnnotation {
-                    comment: CommentIdComment {
-                        id: new_comment.comment.id.clone(),
-                    },
-                    labelling: None,
-                    entities: None,
-                    moon_forms: new_comment.moon_forms.map(Into::into),
-                });
-            };
+            annotations.push(NewAnnotation {
+                comment: CommentIdComment {
+                    id: new_comment.comment.id.clone(),
+                },
+                labelling: new_comment.labelling,
+                entities: new_comment.entities,
+                moon_forms: new_comment.moon_forms.map(Into::into),
+            });
         }
 
         if let Some(audio_path) = new_comment.audio_path {
@@ -420,7 +401,6 @@ fn upload_comments_from_reader(
                     source,
                     statistics,
                     dataset_name,
-                    use_moon_forms,
                     pool,
                     resume_on_error,
                 )?;
@@ -448,7 +428,6 @@ fn upload_comments_from_reader(
                 source,
                 statistics,
                 dataset_name,
-                use_moon_forms,
                 pool,
                 resume_on_error,
             )?;

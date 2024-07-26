@@ -39,11 +39,6 @@ pub struct CreateAnnotationsArgs {
     /// Don't display a progress bar (only applicable when --file is used).
     no_progress: bool,
 
-    #[structopt(long)]
-    /// Whether to use the moon_forms field when creating annotations
-    /// for a comment.
-    use_moon_forms: bool,
-
     #[structopt(long = "batch-size", default_value = "128")]
     /// Number of comments to batch in a single request.
     batch_size: usize,
@@ -96,7 +91,6 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
                 file,
                 &statistics,
                 &dataset_name,
-                args.use_moon_forms,
                 args.batch_size,
                 pool,
                 args.resume_on_error,
@@ -119,7 +113,6 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
                 BufReader::new(io::stdin()),
                 &statistics,
                 &dataset_name,
-                args.use_moon_forms,
                 args.batch_size,
                 pool,
                 args.resume_on_error,
@@ -147,7 +140,6 @@ pub fn upload_batch_of_annotations(
     source: &Source,
     statistics: &(impl AnnotationStatistic + std::marker::Sync),
     dataset_name: &DatasetFullName,
-    use_moon_forms: bool,
     pool: &mut Pool,
     resume_on_error: bool,
 ) -> Result<()> {
@@ -161,7 +153,7 @@ pub fn upload_batch_of_annotations(
                 let comment_uid =
                     CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0));
 
-                let result = (if !use_moon_forms {
+                let result = (if new_comment.moon_forms.is_none() {
                     client.update_labelling(
                         dataset_name,
                         &comment_uid,
@@ -178,7 +170,7 @@ pub fn upload_batch_of_annotations(
                         dataset_name,
                         &comment_uid,
                         None,
-                        None,
+                        new_comment.entities.as_ref(),
                         new_comment.moon_forms.as_deref(),
                     )
                 })
@@ -219,7 +211,6 @@ fn upload_annotations_from_reader(
     annotations: impl BufRead,
     statistics: &Statistics,
     dataset_name: &DatasetFullName,
-    use_moon_forms: bool,
     batch_size: usize,
     pool: &mut Pool,
     resume_on_error: bool,
@@ -238,7 +229,6 @@ fn upload_annotations_from_reader(
                     source,
                     statistics,
                     dataset_name,
-                    use_moon_forms,
                     pool,
                     resume_on_error,
                 )?;
@@ -253,7 +243,6 @@ fn upload_annotations_from_reader(
             source,
             statistics,
             dataset_name,
-            use_moon_forms,
             pool,
             resume_on_error,
         )?;
