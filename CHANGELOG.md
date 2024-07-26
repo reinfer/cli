@@ -4,6 +4,7 @@
 - Increase default http timeout to 120s
 - Add `--resume-on-error` flag when creating annotations
 - Remove `--use-moon-forms` flag
+- Add `--resume-on-error` flag when creating comments / emails
 
 # v0.28.0
 - Add general fields to `create datasets`

@@ -114,7 +114,7 @@ fn upload_batch_of_new_emails(
     no_charge: bool,
     statistics: &Arc<Statistics>,
 ) -> Result<()> {
-    client.put_emails(bucket, emails, no_charge)?;
+    client.put_emails(bucket, emails.to_vec(), no_charge)?;
     statistics.add_uploaded(emails.len());
     Ok(())
 }
