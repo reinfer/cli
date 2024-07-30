@@ -4,7 +4,7 @@ use std::{
     path::PathBuf,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use dialoguer::Confirm;
 use once_cell::sync::Lazy;
 use reinfer_client::TransformTag;
@@ -72,7 +72,7 @@ impl LocalAttachmentPath {
         self.ensure_parent_dir_exists()?;
 
         if !self.path().is_file() {
-            let f = File::create(self.path()).expect("Could not create attachment output file");
+            let f = File::create(self.path()).context("Could not create attachment output file")?;
 
             let mut buf_writer = BufWriter::new(f);
             buf_writer.write_all(&buf_to_write)?;

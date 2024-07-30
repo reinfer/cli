@@ -1,3 +1,6 @@
+# Unreleased
+- Add ability to upload attachment content for comments
+
 # v0.29.0
 - Add `config parse-from-url` command for parsing configuration from a URL
 - Add ability to download attachments for comments

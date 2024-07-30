@@ -3,7 +3,7 @@ use crate::{
         create::annotations::{
             upload_batch_of_annotations, AnnotationStatistic, CommentIdComment, NewAnnotation,
         },
-        ensure_uip_user_consents_to_ai_unit_charge,
+        ensure_uip_user_consents_to_ai_unit_charge, LocalAttachmentPath,
     },
     progress::{Options as ProgressOptions, Progress},
 };
@@ -11,15 +11,15 @@ use anyhow::{anyhow, ensure, Context, Result};
 use colored::Colorize;
 use log::{debug, info};
 use reinfer_client::{
-    Client, CommentId, DatasetFullName, DatasetIdentifier, NewAnnotatedComment, NewComment, Source,
-    SourceIdentifier,
+    resources::comment::AttachmentMetadata, Client, CommentId, DatasetFullName, DatasetIdentifier,
+    NewAnnotatedComment, NewComment, Source, SourceId, SourceIdentifier,
 };
 use scoped_threadpool::Pool;
 use std::{
     collections::HashSet,
     fs::File,
     io::{self, BufRead, BufReader, Seek},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -27,6 +27,8 @@ use std::{
 };
 
 use structopt::StructOpt;
+
+use super::annotations::AttachmentStatistic;
 
 #[derive(Debug, StructOpt)]
 pub struct CreateCommentsArgs {
@@ -73,11 +75,28 @@ pub struct CreateCommentsArgs {
     #[structopt(long = "resume-on-error")]
     /// Whether to attempt to resume processing on error
     resume_on_error: bool,
+
+    #[structopt(short = "a", long = "attachments", parse(from_os_str))]
+    /// Path to folder containing the attachemtns to upload
+    attachments_dir: Option<PathBuf>,
 }
 
 pub fn create(client: &Client, args: &CreateCommentsArgs, pool: &mut Pool) -> Result<()> {
     if !args.no_charge && !args.yes {
         ensure_uip_user_consents_to_ai_unit_charge(client.base_url())?;
+    }
+
+    ensure!(args.batch_size > 0, "--batch-size must be greater than 0");
+
+    if let Some(attachments_dir) = &args.attachments_dir {
+        ensure!(
+            attachments_dir.is_dir(),
+            "--attachments must be a directory"
+        );
+        ensure!(
+            attachments_dir.exists(),
+            "--attachments directory must exist"
+        )
     }
 
     let source = client
@@ -95,8 +114,6 @@ pub fn create(client: &Client, args: &CreateCommentsArgs, pool: &mut Pool) -> Re
         ),
         None => None,
     };
-
-    ensure!(args.batch_size > 0, "--batch-size must be greater than 0");
 
     let statistics = match &args.comments_path {
         Some(comments_path) => {
@@ -151,6 +168,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs, pool: &mut Pool) -> Re
                 args.no_charge,
                 pool,
                 args.resume_on_error,
+                &args.attachments_dir,
             )?;
             if let Some(mut progress) = progress {
                 progress.done();
@@ -179,6 +197,7 @@ pub fn create(client: &Client, args: &CreateCommentsArgs, pool: &mut Pool) -> Re
                 args.no_charge,
                 pool,
                 args.resume_on_error,
+                &args.attachments_dir,
             )?;
             statistics
         }
@@ -257,6 +276,67 @@ fn check_no_duplicate_ids(comments: impl BufRead) -> Result<()> {
     Ok(())
 }
 
+fn upload_local_attachment(
+    comment_id: &CommentId,
+    attachment: &mut AttachmentMetadata,
+    index: usize,
+    client: &Client,
+    attachments_dir: &Path,
+    source_id: &SourceId,
+) -> Result<()> {
+    let local_attachemnt = LocalAttachmentPath {
+        index,
+        name: attachment.name.clone(),
+        parent_dir: attachments_dir.join(&comment_id.0),
+    };
+
+    match client.upload_comment_attachment(source_id, comment_id, index, &local_attachemnt.path()) {
+        Ok(response) => {
+            attachment.attachment_reference = None;
+            attachment.content_hash = Some(response.content_hash);
+            Ok(())
+        }
+        Err(err) => {
+            attachment.attachment_reference = None;
+            Err(anyhow::Error::msg(err))
+        }
+    }
+}
+
+fn upload_attachments_for_comments(
+    client: &Client,
+    comments: &mut [NewComment],
+    attachments_dir: &Path,
+    statistics: &Statistics,
+    source_id: &SourceId,
+    resume_on_error: bool,
+) -> Result<()> {
+    for comment in comments.iter_mut() {
+        for (index, attachment) in comment.attachments.iter_mut().enumerate() {
+            match upload_local_attachment(
+                &comment.id,
+                attachment,
+                index,
+                client,
+                attachments_dir,
+                source_id,
+            ) {
+                Ok(_) => {
+                    statistics.add_attachment();
+                }
+                Err(err) => {
+                    if resume_on_error {
+                        statistics.add_failed_attachment();
+                    } else {
+                        return Err(err);
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn upload_batch_of_comments(
     client: &Client,
@@ -266,6 +346,7 @@ fn upload_batch_of_comments(
     comments_to_sync: &mut Vec<NewComment>,
     audio_paths: &mut Vec<(CommentId, PathBuf)>,
     no_charge: bool,
+    attachments_dir: &Option<PathBuf>,
     resume_on_error: bool,
 ) -> Result<()> {
     let mut uploaded = 0;
@@ -276,6 +357,17 @@ fn upload_batch_of_comments(
 
     // Upload comments
     if !comments_to_put.is_empty() {
+        if let Some(attachments_dir) = attachments_dir {
+            upload_attachments_for_comments(
+                client,
+                comments_to_put,
+                attachments_dir,
+                statistics,
+                &source.id,
+                resume_on_error,
+            )?;
+        }
+
         if resume_on_error {
             let result = client
                 .put_comments_split_on_failure(
@@ -294,6 +386,16 @@ fn upload_batch_of_comments(
     }
 
     if !comments_to_sync.is_empty() {
+        if let Some(attachments_dir) = attachments_dir {
+            upload_attachments_for_comments(
+                client,
+                comments_to_put,
+                attachments_dir,
+                statistics,
+                &source.id,
+                resume_on_error,
+            )?;
+        }
         let result = if resume_on_error {
             let result = client
                 .sync_comments_split_on_failure(
@@ -356,6 +458,7 @@ fn upload_comments_from_reader(
     no_charge: bool,
     pool: &mut Pool,
     resume_on_error: bool,
+    attachments_dir: &Option<PathBuf>,
 ) -> Result<()> {
     assert!(batch_size > 0);
 
@@ -407,6 +510,7 @@ fn upload_comments_from_reader(
                 &mut comments_to_sync,
                 &mut audio_paths,
                 no_charge,
+                attachments_dir,
                 resume_on_error,
             )?;
         }
@@ -421,6 +525,7 @@ fn upload_comments_from_reader(
                     &mut comments_to_sync,
                     &mut audio_paths,
                     no_charge,
+                    attachments_dir,
                     resume_on_error,
                 )?;
 
@@ -446,6 +551,7 @@ fn upload_comments_from_reader(
             &mut comments_to_sync,
             &mut audio_paths,
             no_charge,
+            attachments_dir,
             resume_on_error,
         )?;
     }
@@ -485,6 +591,8 @@ pub struct Statistics {
     annotations: AtomicUsize,
     failed_annotations: AtomicUsize,
     failed_comments: AtomicUsize,
+    attachments: AtomicUsize,
+    failed_attachments: AtomicUsize,
 }
 
 impl AnnotationStatistic for Statistics {
@@ -493,6 +601,14 @@ impl AnnotationStatistic for Statistics {
     }
     fn add_failed_annotation(&self) {
         self.failed_annotations.fetch_add(1, Ordering::SeqCst);
+    }
+}
+impl AttachmentStatistic for Statistics {
+    fn add_attachment(&self) {
+        self.attachments.fetch_add(1, Ordering::SeqCst);
+    }
+    fn add_failed_attachment(&self) {
+        self.failed_attachments.fetch_add(1, Ordering::SeqCst);
     }
 }
 
@@ -507,6 +623,8 @@ impl Statistics {
             annotations: AtomicUsize::new(0),
             failed_annotations: AtomicUsize::new(0),
             failed_comments: AtomicUsize::new(0),
+            attachments: AtomicUsize::new(0),
+            failed_attachments: AtomicUsize::new(0),
         }
     }
 
@@ -564,6 +682,16 @@ impl Statistics {
     fn num_failed_comments(&self) -> usize {
         self.failed_comments.load(Ordering::SeqCst)
     }
+
+    #[inline]
+    fn num_attachments(&self) -> usize {
+        self.attachments.load(Ordering::SeqCst)
+    }
+
+    #[inline]
+    fn num_failed_attachments(&self) -> usize {
+        self.failed_attachments.load(Ordering::SeqCst)
+    }
 }
 
 /// Detailed statistics - only make sense if using --overwrite (i.e. exclusively sync endpoint)
@@ -577,9 +705,25 @@ fn detailed_statistics(statistics: &Statistics) -> (u64, String) {
     let num_annotations = statistics.num_annotations();
     let num_failed_annotations = statistics.num_failed_annotations();
     let num_failed_comments = statistics.num_failed_comments();
+    let num_attachments = statistics.num_attachments();
+    let num_failed_attachments = statistics.num_failed_attachments();
 
     let failed_annotations_string = if num_failed_annotations > 0 {
         format!(" {num_failed_annotations} {}", "skipped".dimmed())
+    } else {
+        String::new()
+    };
+    let failed_attachments_string = if num_failed_attachments > 0 {
+        format!(" {num_failed_attachments} {}", "skipped".dimmed())
+    } else {
+        String::new()
+    };
+
+    let attachments_string = if (num_attachments + num_failed_attachments) > 0 {
+        format!(
+            " [{num_attachments} {}{failed_attachments_string}]",
+            "attachments".dimmed()
+        )
     } else {
         String::new()
     };
@@ -593,7 +737,7 @@ fn detailed_statistics(statistics: &Statistics) -> (u64, String) {
     (
         bytes_read as u64,
         format!(
-            "{} {}: {} {} {} {} {} {}{} [{} {}{}]",
+            "{} {}: {} {} {} {} {} {}{} [{} {}{}]{}",
             num_uploaded.to_string().bold(),
             "comments".dimmed(),
             num_new,
@@ -605,7 +749,8 @@ fn detailed_statistics(statistics: &Statistics) -> (u64, String) {
             failed_comments_string,
             num_annotations,
             "annotations".dimmed(),
-            failed_annotations_string
+            failed_annotations_string,
+            attachments_string
         ),
     )
 }
@@ -617,6 +762,8 @@ fn basic_statistics(statistics: &Statistics) -> (u64, String) {
     let num_annotations = statistics.num_annotations();
     let num_failed_annotations = statistics.num_failed_annotations();
     let num_failed_comments = statistics.num_failed_comments();
+    let num_attachments = statistics.num_attachments();
+    let num_failed_attachments = statistics.num_failed_attachments();
 
     let failed_annotations_string = if num_failed_annotations > 0 {
         format!(" {num_failed_annotations} {}", "skipped".dimmed())
@@ -629,16 +776,33 @@ fn basic_statistics(statistics: &Statistics) -> (u64, String) {
     } else {
         String::new()
     };
+
+    let failed_attachments_string = if num_failed_attachments > 0 {
+        format!(" {num_failed_attachments} {}", "skipped".dimmed())
+    } else {
+        String::new()
+    };
+
+    let attachments_string = if (num_attachments + num_failed_attachments) > 0 {
+        format!(
+            " [{num_attachments} {}{failed_attachments_string}]",
+            "attachments".dimmed()
+        )
+    } else {
+        String::new()
+    };
+
     (
         bytes_read as u64,
         format!(
-            "{} {}{} [{} {}{}]",
+            "{} {}{} [{} {}{}]{}",
             num_uploaded.to_string().bold(),
             "comments".dimmed(),
             failed_comments_string,
             num_annotations,
             "annotations".dimmed(),
-            failed_annotations_string
+            failed_annotations_string,
+            attachments_string
         ),
     )
 }

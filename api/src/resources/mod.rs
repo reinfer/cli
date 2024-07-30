@@ -1,3 +1,4 @@
+pub mod attachments;
 pub mod audit;
 pub mod bucket;
 pub mod bucket_statistics;

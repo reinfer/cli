@@ -23,6 +23,8 @@ use std::{
     str::FromStr,
 };
 
+use super::attachments::ContentHash;
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Id(pub String);
 
@@ -340,9 +342,6 @@ pub enum Sentiment {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct AttachmentReference(pub String);
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct ContentHash(pub String);
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct AttachmentMetadata {

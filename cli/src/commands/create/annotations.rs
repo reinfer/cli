@@ -133,6 +133,11 @@ pub trait AnnotationStatistic {
     fn add_failed_annotation(&self);
 }
 
+pub trait AttachmentStatistic {
+    fn add_attachment(&self);
+    fn add_failed_attachment(&self);
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn upload_batch_of_annotations(
     annotations_to_upload: &mut Vec<NewAnnotation>,
