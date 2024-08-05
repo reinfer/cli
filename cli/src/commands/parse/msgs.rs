@@ -12,8 +12,8 @@ use std::{io::Read, sync::Arc};
 
 use reinfer_client::{
     resources::{
+        attachments::AttachmentMetadata,
         documents::{Document, RawEmail, RawEmailBody, RawEmailHeaders},
-        email::AttachmentMetadata,
     },
     Client, PropertyMap, SourceIdentifier, TransformTag,
 };
@@ -147,6 +147,8 @@ fn read_attachment(
         name,
         content_type,
         size: data.len() as u64,
+        attachment_reference: None,
+        content_hash: None,
     })
 }
 
@@ -337,11 +339,15 @@ mod tests {
                 name: "hello.txt".to_string(),
                 size: 12,
                 content_type: ".txt".to_string(),
+                attachment_reference: None,
+                content_hash: None,
             },
             AttachmentMetadata {
                 name: "world.pdf".to_string(),
                 size: 7302,
                 content_type: ".pdf".to_string(),
+                attachment_reference: None,
+                content_hash: None,
             },
         ];
 

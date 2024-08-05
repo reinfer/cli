@@ -1,5 +1,6 @@
 use crate::{
     error::{Error, Result},
+    resources::attachments::AttachmentMetadata,
     resources::entity_def::Name as EntityName,
     resources::label_def::Name as LabelName,
     resources::label_group::Name as LabelGroupName,
@@ -22,8 +23,6 @@ use std::{
     result::Result as StdResult,
     str::FromStr,
 };
-
-use super::attachments::ContentHash;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Id(pub String);
@@ -342,17 +341,6 @@ pub enum Sentiment {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct AttachmentReference(pub String);
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct AttachmentMetadata {
-    pub name: String,
-    pub size: u64,
-    pub content_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub attachment_reference: Option<AttachmentReference>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub content_hash: Option<ContentHash>,
-}
 
 #[derive(Debug, Clone, PartialEq, Default, Eq)]
 pub struct PropertyMap(HashMap<String, PropertyValue>);
