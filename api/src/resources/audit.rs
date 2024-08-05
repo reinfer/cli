@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use crate::{Continuation, DatasetId, DatasetName, Email, ProjectName, UserId, Username};
+use crate::{Continuation, DatasetId, DatasetName, ProjectName, UserEmail, UserId, Username};
 
 use super::{comment::CommentTimestampFilter, project::Id as ProjectId};
 use serde::{Deserialize, Serialize};
@@ -45,7 +45,7 @@ pub struct AuditEvent {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PrintableAuditEvent {
-    pub actor_email: Email,
+    pub actor_email: UserEmail,
     pub actor_tenant_name: AuditTenantName,
     pub event_type: AuditEventType,
     pub dataset_names: Vec<DatasetName>,
@@ -79,7 +79,7 @@ struct AuditTenant {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct AuditUser {
     display_name: Username,
-    email: Email,
+    email: UserEmail,
     id: UserId,
     tenant_id: AuditTenantId,
     username: Username,

@@ -2,7 +2,7 @@ use crate::{CommentId, NewComment, PropertyMap, TransformTag};
 use serde::{Deserialize, Serialize, Serializer};
 use std::collections::{BTreeMap, HashMap};
 
-use super::email::AttachmentMetadata;
+use super::attachments::AttachmentMetadata;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Document {
@@ -100,11 +100,15 @@ From: sender@example.com"#
                         name: "hello.pdf".to_string(),
                         size: 1000,
                         content_type: "pdf".to_string(),
+                        attachment_reference: None,
+                        content_hash: None,
                     },
                     AttachmentMetadata {
                         name: "world.csv".to_string(),
                         size: 9999,
                         content_type: "csv".to_string(),
+                        attachment_reference: None,
+                        content_hash: None,
                     },
                 ],
                 body: RawEmailBody::Plain("Hello world".to_string()),

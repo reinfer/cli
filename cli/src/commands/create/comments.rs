@@ -11,8 +11,8 @@ use anyhow::{anyhow, ensure, Context, Result};
 use colored::Colorize;
 use log::{debug, info};
 use reinfer_client::{
-    resources::comment::AttachmentMetadata, Client, CommentId, DatasetFullName, DatasetIdentifier,
-    NewAnnotatedComment, NewComment, Source, SourceId, SourceIdentifier,
+    resources::attachments::AttachmentMetadata, Client, CommentId, DatasetFullName,
+    DatasetIdentifier, NewAnnotatedComment, NewComment, Source, SourceId, SourceIdentifier,
 };
 use scoped_threadpool::Pool;
 use std::{

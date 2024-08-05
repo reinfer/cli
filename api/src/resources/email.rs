@@ -1,6 +1,13 @@
+use crate::Error;
+use std::str::FromStr;
+
 use crate::{ReducibleResponse, SplittableRequest};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+
+use crate::resources::attachments::AttachmentMetadata;
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Mailbox(pub String);
@@ -10,6 +17,14 @@ pub struct MimeContent(pub String);
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Id(pub String);
+
+impl FromStr for Id {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Self> {
+        Ok(Self(string.to_owned()))
+    }
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct EmailMetadata {
@@ -26,16 +41,25 @@ pub struct EmailMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conversation_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub conversation_topic: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub is_read: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub folder: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub received_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct AttachmentMetadata {
-    pub name: String,
-    pub size: u64,
-    pub content_type: String,
+pub struct Email {
+    pub id: Id,
+    pub mailbox: Mailbox,
+    pub timestamp: DateTime<Utc>,
+    pub mime_content: MimeContent,
+    pub metadata: Option<EmailMetadata>,
+    pub attachments: Vec<AttachmentMetadata>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -80,6 +104,11 @@ pub struct Continuation(pub String);
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct EmailsIterPage {
-    pub emails: Vec<NewEmail>,
+    pub emails: Vec<Email>,
     pub continuation: Option<Continuation>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetEmailResponse {
+    pub emails: Vec<Email>,
 }
