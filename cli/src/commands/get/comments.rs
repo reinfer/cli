@@ -608,12 +608,6 @@ fn download_comments(
                 let page = page.context("Operation to get comments has failed.")?;
                 statistics.add_comments(page.len());
 
-                if let Some(attachments_dir) = &options.attachments_dir {
-                    page.iter().try_for_each(|comment| -> Result<()> {
-                        download_comment_attachments(client, attachments_dir, comment, &statistics)
-                    })?;
-                }
-
                 print_resources_as_json(
                     page.into_iter().map(|comment| AnnotatedComment {
                         comment,
@@ -685,43 +679,44 @@ fn get_comments_from_uids(
                     .context("Operation to get predictions has failed.")?;
                 // since predict-comments endpoint doesn't return some fields,
                 // they are set to None or [] here
-                let mut comments =
-                    page.into_iter()
-                        .zip(predictions.into_iter())
-                        .map(|(comment, prediction)| AnnotatedComment {
-                            comment: comment.comment,
-                            labelling: Some(vec![Labelling {
-                                group: DEFAULT_LABEL_GROUP_NAME.clone(),
-                                assigned: Vec::new(),
-                                dismissed: Vec::new(),
-                                predicted: prediction.labels.map(|auto_threshold_labels| {
-                                    auto_threshold_labels
-                                        .iter()
-                                        .map(|auto_threshold_label| PredictedLabel {
-                                            name: PredictedLabelName::String(LabelName(
-                                                auto_threshold_label.name.join(" > "),
-                                            )),
-                                            sentiment: None,
-                                            probability: auto_threshold_label.probability,
-                                            auto_thresholds: Some(
-                                                auto_threshold_label.auto_thresholds.to_vec(),
-                                            ),
-                                        })
-                                        .collect()
-                                }),
-                            }]),
-                            entities: Some(Entities {
-                                assigned: Vec::new(),
-                                dismissed: Vec::new(),
-                                predicted: prediction.entities,
+                let comments: Vec<_> = page
+                    .into_iter()
+                    .zip(predictions.into_iter())
+                    .map(|(comment, prediction)| AnnotatedComment {
+                        comment: comment.comment,
+                        labelling: Some(vec![Labelling {
+                            group: DEFAULT_LABEL_GROUP_NAME.clone(),
+                            assigned: Vec::new(),
+                            dismissed: Vec::new(),
+                            predicted: prediction.labels.map(|auto_threshold_labels| {
+                                auto_threshold_labels
+                                    .iter()
+                                    .map(|auto_threshold_label| PredictedLabel {
+                                        name: PredictedLabelName::String(LabelName(
+                                            auto_threshold_label.name.join(" > "),
+                                        )),
+                                        sentiment: None,
+                                        probability: auto_threshold_label.probability,
+                                        auto_thresholds: Some(
+                                            auto_threshold_label.auto_thresholds.to_vec(),
+                                        ),
+                                    })
+                                    .collect()
                             }),
-                            thread_properties: None,
-                            moon_forms: None,
-                            label_properties: None,
-                        });
+                        }]),
+                        entities: Some(Entities {
+                            assigned: Vec::new(),
+                            dismissed: Vec::new(),
+                            predicted: prediction.entities,
+                        }),
+                        thread_properties: None,
+                        moon_forms: None,
+                        label_properties: None,
+                    })
+                    .collect();
 
                 if let Some(attachments_dir) = &options.attachments_dir {
-                    comments.try_for_each(|comment| -> Result<()> {
+                    comments.iter().try_for_each(|comment| -> Result<()> {
                         download_comment_attachments(
                             client,
                             attachments_dir,
@@ -732,17 +727,20 @@ fn get_comments_from_uids(
                 }
                 print_resources_as_json(comments, &mut writer)
             } else {
-                let mut comments = page.into_iter().map(|mut annotated_comment| {
-                    if !include_predictions {
-                        annotated_comment = annotated_comment.without_predictions();
-                    }
-                    if annotated_comment.has_annotations() {
-                        statistics.add_annotated(1);
-                    }
-                    annotated_comment
-                });
+                let comments: Vec<_> = page
+                    .into_iter()
+                    .map(|mut annotated_comment| {
+                        if !include_predictions {
+                            annotated_comment = annotated_comment.without_predictions();
+                        }
+                        if annotated_comment.has_annotations() {
+                            statistics.add_annotated(1);
+                        }
+                        annotated_comment
+                    })
+                    .collect();
                 if let Some(attachments_dir) = &options.attachments_dir {
-                    comments.try_for_each(|comment| -> Result<()> {
+                    comments.iter().try_for_each(|comment| -> Result<()> {
                         download_comment_attachments(
                             client,
                             attachments_dir,
@@ -751,6 +749,7 @@ fn get_comments_from_uids(
                         )
                     })?;
                 }
+
                 print_resources_as_json(comments, &mut writer)
             }
         })?;
