@@ -3,6 +3,7 @@
 - Retry when putting comments
 - Add ability to get email by id 
 - Add ability to upload attachment content for comments
+- Add ability to randomly sample with `get comments`
 
 # v0.29.0
 - Add `config parse-from-url` command for parsing configuration from a URL
