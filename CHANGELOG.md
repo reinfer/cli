@@ -1,4 +1,5 @@
 # Unreleased
+- Retry when putting comments
 - Add ability to upload attachment content for comments
 
 # v0.29.0

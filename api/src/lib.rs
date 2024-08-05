@@ -510,7 +510,7 @@ impl Client {
             self.endpoints.put_comments(source_name)?,
             PutCommentsRequest { comments },
             Some(NoChargeQuery { no_charge }),
-            Retry::No,
+            Retry::Yes,
         )
     }
 
@@ -525,7 +525,7 @@ impl Client {
             &self.endpoints.put_comments(source_name)?,
             &Some(PutCommentsRequest { comments }),
             &Some(NoChargeQuery { no_charge }),
-            &Retry::No,
+            &Retry::Yes,
         )
     }
 
