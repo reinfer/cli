@@ -1,5 +1,6 @@
 # Unreleased
 - Add `only-with-attachment` filter on get comments
+- Retry when putting comments
 - Add ability to get email by id 
 - Add ability to upload attachment content for comments
 
