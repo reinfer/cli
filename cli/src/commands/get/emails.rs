@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 
 use colored::Colorize;
-use reinfer_client::{resources::bucket_statistics::Count, BucketIdentifier, Client};
+use reinfer_client::{resources::bucket_statistics::Count, BucketIdentifier, Client, EmailId};
 use std::{
     fs::File,
     io::{self, BufWriter, Write},
@@ -27,10 +27,14 @@ pub struct GetManyEmailsArgs {
     #[structopt(short = "f", long = "file", parse(from_os_str))]
     /// Path where to write comments as JSON. If not specified, stdout will be used.
     path: Option<PathBuf>,
+
+    #[structopt(name = "id")]
+    /// Id of specific email to return
+    id: Option<EmailId>,
 }
 
 pub fn get_many(client: &Client, args: &GetManyEmailsArgs) -> Result<()> {
-    let GetManyEmailsArgs { bucket, path } = args;
+    let GetManyEmailsArgs { bucket, path, id } = args;
 
     let file = match path {
         Some(path) => Some(
@@ -41,11 +45,34 @@ pub fn get_many(client: &Client, args: &GetManyEmailsArgs) -> Result<()> {
         None => None,
     };
 
+    if let Some(id) = id {
+        if let Some(file) = file {
+            return download_email(client, bucket.clone(), id.clone(), file);
+        } else {
+            return download_email(client, bucket.clone(), id.clone(), io::stdout().lock());
+        }
+    }
+
     if let Some(file) = file {
         download_emails(client, bucket.clone(), file)
     } else {
         download_emails(client, bucket.clone(), io::stdout().lock())
     }
+}
+
+fn download_email(
+    client: &Client,
+    bucket_identifier: BucketIdentifier,
+    id: EmailId,
+    mut writer: impl Write,
+) -> Result<()> {
+    let bucket = client
+        .get_bucket(bucket_identifier)
+        .context("Operation to get bucket has failed.")?;
+
+    let response = client.get_email(&bucket.full_name(), id)?;
+
+    print_resources_as_json(response, &mut writer)
 }
 
 fn download_emails(

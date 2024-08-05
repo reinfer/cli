@@ -13,7 +13,9 @@ use crate::commands::{
     ensure_uip_user_consents_to_ai_unit_charge,
     parse::{get_files_in_directory, get_progress_bar, Statistics},
 };
-use reinfer_client::{resources::email::AttachmentMetadata, BucketIdentifier, Client, NewEmail};
+use reinfer_client::{
+    resources::attachments::AttachmentMetadata, BucketIdentifier, Client, NewEmail,
+};
 use structopt::StructOpt;
 
 use super::upload_batch_of_new_emails;
@@ -174,6 +176,8 @@ fn read_eml_to_new_email(path: &PathBuf) -> Result<NewEmail> {
                 name: attachment_filename.to_owned(),
                 size,
                 content_type: format!(".{}", extension.to_string_lossy()),
+                attachment_reference: None,
+                content_hash: None,
             });
         }
     }
@@ -222,11 +226,15 @@ mod tests {
                 name: "hello.txt".to_string(),
                 size: 176,
                 content_type: ".txt".to_string(),
+                attachment_reference: None,
+                content_hash: None,
             },
             AttachmentMetadata {
                 name: "world.pdf".to_string(),
                 size: 7476,
                 content_type: ".pdf".to_string(),
+                attachment_reference: None,
+                content_hash: None,
             },
         ];
         let expected_mime_content = include_str!("../../../tests/samples/test.eml");
