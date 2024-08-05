@@ -89,12 +89,19 @@ pub enum TimeResolution {
 pub enum Attribute {
     Labels,
     AttachmentPropertyTypes,
+    AttachmentPropertyNumAttachments,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AttributeFilterEnum {
-    StringAnyOf { any_of: Vec<String> },
+    StringAnyOf {
+        any_of: Vec<String>,
+    },
+    NumberRange {
+        minimum: Option<usize>,
+        maximum: Option<usize>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -1,4 +1,5 @@
 # Unreleased
+- Add `only-with-attachment` filter on get comments
 - Add ability to upload attachment content for comments
 
 # v0.29.0
