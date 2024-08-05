@@ -124,7 +124,7 @@ pub struct GetManyCommentsArgs {
     include_attachment_content: Option<bool>,
 
     #[structopt(long = "--only-with-attachments")]
-    /// Whether to return comments with attachment metadata
+    /// Whether to only return comments with attachment metadata
     only_with_attachments: Option<bool>,
 }
 
