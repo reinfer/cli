@@ -122,6 +122,10 @@ pub struct GetManyCommentsArgs {
     #[structopt(long = "attachments")]
     /// Save attachment content for each comment
     include_attachment_content: Option<bool>,
+
+    #[structopt(long = "--only-with-attachments")]
+    /// Whether to only return comments with attachment metadata
+    only_with_attachments: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -304,6 +308,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         recipients,
         senders,
         include_attachment_content,
+        only_with_attachments,
     } = args;
 
     let by_timerange = from_timestamp.is_some() || to_timestamp.is_some();
@@ -328,7 +333,8 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         bail!("Cannot use a label filter when `dataset` is not provided.")
     }
 
-    if !attachment_type_filters.is_empty() && dataset.is_none() {
+    if (!attachment_type_filters.is_empty() | only_with_attachments.is_some()) && dataset.is_none()
+    {
         bail!("Cannot use a attachment type filter when `dataset` is not provided.")
     }
 
@@ -387,6 +393,17 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         });
     }
 
+    let mut only_with_attachments_filter: Option<AttributeFilter> = None;
+    if only_with_attachments.unwrap_or_default() {
+        only_with_attachments_filter = Some(AttributeFilter {
+            attribute: Attribute::AttachmentPropertyNumAttachments,
+            filter: AttributeFilterEnum::NumberRange {
+                minimum: Some(1),
+                maximum: None,
+            },
+        });
+    }
+
     let user_properties_filter = if let Some(filter) = user_property_filter {
         Some(filter.0.clone())
     } else if *interative_property_filter {
@@ -436,6 +453,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         attachment_property_types_filter,
         messages_filter: Some(messages_filter),
         attachments_dir,
+        only_with_attachments_filter,
     };
 
     if let Some(file) = jsonl_file {
@@ -490,6 +508,7 @@ struct CommentDownloadOptions {
     user_properties_filter: Option<UserPropertiesFilter>,
     messages_filter: Option<MessagesFilter>,
     attachments_dir: Option<PathBuf>,
+    only_with_attachments_filter: Option<AttributeFilter>,
 }
 
 impl CommentDownloadOptions {
@@ -502,6 +521,10 @@ impl CommentDownloadOptions {
 
         if let Some(attachment_types_attribute_filter) = &self.attachment_property_types_filter {
             filters.push(attachment_types_attribute_filter.clone())
+        }
+
+        if let Some(only_with_attachments_filter) = &self.only_with_attachments_filter {
+            filters.push(only_with_attachments_filter.clone())
         }
 
         filters
