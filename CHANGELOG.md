@@ -1,4 +1,5 @@
 # Unreleased
+- Add ability to get email by id 
 - Add ability to upload attachment content for comments
 
 # v0.29.0

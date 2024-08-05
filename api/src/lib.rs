@@ -22,6 +22,7 @@ use resources::{
         SummaryResponse,
     },
     documents::{Document, SyncRawEmailsRequest, SyncRawEmailsResponse},
+    email::{Email, GetEmailResponse},
     integration::{
         GetIntegrationResponse, GetIntegrationsResponse, Integration, NewIntegration,
         PostIntegrationRequest, PostIntegrationResponse, PutIntegrationRequest,
@@ -135,7 +136,7 @@ pub use crate::{
             Stream, StreamException, StreamExceptionMetadata,
         },
         user::{
-            Email, GlobalPermission, Id as UserId, Identifier as UserIdentifier,
+            Email as UserEmail, GlobalPermission, Id as UserId, Identifier as UserIdentifier,
             ModifiedPermissions, NewUser, ProjectPermission, UpdateUser, User, Username,
         },
     },
@@ -240,6 +241,11 @@ pub struct GetEmailsIterPageQuery<'a> {
 #[derive(Serialize)]
 pub struct GetCommentQuery {
     pub include_markup: bool,
+}
+
+#[derive(Serialize)]
+pub struct GetEmailQuery {
+    pub id: String,
 }
 
 impl Client {
@@ -424,7 +430,18 @@ impl Client {
         CommentsIter::new(self, source_name, page_size, timerange)
     }
 
-    /// Get a page of comments from a source.
+    /// Get a single of email from a bucket.
+    pub fn get_email(&self, bucket_name: &BucketFullName, id: EmailId) -> Result<Vec<Email>> {
+        let query_params = GetEmailQuery { id: id.0 };
+        Ok(self
+            .get_query::<_, _, GetEmailResponse>(
+                self.endpoints.get_emails(bucket_name)?,
+                Some(&query_params),
+            )?
+            .emails)
+    }
+
+    /// Get a page of emails from a bucket.
     pub fn get_emails_iter_page(
         &self,
         bucket_name: &BucketFullName,
@@ -1517,7 +1534,7 @@ impl<'a> EmailsIter<'a> {
 }
 
 impl<'a> Iterator for EmailsIter<'a> {
-    type Item = Result<Vec<NewEmail>>;
+    type Item = Result<Vec<Email>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.done {
