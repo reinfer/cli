@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use colored::Colorize;
 use dialoguer::{Confirm, Input, Select};
 use log::info;
+use rand::Rng;
 use regex::Regex;
 use reinfer_client::{
     resources::{
@@ -126,6 +127,10 @@ pub struct GetManyCommentsArgs {
     #[structopt(long = "--only-with-attachments")]
     /// Whether to only return comments with attachment metadata
     only_with_attachments: Option<bool>,
+
+    #[structopt(long = "--shuffle")]
+    /// Whether to return comments in a random order
+    shuffle: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -309,6 +314,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         senders,
         include_attachment_content,
         only_with_attachments,
+        shuffle,
     } = args;
 
     let by_timerange = from_timestamp.is_some() || to_timestamp.is_some();
@@ -366,6 +372,10 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
 
     if path.is_none() && include_attachment_content.is_some() {
         bail!("Cannot include attachment content when no file is provided")
+    }
+
+    if shuffle.is_some() && dataset.is_none() {
+        bail!("Cannot shuffle data when dataset is not provided")
     }
 
     let OutputLocations {
@@ -454,6 +464,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         messages_filter: Some(messages_filter),
         attachments_dir,
         only_with_attachments_filter,
+        shuffle: shuffle.unwrap_or(false),
     };
 
     if let Some(file) = jsonl_file {
@@ -509,6 +520,7 @@ struct CommentDownloadOptions {
     messages_filter: Option<MessagesFilter>,
     attachments_dir: Option<PathBuf>,
     only_with_attachments_filter: Option<AttributeFilter>,
+    shuffle: bool,
 }
 
 impl CommentDownloadOptions {
@@ -685,7 +697,13 @@ fn get_comments_from_uids(
             messages: options.messages_filter.clone(),
         },
         limit: DEFAULT_QUERY_PAGE_SIZE,
-        order: OrderEnum::Recent,
+        order: if options.shuffle {
+            OrderEnum::Sample {
+                seed: rand::thread_rng().gen_range(0..2_i64.pow(31) - 1) as usize,
+            }
+        } else {
+            OrderEnum::Recent
+        },
     };
 
     client

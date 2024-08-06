@@ -130,6 +130,7 @@ pub struct StatisticsRequestParams {
 pub enum OrderEnum {
     ByLabel { label: String },
     Recent,
+    Sample { seed: usize },
 }
 
 #[derive(Debug, Clone, Serialize)]

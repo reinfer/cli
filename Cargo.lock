@@ -1288,6 +1288,7 @@ dependencies = [
  "ordered-float",
  "pretty_assertions",
  "prettytable-rs",
+ "rand",
  "regex",
  "reinfer-client",
  "reqwest",
