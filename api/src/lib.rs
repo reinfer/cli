@@ -522,12 +522,15 @@ impl Client {
         comments: Vec<NewComment>,
         no_charge: bool,
     ) -> Result<SplitableRequestResponse<PutCommentsResponse>> {
+        // Retrying here despite the potential for 409's in order to increase reliability when
+        // working with poor connection
+
         self.splitable_request(
             Method::PUT,
             self.endpoints.put_comments(source_name)?,
             PutCommentsRequest { comments },
             Some(NoChargeQuery { no_charge }),
-            Retry::No,
+            Retry::Yes,
         )
     }
 
@@ -537,12 +540,14 @@ impl Client {
         comments: Vec<NewComment>,
         no_charge: bool,
     ) -> Result<PutCommentsResponse> {
+        // Retrying here despite the potential for 409's in order to increase reliability when
+        // working with poor connection
         self.request(
             &Method::PUT,
             &self.endpoints.put_comments(source_name)?,
             &Some(PutCommentsRequest { comments }),
             &Some(NoChargeQuery { no_charge }),
-            &Retry::No,
+            &Retry::Yes,
         )
     }
 

@@ -1,7 +1,10 @@
 # Unreleased
+- Add `only-with-attachment` filter on get comments
+- Retry when putting comments
 - Add ability to get email by id 
 - Add ability to upload attachment content for comments
 - fix bug where comment's would not be printed when downloading attachments
+- Add ability to randomly sample with `get comments`
 
 # v0.29.0
 - Add `config parse-from-url` command for parsing configuration from a URL
