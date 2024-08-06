@@ -1,4 +1,4 @@
-# Unreleased
+# v0.30.0
 - Add `only-with-attachment` filter on get comments
 - Retry when putting comments
 - Add ability to get email by id 
