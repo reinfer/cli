@@ -1,3 +1,7 @@
+# Unreleased
+- Strip invalid windows characters when saving attachments 
+- Don't re-download attachments that already exist locally 
+
 # v0.30.0
 - Add `only-with-attachment` filter on get comments
 - Retry when putting comments
