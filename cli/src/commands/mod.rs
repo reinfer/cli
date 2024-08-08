@@ -52,6 +52,16 @@ pub struct LocalAttachmentPath {
     parent_dir: PathBuf,
 }
 
+const INVALID_FILENAME_CHARS: [char; 9] = ['/', '<', '>', ':', '"', '\\', '|', '?', '*'];
+
+fn clean_file_name(mut name: String) -> String {
+    for char in INVALID_FILENAME_CHARS {
+        name = name.replace(char, "□");
+    }
+
+    name
+}
+
 impl LocalAttachmentPath {
     fn ensure_parent_dir_exists(&self) -> Result<()> {
         if !self.parent_dir.exists() {
@@ -61,17 +71,21 @@ impl LocalAttachmentPath {
     }
 
     fn name(&self) -> String {
-        format!("{0}.{1}", self.index, self.name)
+        format!("{0}.{1}", self.index, clean_file_name(self.name.clone()))
     }
 
     fn path(&self) -> PathBuf {
         self.parent_dir.join(self.name())
     }
 
+    fn exists(&self) -> bool {
+        self.path().is_file()
+    }
+
     pub fn write(&self, buf_to_write: Vec<u8>) -> Result<bool> {
         self.ensure_parent_dir_exists()?;
 
-        if !self.path().is_file() {
+        if !self.exists() {
             let f = File::create(self.path()).context("Could not create attachment output file")?;
 
             let mut buf_writer = BufWriter::new(f);
@@ -80,5 +94,19 @@ impl LocalAttachmentPath {
         } else {
             Ok(false)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::clean_file_name;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_clean_file_name() {
+        let filename = "this is a file 2024:08:07?";
+        let cleaned = clean_file_name(filename.to_string());
+
+        assert_eq!("this is a file 2024□08□07□", cleaned)
     }
 }

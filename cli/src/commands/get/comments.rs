@@ -815,11 +815,13 @@ fn download_comment_attachments(
                     parent_dir: attachments_dir.join(&comment.id.0),
                 };
 
-                let attachment_buf = client.get_attachment(attachment_reference)?;
+                if !local_attachment.exists() {
+                    let attachment_buf = client.get_attachment(attachment_reference)?;
 
-                if local_attachment.write(attachment_buf)? {
-                    statistics.add_attachments(1);
-                };
+                    if local_attachment.write(attachment_buf)? {
+                        statistics.add_attachments(1);
+                    };
+                }
             }
             Ok(())
         })?;
