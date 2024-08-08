@@ -14,7 +14,7 @@ use reinfer_client::{
         },
         dataset::{
             Attribute, AttributeFilter, AttributeFilterEnum, OrderEnum, QueryRequestParams,
-            StatisticsRequestParams as DatasetStatisticsRequestParams, SummaryRequestParams,
+            SummaryRequestParams,
         },
         source::StatisticsRequestParams as SourceStatisticsRequestParams,
     },
@@ -555,39 +555,58 @@ fn download_comments(
     let statistics = Arc::new(Statistics::new());
 
     let make_progress = |dataset_name: Option<&DatasetFullName>| -> Result<Progress> {
-        let comment_filter = CommentFilter {
-            timestamp: Some(CommentTimestampFilter {
-                minimum: options.timerange.from,
-                maximum: options.timerange.to,
-            }),
-            sources: vec![source.id.clone()],
-            reviewed: if options.reviewed_only {
-                Some(ReviewedFilterEnum::OnlyReviewed)
-            } else {
-                None
-            },
-            user_properties: options.user_properties_filter.clone(),
-            messages: options.messages_filter.clone(),
-        };
-
         Ok(get_comments_progress_bar(
             if let Some(dataset_name) = dataset_name {
-                *client
-                    .get_dataset_statistics(
+                client
+                    .query_dataset(
                         dataset_name,
-                        &DatasetStatisticsRequestParams {
-                            comment_filter,
+                        &QueryRequestParams {
                             attribute_filters: options.get_attribute_filters(),
-                            ..Default::default()
+                            continuation: None,
+                            filter: CommentFilter {
+                                reviewed: None,
+                                timestamp: Some(CommentTimestampFilter {
+                                    minimum: options.timerange.from,
+                                    maximum: options.timerange.to,
+                                }),
+                                user_properties: options.user_properties_filter.clone(),
+                                sources: vec![source.id.clone()],
+                                messages: options.messages_filter.clone(),
+                            },
+                            limit: DEFAULT_QUERY_PAGE_SIZE,
+                            order: if options.shuffle {
+                                OrderEnum::Sample {
+                                    seed: rand::thread_rng().gen_range(0..2_i64.pow(31) - 1)
+                                        as usize,
+                                }
+                            } else {
+                                OrderEnum::Recent
+                            },
                         },
                     )
                     .context("Operation to get dataset comment count has failed..")?
-                    .num_comments as u64
+                    .num_results
+                    .filtered as u64
             } else {
                 *client
                     .get_source_statistics(
                         &source.full_name(),
-                        &SourceStatisticsRequestParams { comment_filter },
+                        &SourceStatisticsRequestParams {
+                            comment_filter: CommentFilter {
+                                timestamp: Some(CommentTimestampFilter {
+                                    minimum: options.timerange.from,
+                                    maximum: options.timerange.to,
+                                }),
+                                sources: vec![source.id.clone()],
+                                reviewed: if options.reviewed_only {
+                                    Some(ReviewedFilterEnum::OnlyReviewed)
+                                } else {
+                                    None
+                                },
+                                user_properties: options.user_properties_filter.clone(),
+                                messages: options.messages_filter.clone(),
+                            },
+                        },
                     )
                     .context("Operation to get source comment count has failed..")?
                     .num_comments as u64

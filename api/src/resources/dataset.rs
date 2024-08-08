@@ -178,9 +178,16 @@ pub struct SummaryResponse {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct QueryResultsCounts {
+    pub filtered: usize,
+    pub expected: usize,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct QueryResponse {
     pub continuation: Option<Continuation>,
     pub results: Vec<AnnotatedComment>,
+    pub num_results: QueryResultsCounts,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
