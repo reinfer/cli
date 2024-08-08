@@ -1,6 +1,7 @@
 # Unreleased
 - Use query filtered count for progress bars
 
+
 # v0.30.1
 - Strip invalid windows characters when saving attachments 
 - Don't re-download attachments that already exist locally 
