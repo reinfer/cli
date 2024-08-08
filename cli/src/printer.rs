@@ -4,6 +4,7 @@ use prettytable::{format, row, Row, Table};
 use reinfer_client::{
     resources::{
         audit::PrintableAuditEvent,
+        bucket::KeyedSyncState,
         bucket_statistics::{Count, Statistics as BucketStatistics},
         dataset::DatasetAndStats,
         integration::Integration,
@@ -286,6 +287,26 @@ impl DisplayTable for PrintableSource {
             } else {
                 "none".dimmed()
             }
+        ]
+    }
+}
+
+impl DisplayTable for KeyedSyncState {
+    fn to_table_headers() -> Row {
+        row![bFg => "Mailbox Name", "Folder Path", "Status", "Synced Until", "Last Synced At"]
+    }
+
+    fn to_table_row(&self) -> Row {
+        row![
+            self.mailbox_name,
+            self.folder_path.join("/"),
+            self.status,
+            if let Some(synced_until) = self.synced_until {
+                synced_until.to_rfc2822().normal()
+            } else {
+                "N/A".dimmed()
+            },
+            self.last_synced_at
         ]
     }
 }
