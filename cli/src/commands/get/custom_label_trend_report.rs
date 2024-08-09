@@ -1,23 +1,28 @@
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 
 use anyhow::{bail, Context, Result};
-use chrono::{DateTime, Utc};
-use dialoguer::{FuzzySelect, Input, MultiSelect, Select};
+use chrono::{DateTime, NaiveDate, Utc};
+use colored::Colorize;
+use dialoguer::{FuzzySelect, Input, MultiSelect};
 use log::info;
 use ordered_float::NotNan;
 use reinfer_client::{
     resources::{
-        comment::{
-            CommentTimestampFilter, PredictedLabelName, PropertyFilter, UserPropertiesFilter,
-        },
-        dataset::{OrderEnum, QueryRequestParams},
+        comment::{CommentTimestampFilter, UserPropertiesFilter},
+        dataset::{OrderEnum, QueryRequestParams, StatisticsRequestParams},
     },
-    AnnotatedComment, Client, CommentFilter, Entities, LabelDef, Labelling, ModelVersion,
-    PredictedLabel, PropertyValue, TriggerLabelThreshold, DEFAULT_LABEL_GROUP_NAME,
+    Client, CommentFilter, LabelDef, ModelVersion, Prediction, TriggerLabelThreshold,
 };
 use structopt::StructOpt;
 
-use crate::{commands::get::comments::get_user_properties_filter_interactively, printer::Printer};
+use crate::{
+    commands::get::comments::get_user_properties_filter_interactively,
+    printer::Printer,
+    progress::{Options as ProgressOptions, Progress},
+};
 
 use super::comments::DEFAULT_QUERY_PAGE_SIZE;
 
@@ -27,7 +32,7 @@ pub struct GetCustomLabelTrendReportArgs {}
 pub fn get(
     client: &Client,
     _args: &GetCustomLabelTrendReportArgs,
-    printer: &Printer,
+    _printer: &Printer,
 ) -> Result<()> {
     info!("Getting datasets...");
     let datasets = client.get_datasets()?;
@@ -149,7 +154,8 @@ pub fn get(
                 .split(" > ")
                 .map(|part| part.to_string())
                 .collect(),
-        });
+        })
+        .collect();
 
     let model_version_selections = MultiSelect::new()
         .with_prompt("Select which model version(s) you want to run this report for")
@@ -172,15 +178,79 @@ pub fn get(
     let user_property_filters =
         get_user_properties_filter_interactively(&summary_response.summary)?;
 
+    let get_timestamp = |prompt: String| -> Result<DateTime<Utc>> {
+        let date = Input::new()
+            .with_prompt(prompt)
+            .validate_with(
+                |date: &String| match NaiveDate::parse_from_str(date, "%Y-%m-%d") {
+                    Ok(_) => Ok(()),
+                    Err(_) => Err("Please enter the date in the format YYYY-MM-DD"),
+                },
+            )
+            .interact()?;
+
+        Ok(NaiveDate::parse_from_str(&date, "%Y-%m-%d")?
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_local_timezone(Utc)
+            .unwrap())
+    };
+
+    let start_timestamp =
+        get_timestamp("What date do you want to start your report from (YYYY-MM-DD)".to_string())?;
+    let end_timestamp =
+        get_timestamp("What date do you want to end your report from (YYYY-MM-DD)".to_string())?;
+
+    let statistics = Arc::new(Statistics::new());
+
+    let make_progress = || -> Result<Progress> {
+        let comment_filter = CommentFilter {
+            timestamp: Some(CommentTimestampFilter {
+                minimum: Some(start_timestamp),
+                maximum: Some(end_timestamp),
+            }),
+            user_properties: Some(user_property_filters.clone()),
+            ..Default::default()
+        };
+
+        Ok(get_progress_bar(
+            *client
+                .get_dataset_statistics(
+                    &dataset.full_name(),
+                    &StatisticsRequestParams {
+                        comment_filter,
+                        ..Default::default()
+                    },
+                )
+                .context("Operation to get dataset comment count has failed..")?
+                .num_comments as u64,
+            &statistics,
+        ))
+    };
+
+    let _progress = make_progress();
+
+    get_label_trend_report(
+        client,
+        dataset.full_name(),
+        &statistics,
+        model_versions
+            .map(|model| model.version)
+            .collect::<Vec<u32>>(),
+        user_property_filters,
+        thresholds,
+        start_timestamp,
+        end_timestamp,
+    )?;
+
     todo!()
 }
 
-/*
 #[allow(clippy::too_many_arguments)]
 fn get_label_trend_report(
     client: &Client,
     dataset_name: reinfer_client::DatasetFullName,
-    //    statistics: &Arc<Statistics>,
+    statistics: &Arc<Statistics>,
     model_versions: Vec<u32>,
     user_property_filter: UserPropertiesFilter,
     thresholds: Vec<TriggerLabelThreshold>,
@@ -210,22 +280,78 @@ fn get_label_trend_report(
                 return Ok(());
             }
 
-            //           statistics.add_comments(page.len());
+            statistics.add_comments(page.len());
 
-            for model_version in model_versions {
-                let predictions = client
+            for model_version in &model_versions {
+                let predictions: Vec<Prediction> = client
                     .get_comment_predictions(
                         &dataset_name,
-                        &ModelVersion(model_version),
+                        &ModelVersion(*model_version),
                         page.iter().map(|comment| &comment.comment.uid),
                         None,
-                        Some(thresholds),
+                        Some(thresholds.clone()),
                     )
                     .context("Operation to get predictions has failed.")?;
+
+                statistics.add_predicted(page.len())
             }
             Ok(())
-        });
-    Ok(())
-
+        })
 }
-*/
+
+#[derive(Debug, Default)]
+pub struct Statistics {
+    downloaded: AtomicUsize,
+    predicted: AtomicUsize,
+}
+
+impl Statistics {
+    fn new() -> Self {
+        Self {
+            downloaded: AtomicUsize::new(0),
+            predicted: AtomicUsize::new(0),
+        }
+    }
+
+    #[inline]
+    fn add_comments(&self, num_downloaded: usize) {
+        self.downloaded.fetch_add(num_downloaded, Ordering::SeqCst);
+    }
+
+    #[inline]
+    fn add_predicted(&self, num_predicted: usize) {
+        self.predicted.fetch_add(num_predicted, Ordering::SeqCst);
+    }
+
+    #[inline]
+    fn num_downloaded(&self) -> usize {
+        self.downloaded.load(Ordering::SeqCst)
+    }
+
+    #[inline]
+    fn num_predicted(&self) -> usize {
+        self.predicted.load(Ordering::SeqCst)
+    }
+}
+
+fn get_progress_bar(total_bytes: u64, statistics: &Arc<Statistics>) -> Progress {
+    Progress::new(
+        move |statistics| {
+            let num_downloaded = statistics.num_downloaded();
+            let num_predicted = statistics.num_predicted();
+            (
+                num_downloaded as u64,
+                format!(
+                    "{} {} {} {}",
+                    num_downloaded.to_string().bold(),
+                    "comments".dimmed(),
+                    num_predicted.to_string().bold(),
+                    "predictions".dimmed()
+                ),
+            )
+        },
+        statistics,
+        Some(total_bytes),
+        ProgressOptions { bytes_units: false },
+    )
+}

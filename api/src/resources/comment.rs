@@ -514,7 +514,7 @@ pub struct AnnotatedComment {
 pub struct Prediction {
     pub uid: Uid,
     #[serde(skip_serializing_if = "should_skip_serializing_optional_vec")]
-    pub labels: Option<Vec<AutoThresholdLabel>>,
+    pub labels: Option<Vec<PredictedLabel>>,
     #[serde(skip_serializing_if = "should_skip_serializing_optional_vec")]
     pub entities: Option<Vec<Entity>>,
 }
@@ -724,13 +724,6 @@ pub struct PredictedLabel {
     pub probability: NotNan<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub auto_thresholds: Option<Vec<String>>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct AutoThresholdLabel {
-    pub name: Vec<String>,
-    pub probability: NotNan<f64>,
-    pub auto_thresholds: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]

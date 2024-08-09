@@ -16,7 +16,6 @@ use crate::{
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     str::FromStr,
-    string,
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -116,7 +115,7 @@ pub struct GetAllModelsInDatasetRequest {}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UserModelMetadata {
-    pub version: i32,
+    pub version: u32,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]

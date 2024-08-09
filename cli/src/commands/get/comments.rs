@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Context, Error, Result};
 
 use chrono::{DateTime, Utc};
 use colored::Colorize;
-use dialoguer::{Confirm, Input, MultiSelect, Select};
+use dialoguer::{Input, MultiSelect, Select};
 use log::info;
 use ordered_float::NotNan;
 use rand::Rng;
@@ -10,19 +10,18 @@ use regex::Regex;
 use reinfer_client::{
     resources::{
         comment::{
-            CommentTimestampFilter, MessagesFilter, PredictedLabelName, PropertyFilter,
-            ReviewedFilterEnum, UserPropertiesFilter,
+            CommentTimestampFilter, MessagesFilter, PropertyFilter, ReviewedFilterEnum,
+            UserPropertiesFilter,
         },
         dataset::{
             Attribute, AttributeFilter, AttributeFilterEnum, OrderEnum, QueryRequestParams,
             StatisticsRequestParams as DatasetStatisticsRequestParams, Summary,
-            SummaryRequestParams,
         },
         source::StatisticsRequestParams as SourceStatisticsRequestParams,
     },
     AnnotatedComment, Client, Comment, CommentFilter, CommentId, CommentPredictionsThreshold,
-    CommentsIterTimerange, Dataset, DatasetFullName, DatasetIdentifier, Entities, HasAnnotations,
-    LabelName, Labelling, ModelVersion, PredictedLabel, PropertyValue, Source, SourceIdentifier,
+    CommentsIterTimerange, DatasetFullName, DatasetIdentifier, Entities, HasAnnotations, Labelling,
+    ModelVersion, PredictedLabel, PropertyValue, Source, SourceIdentifier,
     DEFAULT_LABEL_GROUP_NAME,
 };
 use serde::Deserialize;
@@ -876,13 +875,15 @@ fn get_comments_from_uids(
                                 auto_threshold_labels
                                     .iter()
                                     .map(|auto_threshold_label| PredictedLabel {
-                                        name: PredictedLabelName::String(LabelName(
-                                            auto_threshold_label.name.join(" > "),
-                                        )),
+                                        name: auto_threshold_label.name.clone(),
                                         sentiment: None,
                                         probability: auto_threshold_label.probability,
                                         auto_thresholds: Some(
-                                            auto_threshold_label.auto_thresholds.to_vec(),
+                                            auto_threshold_label
+                                                .auto_thresholds
+                                                .clone()
+                                                .expect("Could not get auto thresholds")
+                                                .to_vec(),
                                         ),
                                     })
                                     .collect()
