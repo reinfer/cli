@@ -16,6 +16,7 @@ use crate::{
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     str::FromStr,
+    string,
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -111,6 +112,19 @@ pub struct AttributeFilter {
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
+pub struct GetAllModelsInDatasetRequest {}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UserModelMetadata {
+    pub version: i32,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct GetAllModelsInDatasetRespone {
+    pub labellers: Vec<UserModelMetadata>,
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct StatisticsRequestParams {
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     pub attribute_filters: Vec<AttributeFilter>,
@@ -133,7 +147,7 @@ pub enum OrderEnum {
     Sample { seed: usize },
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct SummaryRequestParams {
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     pub attribute_filters: Vec<AttributeFilter>,
@@ -157,14 +171,25 @@ pub struct QueryRequestParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct UserPropertySummary {
+pub struct UserPropertySummaryValue {
+    pub value: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UserPropertySummaryString {
+    pub full_name: String,
+    pub values: Vec<UserPropertySummaryValue>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UserPropertySummaryNumber {
     pub full_name: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UserPropertySummaryList {
-    pub string: Vec<UserPropertySummary>,
-    pub number: Vec<UserPropertySummary>,
+    pub string: Vec<UserPropertySummaryString>,
+    pub number: Vec<UserPropertySummaryNumber>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

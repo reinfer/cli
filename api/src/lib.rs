@@ -21,9 +21,9 @@ use resources::{
     bucket_statistics::GetBucketStatisticsResponse,
     comment::{AttachmentReference, CommentTimestampFilter},
     dataset::{
-        QueryRequestParams, QueryResponse,
-        StatisticsRequestParams as DatasetStatisticsRequestParams, SummaryRequestParams,
-        SummaryResponse,
+        GetAllModelsInDatasetRequest, GetAllModelsInDatasetRespone, QueryRequestParams,
+        QueryResponse, StatisticsRequestParams as DatasetStatisticsRequestParams,
+        SummaryRequestParams, SummaryResponse, UserModelMetadata,
     },
     documents::{Document, SyncRawEmailsRequest, SyncRawEmailsResponse},
     email::{Email, GetEmailResponse},
@@ -621,6 +621,16 @@ impl Client {
         model_version: &ModelVersion,
     ) -> Result<ValidationResponse> {
         self.get::<_, ValidationResponse>(self.endpoints.validation(dataset_name, model_version)?)
+    }
+
+    pub fn get_labellers(&self, dataset_name: &DatasetFullName) -> Result<Vec<UserModelMetadata>> {
+        Ok(self
+            .post::<_, _, GetAllModelsInDatasetRespone>(
+                self.endpoints.labellers(dataset_name)?,
+                GetAllModelsInDatasetRequest {},
+                Retry::Yes,
+            )?
+            .labellers)
     }
 
     pub fn get_label_validation(
@@ -2128,6 +2138,13 @@ impl Endpoints {
         construct_endpoint(
             &self.base,
             &["api", "_private", "datasets", &dataset_name.0, "labellings"],
+        )
+    }
+
+    fn labellers(&self, dataset_name: &DatasetFullName) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "datasets", &dataset_name.0, "labellers"],
         )
     }
 

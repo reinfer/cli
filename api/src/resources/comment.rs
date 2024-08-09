@@ -70,14 +70,18 @@ type UserPropertyName = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserPropertiesFilter(pub HashMap<UserPropertyName, PropertyFilter>);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct PropertyFilter {
-    #[serde(skip_serializing_if = "<[_]>::is_empty", default)]
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
     pub one_of: Vec<PropertyValue>,
-    #[serde(skip_serializing_if = "<[_]>::is_empty", default)]
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
     pub not_one_of: Vec<PropertyValue>,
-    #[serde(skip_serializing_if = "<[_]>::is_empty", default)]
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
     pub domain_not_one_of: Vec<PropertyValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minimum: Option<NotNan<f64>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maximum: Option<NotNan<f64>>,
 }
 
 impl PropertyFilter {
@@ -90,6 +94,7 @@ impl PropertyFilter {
             one_of,
             not_one_of,
             domain_not_one_of,
+            ..Default::default()
         }
     }
 }

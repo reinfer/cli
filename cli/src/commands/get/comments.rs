@@ -2,8 +2,9 @@ use anyhow::{anyhow, bail, Context, Error, Result};
 
 use chrono::{DateTime, Utc};
 use colored::Colorize;
-use dialoguer::{Confirm, Input, Select};
+use dialoguer::{Confirm, Input, MultiSelect, Select};
 use log::info;
+use ordered_float::NotNan;
 use rand::Rng;
 use regex::Regex;
 use reinfer_client::{
@@ -14,11 +15,12 @@ use reinfer_client::{
         },
         dataset::{
             Attribute, AttributeFilter, AttributeFilterEnum, OrderEnum, QueryRequestParams,
-            StatisticsRequestParams as DatasetStatisticsRequestParams, SummaryRequestParams,
+            StatisticsRequestParams as DatasetStatisticsRequestParams, Summary,
+            SummaryRequestParams,
         },
         source::StatisticsRequestParams as SourceStatisticsRequestParams,
     },
-    AnnotatedComment, Client, Comment, CommentFilter, CommentId, CommentsIterTimerange,
+    AnnotatedComment, Client, Comment, CommentFilter, CommentId, CommentsIterTimerange, Dataset,
     DatasetFullName, DatasetIdentifier, Entities, HasAnnotations, LabelName, Labelling,
     ModelVersion, PredictedLabel, PropertyValue, Source, SourceIdentifier,
     DEFAULT_LABEL_GROUP_NAME,
@@ -184,12 +186,10 @@ pub fn get_single(client: &Client, args: &GetSingleCommentArgs) -> Result<()> {
     )
 }
 
-fn get_user_properties_filter_interactively(
+pub fn get_user_properties_filter_interactively(
     client: &Client,
-    dataset_id: DatasetIdentifier,
+    dataset: &Dataset,
 ) -> Result<UserPropertiesFilter> {
-    let dataset = client.get_dataset(dataset_id)?;
-
     let dataset_summary = client.dataset_summary(
         &dataset.full_name(),
         &SummaryRequestParams {
@@ -197,60 +197,206 @@ fn get_user_properties_filter_interactively(
             filter: CommentFilter::default(),
         },
     )?;
+    let string_user_property_selections = MultiSelect::new()
+        .with_prompt("Select which string user properties you want to set up filters for")
+        .items(
+            &dataset_summary
+                .summary
+                .user_properties
+                .string
+                .iter()
+                .map(|p| p.full_name.clone())
+                .collect::<Vec<String>>(),
+        )
+        .interact()?;
 
-    let mut properties: Vec<String> = dataset_summary
-        .summary
+    let number_user_property_selections = MultiSelect::new()
+        .with_prompt("Select which string user properties you want to set up filters for")
+        .items(
+            &dataset_summary
+                .summary
+                .user_properties
+                .number
+                .iter()
+                .map(|p| p.full_name.clone())
+                .collect::<Vec<String>>(),
+        )
+        .interact()?;
+
+    let string_property_filters: HashMap<String, PropertyFilter> = string_user_property_selections
+        .iter()
+        .map(|selection| {
+            let property = &dataset_summary.summary.user_properties.string[*selection];
+
+            let actions = ["Inclusion", "Exclusion", "Both"];
+            let action_selection = Select::new()
+                .with_prompt(format!(
+                    "How do you want to filter the property \"{}\"",
+                    property.full_name
+                ))
+                .items(&actions)
+                .interact()
+                .expect("Could not get property filter action selection from user");
+
+            let get_property_value_selections =
+                |prompt: String,
+                 possible_values: Vec<String>|
+                 -> Result<(Vec<usize>, Vec<PropertyValue>)> {
+                    let selections = MultiSelect::new()
+                        .with_prompt(prompt)
+                        .items(&possible_values)
+                        .interact()?;
+
+                    Ok((
+                        selections.clone(),
+                        selections
+                            .iter()
+                            .map(|selection| {
+                                let selection_value = &possible_values[*selection];
+                                PropertyValue::String(selection_value.clone())
+                            })
+                            .collect(),
+                    ))
+                };
+
+            let mut filter: PropertyFilter = Default::default();
+            let possible_values = get_possible_values_for_string_property(
+                &dataset_summary.summary,
+                &property.full_name,
+            )
+            .expect(&format!(
+                "Could not get possible values for user property \"{}\"",
+                property.full_name
+            ));
+            match actions[action_selection] {
+                "Inclusion" => {
+                    filter.one_of = get_property_value_selections(
+                        format!(
+                            "What values do you want to include for the property \"{}\"",
+                            property.full_name
+                        ),
+                        possible_values,
+                    )
+                    .expect("Could not get property selection from user")
+                    .1
+                }
+                "Exclusion" => {
+                    filter.not_one_of = get_property_value_selections(
+                        format!(
+                            "What values do you want to exclude for the property \"{}\"",
+                            property.full_name
+                        ),
+                        possible_values,
+                    )
+                    .expect("Could not get property selection from user")
+                    .1
+                }
+                "Both" => {
+                    let (idxs, one_ofs) = get_property_value_selections(
+                        format!(
+                            "What values do you want to include for the property \"{}\"",
+                            property.full_name
+                        ),
+                        possible_values.clone(),
+                    )
+                    .expect("Could not get property selection from user");
+
+                    let remaining_values: Vec<String> = possible_values
+                        .into_iter()
+                        .enumerate()
+                        .filter_map(|(idx, value)| {
+                            if idxs.contains(&idx) {
+                                None
+                            } else {
+                                Some(value)
+                            }
+                        })
+                        .collect();
+
+                    let not_one_ofs = get_property_value_selections(
+                        format!(
+                            "What values do you want to exclude for the property \"{}\"",
+                            property.full_name
+                        ),
+                        remaining_values,
+                    )
+                    .expect("Could not get property selection from user")
+                    .1;
+
+                    filter.one_of = one_ofs;
+                    filter.not_one_of = not_one_ofs;
+                }
+                _ => {
+                    panic!("Invalid Action Selection")
+                }
+            }
+
+            (property.full_name.clone(), filter)
+        })
+        .collect();
+
+    let number_property_filters: HashMap<String, PropertyFilter> = number_user_property_selections
+        .iter()
+        .map(|selection| {
+            let property = &dataset_summary.summary.user_properties.number[*selection];
+
+            let min = Input::new()
+                .with_prompt("What is the minimum value that you want to filter for?")
+                .validate_with(|input: &String| match input.trim().parse::<NotNan<f64>>() {
+                    Ok(number) => {
+                        if number >= NotNan::new(0.0).unwrap() {
+                            Ok(())
+                        } else {
+                            Err("Please enter a number greater than 0")
+                        }
+                    }
+                    Err(_) => Err("Please enter a valid number"),
+                })
+                .interact()
+                .expect("Could not get input from user");
+
+            let max = Input::new()
+                .with_prompt("What is the maximum value that you want to filter for?")
+                .validate_with(|input: &String| match input.trim().parse::<NotNan<f64>>() {
+                    Ok(_) => Ok(()),
+                    Err(_) => Err("Please enter a valid number"),
+                })
+                .interact()
+                .expect("Could not get input from user");
+
+            (
+                property.full_name.clone(),
+                PropertyFilter {
+                    minimum: Some(min.trim().parse::<NotNan<f64>>().unwrap()),
+                    maximum: Some(max.trim().parse::<NotNan<f64>>().unwrap()),
+                    ..Default::default()
+                },
+            )
+        })
+        .collect();
+
+    let property_filters: HashMap<String, PropertyFilter> = string_property_filters
+        .into_iter()
+        .chain(number_property_filters)
+        .collect();
+
+    Ok(UserPropertiesFilter(property_filters))
+}
+
+fn get_possible_values_for_string_property(
+    dataset_summary: &Summary,
+    property_name: &String,
+) -> Result<Vec<String>> {
+    Ok(dataset_summary
         .user_properties
         .string
         .iter()
-        .map(|p| p.full_name.clone())
-        .collect();
-
-    let mut filters = HashMap::new();
-
-    loop {
-        if properties.is_empty() {
-            info!("No user properties available!");
-            break;
-        }
-
-        let selected_property = Select::new()
-            .with_prompt("Which user property would you like to filter?")
-            .items(&properties)
-            .interact()?;
-
-        let selected_property_name = properties.remove(selected_property);
-
-        let mut values: Vec<PropertyValue> = Vec::new();
-        loop {
-            let value: String = Input::new()
-                .with_prompt("What value would you like to filter on?")
-                .interact()?;
-            values.push(PropertyValue::String(value));
-
-            if !Confirm::new()
-                .with_prompt(format!(
-                    "Do you want to filter '{selected_property_name}' on more values?",
-                ))
-                .interact()?
-            {
-                break;
-            }
-        }
-
-        let property_filter = PropertyFilter::new(values, Vec::new(), Vec::new());
-
-        filters.insert(selected_property_name, property_filter);
-
-        if !Confirm::new()
-            .with_prompt("Do you want to filter additional user properties?")
-            .interact()?
-        {
-            break;
-        }
-    }
-
-    Ok(UserPropertiesFilter(filters))
+        .find(|p| &p.full_name == property_name)
+        .context("Could not get possible values for property with the name {property_name}")?
+        .values
+        .iter()
+        .map(|v| v.value.clone())
+        .collect())
 }
 
 #[derive(Default)]
@@ -417,10 +563,8 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
     let user_properties_filter = if let Some(filter) = user_property_filter {
         Some(filter.0.clone())
     } else if *interative_property_filter {
-        Some(get_user_properties_filter_interactively(
-            client,
-            dataset.clone().context("Could not unwrap dataset")?,
-        )?)
+        let dataset = client.get_dataset(dataset.clone().context("Could not get dataset")?)?;
+        Some(get_user_properties_filter_interactively(client, &dataset)?)
     } else {
         None
     };
