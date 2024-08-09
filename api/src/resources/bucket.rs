@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use core::fmt;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -111,6 +112,53 @@ pub(crate) struct CreateRequest<'request> {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct CreateResponse {
     pub bucket: Bucket,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum FolderStatus {
+    InProgress,
+    UpToDate,
+}
+
+impl fmt::Display for FolderStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match *self {
+            Self::InProgress => write!(f, "In progress"),
+            Self::UpToDate => write!(f, "Up to date"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct KeyedSyncState {
+    pub mailbox_name: String,
+    pub folder_id: String,
+    pub folder_path: Vec<String>,
+    pub status: FolderStatus,
+    pub synced_until: Option<DateTime<Utc>>,
+    pub last_synced_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub(crate) struct GetKeyedSyncStatesResponse {
+    pub keyed_sync_states: Vec<KeyedSyncState>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct KeyedSyncStateId(pub String);
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct GetKeyedSyncStateIdsRequest {
+    pub mailbox_name: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub(crate) struct DeleteKeyedSyncStateResponse {}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub(crate) struct GetKeyedSyncStateIdsResponse {
+    pub keyed_sync_state_ids: Vec<KeyedSyncStateId>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]

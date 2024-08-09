@@ -4,6 +4,7 @@ mod comments;
 mod datasets;
 mod emails;
 mod integrations;
+mod keyed_sync_states;
 mod projects;
 mod quota;
 mod sources;
@@ -22,6 +23,7 @@ use self::{
     datasets::GetDatasetsArgs,
     emails::GetManyEmailsArgs,
     integrations::GetIntegrationsArgs,
+    keyed_sync_states::GetKeyedSyncStatesArgs,
     projects::GetProjectsArgs,
     sources::GetSourcesArgs,
     streams::{GetStreamCommentsArgs, GetStreamStatsArgs, GetStreamsArgs},
@@ -90,6 +92,10 @@ pub enum GetArgs {
     #[structopt(name = "integrations")]
     /// Get integrations
     Integrations(GetIntegrationsArgs),
+
+    #[structopt(name = "keyed-sync-states")]
+    /// Get keyed sync states
+    KeyedSyncStates(GetKeyedSyncStatesArgs),
 }
 
 pub fn run(args: &GetArgs, client: Client, printer: &Printer, pool: &mut Pool) -> Result<()> {
@@ -109,5 +115,6 @@ pub fn run(args: &GetArgs, client: Client, printer: &Printer, pool: &mut Pool) -
         GetArgs::Quotas => quota::get(&client, printer),
         GetArgs::AuditEvents(args) => audit_events::get(&client, args, printer),
         GetArgs::Integrations(args) => integrations::get(&client, args, printer),
+        GetArgs::KeyedSyncStates(args) => keyed_sync_states::get(&client, args, printer),
     }
 }

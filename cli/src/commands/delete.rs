@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use colored::Colorize;
+use log::info;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
@@ -8,9 +9,9 @@ use std::sync::{
 use structopt::StructOpt;
 
 use reinfer_client::{
-    resources::project::ForceDeleteProject, BucketIdentifier, Client, CommentId, CommentsIter,
-    CommentsIterTimerange, DatasetIdentifier, ProjectName, Source, SourceIdentifier,
-    UserIdentifier,
+    resources::{bucket::GetKeyedSyncStateIdsRequest, project::ForceDeleteProject},
+    BucketIdentifier, Client, CommentId, CommentsIter, CommentsIterTimerange, DatasetIdentifier,
+    ProjectName, Source, SourceIdentifier, UserIdentifier,
 };
 
 use crate::progress::{Options as ProgressOptions, Progress};
@@ -101,6 +102,16 @@ pub enum DeleteArgs {
         /// Force deletion of the project, even if it's not empty.
         force: bool,
     },
+
+    #[structopt(name = "keyed-sync-states")]
+    /// Delete keyed sync states
+    KeyedSyncStates {
+        /// The bucket to delete keyed sync states for
+        bucket: BucketIdentifier,
+
+        /// The mailbox to delete keyed sync states for
+        mailbox_name: String,
+    },
 }
 
 pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
@@ -166,6 +177,24 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
                 .delete_project(project, force_delete)
                 .context("Operation to delete project has failed.")?;
             log::info!("Deleted project.");
+        }
+        DeleteArgs::KeyedSyncStates {
+            bucket,
+            mailbox_name,
+        } => {
+            let bucket = client.get_bucket(bucket.clone())?;
+
+            let keyed_sync_state_ids = client.get_keyed_sync_state_ids(
+                &bucket.id,
+                &GetKeyedSyncStateIdsRequest {
+                    mailbox_name: mailbox_name.clone(),
+                },
+            )?;
+
+            for id in keyed_sync_state_ids {
+                client.delete_keyed_sync_state(&bucket.id, &id)?;
+                info!("Delete keyed sync state {}", id.0)
+            }
         }
     };
     Ok(())

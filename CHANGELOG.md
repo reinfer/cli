@@ -1,3 +1,7 @@
+# Unreleased
+- Add `get keyed sync states`
+- Add `delete keyed sync states`
+
 # v0.30.1
 - Strip invalid windows characters when saving attachments 
 - Don't re-download attachments that already exist locally 

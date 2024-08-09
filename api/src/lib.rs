@@ -14,6 +14,10 @@ use reqwest::{
 };
 use resources::{
     attachments::UploadAttachmentResponse,
+    bucket::{
+        GetKeyedSyncStateIdsRequest, GetKeyedSyncStateIdsResponse, GetKeyedSyncStatesResponse,
+        KeyedSyncState, KeyedSyncStateId,
+    },
     bucket_statistics::GetBucketStatisticsResponse,
     comment::{AttachmentReference, CommentTimestampFilter},
     dataset::{
@@ -428,6 +432,34 @@ impl Client {
         timerange: CommentsIterTimerange,
     ) -> CommentsIter<'a> {
         CommentsIter::new(self, source_name, page_size, timerange)
+    }
+
+    pub fn get_keyed_sync_state_ids(
+        &self,
+        bucket_id: &BucketId,
+        request: &GetKeyedSyncStateIdsRequest,
+    ) -> Result<Vec<KeyedSyncStateId>> {
+        Ok(self
+            .post::<_, _, GetKeyedSyncStateIdsResponse>(
+                self.endpoints.query_keyed_sync_state_ids(bucket_id)?,
+                Some(&request),
+                Retry::Yes,
+            )?
+            .keyed_sync_state_ids)
+    }
+
+    pub fn delete_keyed_sync_state(
+        &self,
+        bucket_id: &BucketId,
+        id: &KeyedSyncStateId,
+    ) -> Result<()> {
+        self.delete(self.endpoints.keyed_sync_state(bucket_id, id)?)
+    }
+
+    pub fn get_keyed_sync_states(&self, bucket_id: &BucketId) -> Result<Vec<KeyedSyncState>> {
+        Ok(self
+            .get::<_, GetKeyedSyncStatesResponse>(self.endpoints.keyed_sync_states(bucket_id)?)?
+            .keyed_sync_states)
     }
 
     /// Get a single of email from a bucket.
@@ -1728,6 +1760,46 @@ impl Endpoints {
             current_user,
             projects,
         })
+    }
+
+    fn keyed_sync_states(&self, bucket_id: &BucketId) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "buckets",
+                &format!("id:{}", bucket_id.0),
+                "keyed-sync-states/",
+            ],
+        )
+    }
+
+    fn keyed_sync_state(&self, bucket_id: &BucketId, id: &KeyedSyncStateId) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "buckets",
+                &format!("id:{}", bucket_id.0),
+                "keyed-sync-state",
+                &id.0,
+            ],
+        )
+    }
+
+    fn query_keyed_sync_state_ids(&self, bucket_id: &BucketId) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "buckets",
+                &format!("id:{}", bucket_id.0),
+                "keyed-sync-state-ids",
+            ],
+        )
     }
 
     fn audit_events_query(&self) -> Result<Url> {
