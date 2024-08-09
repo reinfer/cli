@@ -128,6 +128,27 @@ pub struct MessagesFilter {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all(serialize = "lowercase"))]
+pub enum CommentPredictionsThreshold {
+    Auto,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TriggerLabelThreshold {
+    pub name: Vec<String>,
+    pub threshold: NotNan<f64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetCommentPredictionsRequest {
+    pub uids: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub threshold: Option<CommentPredictionsThreshold>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub labels: Option<Vec<TriggerLabelThreshold>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub(crate) struct GetRecentRequest<'a> {
     pub limit: usize,
     pub filter: &'a CommentFilter,

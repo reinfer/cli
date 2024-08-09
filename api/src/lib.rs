@@ -106,11 +106,13 @@ pub use crate::{
             Identifier as BucketIdentifier, Name as BucketName, NewBucket,
         },
         comment::{
-            AnnotatedComment, Comment, CommentFilter, CommentsIterPage, Continuation,
-            EitherLabelling, Entities, Entity, HasAnnotations, Id as CommentId, Label, Labelling,
+            AnnotatedComment, Comment, CommentFilter, CommentPredictionsThreshold,
+            CommentsIterPage, Continuation, EitherLabelling, Entities, Entity,
+            GetCommentPredictionsRequest, HasAnnotations, Id as CommentId, Label, Labelling,
             Message, MessageBody, MessageSignature, MessageSubject, NewAnnotatedComment,
             NewComment, NewEntities, NewLabelling, NewMoonForm, PredictedLabel, Prediction,
-            PropertyMap, PropertyValue, Sentiment, SyncCommentsResponse, Uid as CommentUid,
+            PropertyMap, PropertyValue, Sentiment, SyncCommentsResponse, TriggerLabelThreshold,
+            Uid as CommentUid,
         },
         dataset::{
             Dataset, FullName as DatasetFullName, Id as DatasetId, Identifier as DatasetIdentifier,
@@ -977,15 +979,22 @@ impl Client {
         dataset_name: &DatasetFullName,
         model_version: &ModelVersion,
         comment_uids: impl Iterator<Item = &'a CommentUid>,
+        threshold: Option<CommentPredictionsThreshold>,
+        labels: Option<Vec<TriggerLabelThreshold>>,
     ) -> Result<Vec<Prediction>> {
         Ok(self
             .post::<_, _, GetPredictionsResponse>(
                 self.endpoints
                     .get_comment_predictions(dataset_name, model_version)?,
-                json!({
-                    "threshold": "auto",
-                    "uids": comment_uids.into_iter().map(|id| id.0.as_str()).collect::<Vec<_>>(),
-                }),
+                GetCommentPredictionsRequest {
+                    uids: comment_uids
+                        .into_iter()
+                        .map(|id| id.0.clone())
+                        .collect::<Vec<_>>(),
+
+                    threshold,
+                    labels,
+                },
                 Retry::Yes,
             )?
             .predictions)

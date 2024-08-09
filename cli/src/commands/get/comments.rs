@@ -20,9 +20,9 @@ use reinfer_client::{
         },
         source::StatisticsRequestParams as SourceStatisticsRequestParams,
     },
-    AnnotatedComment, Client, Comment, CommentFilter, CommentId, CommentsIterTimerange, Dataset,
-    DatasetFullName, DatasetIdentifier, Entities, HasAnnotations, LabelName, Labelling,
-    ModelVersion, PredictedLabel, PropertyValue, Source, SourceIdentifier,
+    AnnotatedComment, Client, Comment, CommentFilter, CommentId, CommentPredictionsThreshold,
+    CommentsIterTimerange, Dataset, DatasetFullName, DatasetIdentifier, Entities, HasAnnotations,
+    LabelName, Labelling, ModelVersion, PredictedLabel, PropertyValue, Source, SourceIdentifier,
     DEFAULT_LABEL_GROUP_NAME,
 };
 use serde::Deserialize;
@@ -186,22 +186,11 @@ pub fn get_single(client: &Client, args: &GetSingleCommentArgs) -> Result<()> {
     )
 }
 
-pub fn get_user_properties_filter_interactively(
-    client: &Client,
-    dataset: &Dataset,
-) -> Result<UserPropertiesFilter> {
-    let dataset_summary = client.dataset_summary(
-        &dataset.full_name(),
-        &SummaryRequestParams {
-            attribute_filters: Vec::new(),
-            filter: CommentFilter::default(),
-        },
-    )?;
+pub fn get_user_properties_filter_interactively(summary: &Summary) -> Result<UserPropertiesFilter> {
     let string_user_property_selections = MultiSelect::new()
         .with_prompt("Select which string user properties you want to set up filters for")
         .items(
-            &dataset_summary
-                .summary
+            &summary
                 .user_properties
                 .string
                 .iter()
@@ -213,8 +202,7 @@ pub fn get_user_properties_filter_interactively(
     let number_user_property_selections = MultiSelect::new()
         .with_prompt("Select which string user properties you want to set up filters for")
         .items(
-            &dataset_summary
-                .summary
+            &summary
                 .user_properties
                 .number
                 .iter()
@@ -226,7 +214,7 @@ pub fn get_user_properties_filter_interactively(
     let string_property_filters: HashMap<String, PropertyFilter> = string_user_property_selections
         .iter()
         .map(|selection| {
-            let property = &dataset_summary.summary.user_properties.string[*selection];
+            let property = &summary.user_properties.string[*selection];
 
             let actions = ["Inclusion", "Exclusion", "Both"];
             let action_selection = Select::new()
@@ -260,14 +248,14 @@ pub fn get_user_properties_filter_interactively(
                 };
 
             let mut filter: PropertyFilter = Default::default();
-            let possible_values = get_possible_values_for_string_property(
-                &dataset_summary.summary,
-                &property.full_name,
-            )
-            .expect(&format!(
-                "Could not get possible values for user property \"{}\"",
-                property.full_name
-            ));
+            let possible_values =
+                get_possible_values_for_string_property(summary, &property.full_name)
+                    .unwrap_or_else(|_| {
+                        panic!(
+                            "Could not get possible values for user property \"{}\"",
+                            property.full_name
+                        )
+                    });
             match actions[action_selection] {
                 "Inclusion" => {
                     filter.one_of = get_property_value_selections(
@@ -338,10 +326,13 @@ pub fn get_user_properties_filter_interactively(
     let number_property_filters: HashMap<String, PropertyFilter> = number_user_property_selections
         .iter()
         .map(|selection| {
-            let property = &dataset_summary.summary.user_properties.number[*selection];
+            let property = &summary.user_properties.number[*selection];
 
             let min = Input::new()
-                .with_prompt("What is the minimum value that you want to filter for?")
+                .with_prompt(format!(
+                    "What is the minimum value that you want to filter \"{}\" for?",
+                    property.full_name
+                ))
                 .validate_with(|input: &String| match input.trim().parse::<NotNan<f64>>() {
                     Ok(number) => {
                         if number >= NotNan::new(0.0).unwrap() {
@@ -356,7 +347,10 @@ pub fn get_user_properties_filter_interactively(
                 .expect("Could not get input from user");
 
             let max = Input::new()
-                .with_prompt("What is the maximum value that you want to filter for?")
+                .with_prompt(format!(
+                    "What is the maximum value that you want to filter \"{}\" for?",
+                    property.full_name
+                ))
                 .validate_with(|input: &String| match input.trim().parse::<NotNan<f64>>() {
                     Ok(_) => Ok(()),
                     Err(_) => Err("Please enter a valid number"),
@@ -564,7 +558,10 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         Some(filter.0.clone())
     } else if *interative_property_filter {
         let dataset = client.get_dataset(dataset.clone().context("Could not get dataset")?)?;
-        Some(get_user_properties_filter_interactively(client, &dataset)?)
+        let summary_response = client.dataset_summary(&dataset.full_name(), &Default::default())?;
+        Some(get_user_properties_filter_interactively(
+            &summary_response.summary,
+        )?)
     } else {
         None
     };
@@ -808,7 +805,7 @@ fn download_comments(
     Ok(())
 }
 
-const DEFAULT_QUERY_PAGE_SIZE: usize = 128;
+pub const DEFAULT_QUERY_PAGE_SIZE: usize = 128;
 
 #[allow(clippy::too_many_arguments)]
 fn get_comments_from_uids(
@@ -860,6 +857,8 @@ fn get_comments_from_uids(
                         &dataset_name,
                         &ModelVersion(*model_version),
                         page.iter().map(|comment| &comment.comment.uid),
+                        Some(CommentPredictionsThreshold::Auto),
+                        None,
                     )
                     .context("Operation to get predictions has failed.")?;
                 // since predict-comments endpoint doesn't return some fields,

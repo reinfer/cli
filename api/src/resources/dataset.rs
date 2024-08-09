@@ -147,6 +147,12 @@ pub enum OrderEnum {
     Sample { seed: usize },
 }
 
+impl Default for OrderEnum {
+    fn default() -> Self {
+        Self::Recent
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct SummaryRequestParams {
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
@@ -155,7 +161,7 @@ pub struct SummaryRequestParams {
     pub filter: CommentFilter,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub struct QueryRequestParams {
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     pub attribute_filters: Vec<AttributeFilter>,
