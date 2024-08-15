@@ -24,7 +24,7 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Id(pub String);
 
 impl FromStr for Id {
@@ -259,7 +259,7 @@ pub struct Comment {
     pub has_annotations: bool,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct NewComment {
     pub id: Id,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -272,7 +272,7 @@ pub struct NewComment {
     pub attachments: Vec<AttachmentMetadata>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Message {
     pub body: MessageBody,
 
@@ -301,7 +301,7 @@ pub struct Message {
     pub sent_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct MessageBody {
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -1,11 +1,13 @@
+mod aic_classification_csv;
 mod emls;
 mod msgs;
 
+use aic_classification_csv::ParseAicClassificationCsvArgs;
 use anyhow::Result;
 use colored::Colorize;
 use reinfer_client::resources::bucket::FullName as BucketFullName;
 use reinfer_client::resources::documents::Document;
-use reinfer_client::{Client, NewEmail, Source, TransformTag};
+use reinfer_client::{Client, NewComment, NewEmail, Source, TransformTag};
 use scoped_threadpool::Pool;
 use std::fs::DirEntry;
 use std::path::PathBuf;
@@ -18,6 +20,8 @@ use crate::progress::{Options as ProgressOptions, Progress};
 use self::emls::ParseEmlArgs;
 use self::msgs::ParseMsgArgs;
 
+use super::create::annotations::AnnotationStatistic;
+
 #[derive(Debug, StructOpt)]
 pub enum ParseArgs {
     #[structopt(name = "msgs")]
@@ -29,27 +33,43 @@ pub enum ParseArgs {
     /// Parse eml files.
     /// Html bodies are not supported.
     Emls(ParseEmlArgs),
+
+    #[structopt(name = "aic-classification-csv")]
+    /// Parse a classification CSV downloaded from AI Center
+    AicClassificationCsv(ParseAicClassificationCsvArgs),
 }
 
 pub fn run(args: &ParseArgs, client: Client, pool: &mut Pool) -> Result<()> {
     match args {
-        ParseArgs::Msgs(parse_msg_args) => msgs::parse(&client, parse_msg_args),
-        ParseArgs::Emls(parse_eml_args) => emls::parse(&client, parse_eml_args, pool),
+        ParseArgs::Msgs(args) => msgs::parse(&client, args),
+        ParseArgs::Emls(args) => emls::parse(&client, args, pool),
+        ParseArgs::AicClassificationCsv(args) => aic_classification_csv::parse(&client, args, pool),
     }
 }
 
+#[derive(Default, Debug)]
 pub struct Statistics {
     processed: AtomicUsize,
     failed: AtomicUsize,
     uploaded: AtomicUsize,
+    annotations: AtomicUsize,
+    failed_annotations: AtomicUsize,
+}
+
+impl AnnotationStatistic for Statistics {
+    fn add_annotation(&self) {
+        self.annotations.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn add_failed_annotation(&self) {
+        self.failed_annotations.fetch_add(1, Ordering::SeqCst);
+    }
 }
 
 impl Statistics {
     fn new() -> Self {
         Self {
-            processed: AtomicUsize::new(0),
-            failed: AtomicUsize::new(0),
-            uploaded: AtomicUsize::new(0),
+            ..Default::default()
         }
     }
 
@@ -81,6 +101,11 @@ impl Statistics {
     #[inline]
     fn num_processed(&self) -> usize {
         self.processed.load(Ordering::SeqCst)
+    }
+
+    #[inline]
+    fn num_annotations(&self) -> usize {
+        self.annotations.load(Ordering::SeqCst)
     }
 }
 
@@ -138,22 +163,42 @@ fn upload_batch_of_documents(
     Ok(())
 }
 
+fn upload_batch_of_comments(
+    client: &Client,
+    source: &Source,
+    comments: &[NewComment],
+    no_charge: bool,
+    statistics: &Statistics,
+) -> Result<()> {
+    client.sync_comments(&source.full_name(), comments.to_vec(), no_charge)?;
+    statistics.add_uploaded(comments.len());
+    Ok(())
+}
 fn get_progress_bar(total_bytes: u64, statistics: &Arc<Statistics>) -> Progress {
     Progress::new(
         move |statistic| {
             let num_processed = statistic.num_processed();
             let num_failed = statistic.num_failed();
             let num_uploaded = statistic.num_uploaded();
+            let num_annotated = statistic.num_annotations();
+
+            let annotations_string = if num_annotated > 0 {
+                format!(" {} {}", num_annotated, "annotated".dimmed())
+            } else {
+                String::new()
+            };
+
             (
                 num_processed as u64,
                 format!(
-                    "{} {} {} {} {} {}",
+                    "{} {} {} {} {} {}{}",
                     num_processed.to_string().bold(),
                     "processed".dimmed(),
                     num_failed.to_string().bold(),
                     "failed".dimmed(),
                     num_uploaded.to_string().bold(),
-                    "uploaded".dimmed()
+                    "uploaded".dimmed(),
+                    annotations_string
                 ),
             )
         },
