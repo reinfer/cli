@@ -1,3 +1,6 @@
+# Unreleased
+- Add `parse aic-classification-csv`
+
 # v0.31.0
 - Add `get keyed sync states`
 - Add `delete keyed sync states`

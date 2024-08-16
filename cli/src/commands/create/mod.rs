@@ -1,15 +1,15 @@
-mod annotations;
-mod bucket;
-mod comments;
-mod dataset;
-mod emails;
-mod integrations;
-mod project;
-mod quota;
-mod source;
-mod stream_exception;
-mod streams;
-mod user;
+pub mod annotations;
+pub mod bucket;
+pub mod comments;
+pub mod dataset;
+pub mod emails;
+pub mod integrations;
+pub mod project;
+pub mod quota;
+pub mod source;
+pub mod stream_exception;
+pub mod streams;
+pub mod user;
 
 use self::{
     annotations::CreateAnnotationsArgs, bucket::CreateBucketArgs, comments::CreateCommentsArgs,
