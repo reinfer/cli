@@ -1,8 +1,8 @@
 use backoff::{retry, ExponentialBackoff};
 use pretty_assertions::assert_eq;
 use reinfer_client::{
-    Dataset, EntityDef, EntityName, LabelDef, LabelDefPretrained, LabelDefPretrainedId, LabelGroup,
-    LabelGroupName, LabelName, MoonFormFieldDef, Source,
+    resources::dataset::DatasetFlag, Dataset, EntityDef, EntityName, LabelDef, LabelDefPretrained,
+    LabelDefPretrainedId, LabelGroup, LabelGroupName, LabelName, MoonFormFieldDef, Source,
 };
 use serde_json::json;
 use uuid::Uuid;
@@ -333,6 +333,176 @@ fn test_create_dataset_with_source() {
     let source_info: Source = serde_json::from_str(source_output.trim()).unwrap();
     assert_eq!(&source_info.owner.0, source.owner());
     assert_eq!(&source_info.name.0, source.name());
+}
+#[test]
+fn test_create_dataset_with_gen_ai() {
+    let cli = TestCli::get();
+
+    // Run with false ellm Flag
+    let dataset_gen_ai_false = TestDataset::new_args(&[&format!("--gen-ai={}", false)]);
+    let output = cli.run([
+        "--output=json",
+        "get",
+        "datasets",
+        dataset_gen_ai_false.identifier(),
+    ]);
+    let dataset_gen_ai_false_info: Dataset = serde_json::from_str(output.trim()).unwrap();
+    assert_eq!(
+        &dataset_gen_ai_false_info.owner.0,
+        dataset_gen_ai_false.owner()
+    );
+    assert_eq!(
+        &dataset_gen_ai_false_info.name.0,
+        dataset_gen_ai_false.name()
+    );
+    assert!(!dataset_gen_ai_false_info
+        .dataset_flags
+        .contains(&DatasetFlag::Gpt4));
+
+    // Run with true gen_ai Flag
+    let dataset_gen_ai = TestDataset::new_args(&[&format!("--gen-ai={}", true)]);
+    let output = cli.run([
+        "--output=json",
+        "get",
+        "datasets",
+        dataset_gen_ai.identifier(),
+    ]);
+    let dataset_info: Dataset = serde_json::from_str(output.trim()).unwrap();
+    assert_eq!(&dataset_info.owner.0, dataset_gen_ai.owner());
+    assert_eq!(&dataset_info.name.0, dataset_gen_ai.name());
+    assert!(dataset_info.dataset_flags.contains(&DatasetFlag::Gpt4));
+}
+#[test]
+fn test_create_dataset_with_zero_shot() {
+    let cli = TestCli::get();
+
+    // Run with false ellm Flag
+    let dataset_zero_shot_false = TestDataset::new_args(&[&format!("--zero-shot={}", false)]);
+    let output = cli.run([
+        "--output=json",
+        "get",
+        "datasets",
+        dataset_zero_shot_false.identifier(),
+    ]);
+    let dataset_zero_shot_false_info: Dataset = serde_json::from_str(output.trim()).unwrap();
+    assert_eq!(
+        &dataset_zero_shot_false_info.owner.0,
+        dataset_zero_shot_false.owner()
+    );
+    assert_eq!(
+        &dataset_zero_shot_false_info.name.0,
+        dataset_zero_shot_false.name()
+    );
+    assert!(!dataset_zero_shot_false_info
+        .dataset_flags
+        .contains(&DatasetFlag::ZeroShotLabels));
+
+    // Run with true zero_shot Flag
+    let dataset_zero_shot =
+        TestDataset::new_args(&[&format!("--zero-shot={}", true), "--gen-ai=true"]);
+    let output = cli.run([
+        "--output=json",
+        "get",
+        "datasets",
+        dataset_zero_shot.identifier(),
+    ]);
+    let dataset_info: Dataset = serde_json::from_str(output.trim()).unwrap();
+    assert_eq!(&dataset_info.owner.0, dataset_zero_shot.owner());
+    assert_eq!(&dataset_info.name.0, dataset_zero_shot.name());
+    assert!(dataset_info
+        .dataset_flags
+        .contains(&DatasetFlag::ZeroShotLabels));
+}
+
+#[test]
+fn test_create_dataset_with_external_llm() {
+    let cli = TestCli::get();
+
+    // Run with false ellm Flag
+    let dataset_ellm_false = TestDataset::new_args(&[&format!("--external-llm={}", false)]);
+    let output = cli.run([
+        "--output=json",
+        "get",
+        "datasets",
+        dataset_ellm_false.identifier(),
+    ]);
+    let dataset_ellm_false_info: Dataset = serde_json::from_str(output.trim()).unwrap();
+    assert_eq!(&dataset_ellm_false_info.owner.0, dataset_ellm_false.owner());
+    assert_eq!(&dataset_ellm_false_info.name.0, dataset_ellm_false.name());
+    assert!(!dataset_ellm_false_info
+        .dataset_flags
+        .contains(&DatasetFlag::ExternalMoonLlm));
+
+    // Run with true ellm Flag
+    let dataset_ellm =
+        TestDataset::new_args(&[&format!("--external-llm={}", true), "--gen-ai=true"]);
+    let output = cli.run([
+        "--output=json",
+        "get",
+        "datasets",
+        dataset_ellm.identifier(),
+    ]);
+    let dataset_info: Dataset = serde_json::from_str(output.trim()).unwrap();
+    assert_eq!(&dataset_info.owner.0, dataset_ellm.owner());
+    assert_eq!(&dataset_info.name.0, dataset_ellm.name());
+    assert!(dataset_info
+        .dataset_flags
+        .contains(&DatasetFlag::ExternalMoonLlm));
+}
+
+#[test]
+fn test_create_dataset_with_no_flags() {
+    let cli = TestCli::get();
+    // Run with no QoS Flag
+    let dataset_qos_none = TestDataset::new_args(&[]);
+    let output = cli.run([
+        "--output=json",
+        "get",
+        "datasets",
+        dataset_qos_none.identifier(),
+    ]);
+    let dataset_qos_none_info: Dataset = serde_json::from_str(output.trim()).unwrap();
+    assert_eq!(&dataset_qos_none_info.owner.0, dataset_qos_none.owner());
+    assert_eq!(&dataset_qos_none_info.name.0, dataset_qos_none.name());
+    assert!(!dataset_qos_none_info
+        .dataset_flags
+        .contains(&DatasetFlag::Qos));
+    assert!(!dataset_qos_none_info
+        .dataset_flags
+        .contains(&DatasetFlag::ExternalMoonLlm));
+    assert!(!dataset_qos_none_info
+        .dataset_flags
+        .contains(&DatasetFlag::Gpt4));
+    assert!(!dataset_qos_none_info
+        .dataset_flags
+        .contains(&DatasetFlag::ZeroShotLabels));
+}
+#[test]
+fn test_create_dataset_with_qos() {
+    let cli = TestCli::get();
+
+    // Run with false QoS Flag
+    let dataset_qos_false = TestDataset::new_args(&[&format!("--qos={}", false)]);
+    let output = cli.run([
+        "--output=json",
+        "get",
+        "datasets",
+        dataset_qos_false.identifier(),
+    ]);
+    let dataset_qos_false_info: Dataset = serde_json::from_str(output.trim()).unwrap();
+    assert_eq!(&dataset_qos_false_info.owner.0, dataset_qos_false.owner());
+    assert_eq!(&dataset_qos_false_info.name.0, dataset_qos_false.name());
+    assert!(!dataset_qos_false_info
+        .dataset_flags
+        .contains(&DatasetFlag::Qos));
+
+    // Run with true QoS Flag
+    let dataset_qos = TestDataset::new_args(&[&format!("--qos={}", true)]);
+    let output = cli.run(["--output=json", "get", "datasets", dataset_qos.identifier()]);
+    let dataset_info: Dataset = serde_json::from_str(output.trim()).unwrap();
+    assert_eq!(&dataset_info.owner.0, dataset_qos.owner());
+    assert_eq!(&dataset_info.name.0, dataset_qos.name());
+    assert!(dataset_info.dataset_flags.contains(&DatasetFlag::Qos));
 }
 
 #[test]
