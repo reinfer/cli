@@ -1,4 +1,4 @@
-# Unreleased
+# v0.32.0
 - Add dataset flags to `create-dataset`
 - Add `parse aic-classification-csv`
 - Round trip `_entity_def_flags`
