@@ -14,6 +14,7 @@ pub struct EntityDef {
     pub name: Name,
     pub title: String,
     pub trainable: bool,
+    #[serde(default)]
     #[serde(rename = "_entity_def_flags")]
     pub entity_def_flags: Vec<EntityDefFlag>,
 }
@@ -31,6 +32,7 @@ pub struct NewEntityDef {
     pub title: String,
     pub trainable: bool,
     #[serde(rename = "_entity_def_flags")]
+    #[serde(default)]
     pub entity_def_flags: Vec<EntityDefFlag>,
 }
 
