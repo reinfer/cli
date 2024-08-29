@@ -104,7 +104,7 @@ pub fn run(args: &GetArgs, client: Client, printer: &Printer, pool: &mut Pool) -
         GetArgs::Emails(args) => emails::get_many(&client, args),
         GetArgs::Comment(args) => comments::get_single(&client, args),
         GetArgs::Comments(args) => comments::get_many(&client, args),
-        GetArgs::Datasets(args) => datasets::get(&client, args, printer),
+        GetArgs::Datasets(args) => datasets::get(&client, args, printer, pool),
         GetArgs::Projects(args) => projects::get(&client, args, printer),
         GetArgs::Sources(args) => sources::get(&client, args, printer),
         GetArgs::Streams(args) => streams::get(&client, args, printer),

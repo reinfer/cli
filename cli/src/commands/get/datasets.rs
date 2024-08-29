@@ -1,9 +1,12 @@
+use std::sync::mpsc::channel;
+
 use anyhow::{Context, Result};
 use log::info;
 use reinfer_client::{
     resources::dataset::{DatasetAndStats, DatasetStats, StatisticsRequestParams},
     Client, DatasetIdentifier, SourceIdentifier,
 };
+use scoped_threadpool::Pool;
 use structopt::StructOpt;
 
 use crate::printer::Printer;
@@ -23,7 +26,12 @@ pub struct GetDatasetsArgs {
     source_identifier: Option<SourceIdentifier>,
 }
 
-pub fn get(client: &Client, args: &GetDatasetsArgs, printer: &Printer) -> Result<()> {
+pub fn get(
+    client: &Client,
+    args: &GetDatasetsArgs,
+    printer: &Printer,
+    pool: &mut Pool,
+) -> Result<()> {
     let GetDatasetsArgs {
         dataset,
         include_stats,
@@ -49,33 +57,47 @@ pub fn get(client: &Client, args: &GetDatasetsArgs, printer: &Printer) -> Result
         datasets.retain(|d| d.source_ids.contains(&source.id));
     }
 
-    let mut dataset_stats = Vec::new();
+    let (sender, receiver) = channel();
+
     if *include_stats {
-        datasets.iter().try_for_each(|dataset| -> Result<()> {
-            info!("Getting statistics for dataset {}", dataset.full_name().0);
-            let unfiltered_stats = client
-                .get_dataset_statistics(
-                    &dataset.full_name(),
-                    &StatisticsRequestParams {
-                        ..Default::default()
-                    },
-                )
-                .context("Could not get statistics for dataset")?;
+        pool.scoped(|scope| {
+            datasets.iter().for_each(|dataset| {
+                let get_stats = || -> Result<DatasetAndStats> {
+                    info!("Getting statistics for dataset {}", dataset.full_name().0);
+                    let unfiltered_stats = client
+                        .get_dataset_statistics(
+                            &dataset.full_name(),
+                            &StatisticsRequestParams {
+                                ..Default::default()
+                            },
+                        )
+                        .context("Could not get statistics for dataset")?;
 
-            let validation_response = client
-                .get_latest_validation(&dataset.full_name())
-                .context("Could not get validation for datase")?;
+                    let validation_response = client
+                        .get_latest_validation(&dataset.full_name())
+                        .context("Could not get validation for datase")?;
 
-            let dataset_and_stats = DatasetAndStats {
-                dataset: dataset.clone(),
-                stats: DatasetStats {
-                    num_reviewed: validation_response.validation.reviewed_size,
-                    total_verbatims: unfiltered_stats.num_comments,
-                    model_rating: validation_response.validation.model_rating,
-                    latest_model_version: validation_response.validation.version,
-                },
-            };
-            dataset_stats.push(dataset_and_stats);
+                    Ok(DatasetAndStats {
+                        dataset: dataset.clone(),
+                        stats: DatasetStats {
+                            num_reviewed: validation_response.validation.reviewed_size,
+                            total_verbatims: unfiltered_stats.num_comments,
+                            model_rating: validation_response.validation.model_rating,
+                            latest_model_version: validation_response.validation.version,
+                        },
+                    })
+                };
+
+                let sender = sender.clone();
+                scope.execute(move || {
+                    sender.send(get_stats()).expect("Could not send error");
+                })
+            });
+        });
+
+        let mut dataset_stats = Vec::new();
+        receiver.iter().try_for_each(|result| -> Result<()> {
+            dataset_stats.push(result?);
             Ok(())
         })?;
 
