@@ -614,6 +614,12 @@ impl Client {
             Retry::Yes,
         )
     }
+    pub fn get_latest_validation(
+        &self,
+        dataset_name: &DatasetFullName,
+    ) -> Result<ValidationResponse> {
+        self.get::<_, ValidationResponse>(self.endpoints.latest_validation(dataset_name)?)
+    }
 
     pub fn get_validation(
         &self,
@@ -1835,6 +1841,20 @@ impl Endpoints {
                 &comment_id.0,
                 "attachments",
                 &attachment_index.to_string(),
+            ],
+        )
+    }
+    fn latest_validation(&self, dataset_name: &DatasetFullName) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "datasets",
+                &dataset_name.0,
+                "labellers",
+                "latest",
+                "validation",
             ],
         )
     }

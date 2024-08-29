@@ -1,3 +1,6 @@
+# Unreleased 
+- Add validation to dataset `--stats`
+
 # v0.32.0
 - Add dataset flags to `create-dataset`
 - Add `parse aic-classification-csv`

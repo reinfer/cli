@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use log::info;
 use reinfer_client::{
     resources::dataset::{DatasetAndStats, DatasetStats, StatisticsRequestParams},
-    Client, CommentFilter, DatasetIdentifier, SourceIdentifier,
+    Client, DatasetIdentifier, SourceIdentifier,
 };
 use structopt::StructOpt;
 
@@ -62,25 +62,18 @@ pub fn get(client: &Client, args: &GetDatasetsArgs, printer: &Printer) -> Result
                 )
                 .context("Could not get statistics for dataset")?;
 
-            let reviewed_stats = client
-                .get_dataset_statistics(
-                    &dataset.full_name(),
-                    &StatisticsRequestParams {
-                        comment_filter: CommentFilter {
-                            reviewed:Some(reinfer_client::resources::comment::ReviewedFilterEnum::OnlyReviewed),
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    },
-                )
-                .context("Could not get statistics for dataset")?;
+            let validation_response = client
+                .get_latest_validation(&dataset.full_name())
+                .context("Could not get validation for datase")?;
 
             let dataset_and_stats = DatasetAndStats {
                 dataset: dataset.clone(),
                 stats: DatasetStats {
-                    num_reviewed: reviewed_stats.num_comments,
-                    total_verbatims: unfiltered_stats.num_comments
-                }
+                    num_reviewed: validation_response.validation.reviewed_size,
+                    total_verbatims: unfiltered_stats.num_comments,
+                    model_rating: validation_response.validation.model_rating,
+                    latest_model_version: validation_response.validation.version,
+                },
             };
             dataset_stats.push(dataset_and_stats);
             Ok(())
