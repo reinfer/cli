@@ -60,14 +60,14 @@ pub struct ModelRating {
     pub quality: DatasetQuality,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ValidationSummary {
     pub version: ModelVersion,
     pub model_rating: ModelRating,
     pub reviewed_size: usize,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ValidationResponse {
     pub label_groups: Vec<LabelGroup>,
     pub validation: ValidationSummary,

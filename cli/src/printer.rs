@@ -146,17 +146,32 @@ impl DisplayTable for DatasetAndStats {
             "/".dimmed(),
             self.dataset.name.0
         );
-        row![
-            full_name,
-            self.dataset.id.0,
-            self.dataset.updated_at.format("%Y-%m-%d %H:%M:%S"),
-            self.dataset.title,
-            self.stats.total_verbatims,
-            self.stats.num_reviewed,
-            self.stats.latest_model_version,
-            self.stats.model_rating.score,
-            self.stats.model_rating.quality
-        ]
+
+        if let Some(validation_response) = &self.stats.validation {
+            row![
+                full_name,
+                self.dataset.id.0,
+                self.dataset.updated_at.format("%Y-%m-%d %H:%M:%S"),
+                self.dataset.title,
+                self.stats.total_verbatims,
+                validation_response.validation.reviewed_size,
+                validation_response.validation.version,
+                validation_response.validation.model_rating.score,
+                validation_response.validation.model_rating.quality
+            ]
+        } else {
+            row![
+                full_name,
+                self.dataset.id.0,
+                self.dataset.updated_at.format("%Y-%m-%d %H:%M:%S"),
+                self.dataset.title,
+                self.stats.total_verbatims,
+                "N/A".dimmed(),
+                "N/A".dimmed(),
+                "N/A".dimmed(),
+                "N/A".dimmed(),
+            ]
+        }
     }
 }
 

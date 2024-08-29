@@ -18,7 +18,7 @@ use std::{
     str::FromStr,
 };
 
-use super::validation::ModelRating;
+use super::validation::ValidationResponse;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all(serialize = "snake_case", deserialize = "snake_case"))]
@@ -53,10 +53,8 @@ pub struct Dataset {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct DatasetStats {
-    pub num_reviewed: usize,
     pub total_verbatims: NotNan<f64>,
-    pub model_rating: ModelRating,
-    pub latest_model_version: ModelVersion,
+    pub validation: Option<ValidationResponse>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]

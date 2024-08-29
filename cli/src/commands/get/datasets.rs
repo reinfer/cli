@@ -73,17 +73,13 @@ pub fn get(
                         )
                         .context("Could not get statistics for dataset")?;
 
-                    let validation_response = client
-                        .get_latest_validation(&dataset.full_name())
-                        .context("Could not get validation for datase")?;
+                    let validation_response = client.get_latest_validation(&dataset.full_name());
 
                     Ok(DatasetAndStats {
                         dataset: dataset.clone(),
                         stats: DatasetStats {
-                            num_reviewed: validation_response.validation.reviewed_size,
                             total_verbatims: unfiltered_stats.num_comments,
-                            model_rating: validation_response.validation.model_rating,
-                            latest_model_version: validation_response.validation.version,
+                            validation: validation_response.ok(),
                         },
                     })
                 };
@@ -91,15 +87,17 @@ pub fn get(
                 let sender = sender.clone();
                 scope.execute(move || {
                     sender.send(get_stats()).expect("Could not send error");
-                })
+                });
             });
         });
 
+        drop(sender);
         let mut dataset_stats = Vec::new();
-        receiver.iter().try_for_each(|result| -> Result<()> {
+        let results: Vec<Result<DatasetAndStats>> = receiver.iter().collect();
+
+        for result in results {
             dataset_stats.push(result?);
-            Ok(())
-        })?;
+        }
 
         printer.print_resources(&dataset_stats)
     } else {
