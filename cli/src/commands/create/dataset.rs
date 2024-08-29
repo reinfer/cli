@@ -1,9 +1,10 @@
 use crate::printer::Printer;
-use anyhow::{anyhow, Context, Error, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 use log::info;
 use reinfer_client::{
-    resources::entity_def::NewGeneralFieldDef, Client, DatasetFullName, NewDataset, NewEntityDef,
-    NewLabelDef, NewLabelGroup, SourceIdentifier,
+    resources::{dataset::DatasetFlag, entity_def::NewGeneralFieldDef},
+    Client, DatasetFullName, NewDataset, NewEntityDef, NewLabelDef, NewLabelGroup,
+    SourceIdentifier,
 };
 use serde::Deserialize;
 use std::str::FromStr;
@@ -58,6 +59,22 @@ pub struct CreateDatasetArgs {
     /// Dataset ID of the dataset to copy annotations from
     #[structopt(long = "copy-annotations-from")]
     copy_annotations_from: Option<String>,
+
+    /// Whether the dataset should have QoS enabled
+    #[structopt(long = "qos")]
+    qos: Option<bool>,
+
+    /// Whether to use the external llm
+    #[structopt(long = "external-llm")]
+    external_llm: Option<bool>,
+
+    /// Whether to use generative ai features
+    #[structopt(long = "gen-ai")]
+    gen_ai: Option<bool>,
+
+    /// Whether to use zero shot ai features
+    #[structopt(long = "zero-shot")]
+    zero_shot: Option<bool>,
 }
 
 pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> Result<()> {
@@ -73,6 +90,10 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
         label_groups,
         model_family,
         copy_annotations_from,
+        qos,
+        external_llm,
+        gen_ai,
+        zero_shot,
     } = args;
 
     let source_ids = {
@@ -86,6 +107,35 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
             );
         }
         source_ids
+    };
+
+    let get_dataset_flags = || -> Result<Vec<DatasetFlag>> {
+        if external_llm.unwrap_or_default() && !gen_ai.unwrap_or_default() {
+            bail!("External Llm can only be used if gen ai features are enabled. Please add `--gen-ai true`")
+        }
+
+        if zero_shot.unwrap_or_default() && !gen_ai.unwrap_or_default() {
+            bail!("Zero shot can only be used if gen ai features are enabled. Please add `--gen-ai true`")
+        }
+
+        let mut dataset_flags = Vec::new();
+
+        if gen_ai.unwrap_or_default() {
+            dataset_flags.push(DatasetFlag::Gpt4)
+        }
+
+        if external_llm.unwrap_or_default() {
+            dataset_flags.push(DatasetFlag::ExternalMoonLlm)
+        }
+
+        if zero_shot.unwrap_or_default() {
+            dataset_flags.push(DatasetFlag::ZeroShotLabels)
+        }
+
+        if qos.unwrap_or_default() {
+            dataset_flags.push(DatasetFlag::Qos)
+        }
+        Ok(dataset_flags)
     };
 
     // Unwrap the inner values, we only need the outer for argument parsing
@@ -124,6 +174,7 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
                 },
                 model_family: model_family.as_deref(),
                 copy_annotations_from: copy_annotations_from.as_deref(),
+                dataset_flags: get_dataset_flags()?,
             },
         )
         .context("Operation to create a dataset has failed.")?;

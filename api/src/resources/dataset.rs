@@ -19,6 +19,15 @@ use std::{
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all(serialize = "snake_case", deserialize = "snake_case"))]
+pub enum DatasetFlag {
+    Gpt4,
+    ExternalMoonLlm,
+    Qos,
+    ZeroShotLabels,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Dataset {
     pub id: Id,
     pub name: Name,
@@ -36,6 +45,8 @@ pub struct Dataset {
     pub general_fields: Vec<GeneralFieldDef>,
     pub label_defs: Vec<LabelDef>,
     pub label_groups: Vec<LabelGroup>,
+    #[serde(rename = "_dataset_flags")]
+    pub dataset_flags: Vec<DatasetFlag>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -267,6 +278,10 @@ pub struct NewDataset<'request> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub copy_annotations_from: Option<&'request str>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "_dataset_flags")]
+    pub dataset_flags: Vec<DatasetFlag>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]

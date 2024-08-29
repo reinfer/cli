@@ -1,4 +1,5 @@
 # Unreleased
+- Add dataset flags to `create-dataset`
 - Add `parse aic-classification-csv`
 
 # v0.31.0
