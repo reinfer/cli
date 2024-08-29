@@ -1,6 +1,7 @@
 # Unreleased
 - Add dataset flags to `create-dataset`
 - Add `parse aic-classification-csv`
+- Round trip `_entity_def_flags`
 
 # v0.31.0
 - Add `get keyed sync states`

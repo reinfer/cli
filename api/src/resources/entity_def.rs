@@ -14,6 +14,15 @@ pub struct EntityDef {
     pub name: Name,
     pub title: String,
     pub trainable: bool,
+    #[serde(default)]
+    #[serde(rename = "_entity_def_flags")]
+    pub entity_def_flags: Vec<EntityDefFlag>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all(serialize = "snake_case", deserialize = "snake_case"))]
+pub enum EntityDefFlag {
+    AppearsVerbatim,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -22,6 +31,9 @@ pub struct NewEntityDef {
     pub name: Name,
     pub title: String,
     pub trainable: bool,
+    #[serde(rename = "_entity_def_flags")]
+    #[serde(default)]
+    pub entity_def_flags: Vec<EntityDefFlag>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
