@@ -18,6 +18,8 @@ use std::{
     str::FromStr,
 };
 
+use super::validation::ValidationResponse;
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all(serialize = "snake_case", deserialize = "snake_case"))]
 pub enum DatasetFlag {
@@ -49,13 +51,13 @@ pub struct Dataset {
     pub dataset_flags: Vec<DatasetFlag>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct DatasetStats {
-    pub num_reviewed: NotNan<f64>,
     pub total_verbatims: NotNan<f64>,
+    pub validation: Option<ValidationResponse>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct DatasetAndStats {
     pub dataset: Dataset,
     pub stats: DatasetStats,
@@ -202,6 +204,12 @@ pub struct ModelFamily(pub String);
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct ModelVersion(pub u32);
+
+impl std::fmt::Display for ModelVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 // TODO(mcobzarenco)[3963]: Make `Identifier` into a trait (ensure it still implements
 // `FromStr` so we can take T: Identifier as a clap command line argument).

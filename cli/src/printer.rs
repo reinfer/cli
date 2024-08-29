@@ -136,7 +136,7 @@ impl DisplayTable for Dataset {
 
 impl DisplayTable for DatasetAndStats {
     fn to_table_headers() -> Row {
-        row![bFg => "Name", "ID", "Updated (UTC)", "Title","Total Verbatims", "Num Reviewed"]
+        row![bFg => "Name", "ID", "Updated (UTC)", "Title","Total Verbatims", "Num Reviewed","Latest Model", "Score", "Quality"]
     }
 
     fn to_table_row(&self) -> Row {
@@ -146,14 +146,32 @@ impl DisplayTable for DatasetAndStats {
             "/".dimmed(),
             self.dataset.name.0
         );
-        row![
-            full_name,
-            self.dataset.id.0,
-            self.dataset.updated_at.format("%Y-%m-%d %H:%M:%S"),
-            self.dataset.title,
-            self.stats.total_verbatims,
-            self.stats.num_reviewed
-        ]
+
+        if let Some(validation_response) = &self.stats.validation {
+            row![
+                full_name,
+                self.dataset.id.0,
+                self.dataset.updated_at.format("%Y-%m-%d %H:%M:%S"),
+                self.dataset.title,
+                self.stats.total_verbatims,
+                validation_response.validation.reviewed_size,
+                validation_response.validation.version,
+                validation_response.validation.model_rating.score,
+                validation_response.validation.model_rating.quality
+            ]
+        } else {
+            row![
+                full_name,
+                self.dataset.id.0,
+                self.dataset.updated_at.format("%Y-%m-%d %H:%M:%S"),
+                self.dataset.title,
+                self.stats.total_verbatims,
+                "N/A".dimmed(),
+                "N/A".dimmed(),
+                "N/A".dimmed(),
+                "N/A".dimmed(),
+            ]
+        }
     }
 }
 
