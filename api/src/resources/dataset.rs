@@ -55,6 +55,9 @@ pub struct Dataset {
 pub struct DatasetStats {
     pub total_verbatims: NotNan<f64>,
     pub validation: Option<ValidationResponse>,
+    pub number_of_labels: usize,
+    pub number_of_fields: usize,
+    pub number_of_extraction_defs: usize,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
