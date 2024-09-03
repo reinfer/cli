@@ -1,5 +1,6 @@
 # Unreleased 
 - Add validation to dataset `--stats`
+- fix issue when adding configs from url 
 
 # v0.32.0
 - Add dataset flags to `create-dataset`
