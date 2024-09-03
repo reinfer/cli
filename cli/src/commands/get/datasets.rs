@@ -80,6 +80,13 @@ pub fn get(
                         stats: DatasetStats {
                             total_verbatims: unfiltered_stats.num_comments,
                             validation: validation_response.ok(),
+                            number_of_labels: dataset.label_defs.len(),
+                            number_of_fields: dataset.entity_defs.len(),
+                            number_of_extraction_defs: dataset
+                                .label_defs
+                                .iter()
+                                .map(|l| if l.moon_form.is_some() { 1 } else { 0 })
+                                .sum(),
                         },
                     })
                 };
