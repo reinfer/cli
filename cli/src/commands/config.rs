@@ -256,12 +256,14 @@ fn parse_context_from_url(
             ))
         };
     }
-    let name: String = format!("{}/{}", path_segments[0], path_segments[1]);
-    // Remove the path to use the rest as the endpoint
-    url.set_path("");
+
+    let organisation = path_segments[0];
+    let tenant = path_segments[1];
+    let org_slash_tenant: String = format!("{organisation}/{tenant}");
+    url.set_path(&format!("{org_slash_tenant}/reinfer_"));
 
     add_or_edit_context(
-        &Some(name),
+        &Some(org_slash_tenant),
         token,
         &Some(url),
         false,
