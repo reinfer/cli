@@ -127,6 +127,19 @@ pub struct AttributeFilter {
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
+pub struct GetAllModelsInDatasetRequest {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserModelMetadata {
+    pub version: ModelVersion,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct GetAllModelsInDatasetRespone {
+    pub labellers: Vec<UserModelMetadata>,
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct StatisticsRequestParams {
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     pub attribute_filters: Vec<AttributeFilter>,
@@ -149,7 +162,13 @@ pub enum OrderEnum {
     Sample { seed: usize },
 }
 
-#[derive(Debug, Clone, Serialize)]
+impl Default for OrderEnum {
+    fn default() -> Self {
+        Self::Recent
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct SummaryRequestParams {
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     pub attribute_filters: Vec<AttributeFilter>,
@@ -157,7 +176,7 @@ pub struct SummaryRequestParams {
     pub filter: CommentFilter,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub struct QueryRequestParams {
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     pub attribute_filters: Vec<AttributeFilter>,
@@ -173,14 +192,25 @@ pub struct QueryRequestParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct UserPropertySummary {
+pub struct UserPropertySummaryValue {
+    pub value: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UserPropertySummaryString {
+    pub full_name: String,
+    pub values: Vec<UserPropertySummaryValue>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UserPropertySummaryNumber {
     pub full_name: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UserPropertySummaryList {
-    pub string: Vec<UserPropertySummary>,
-    pub number: Vec<UserPropertySummary>,
+    pub string: Vec<UserPropertySummaryString>,
+    pub number: Vec<UserPropertySummaryNumber>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

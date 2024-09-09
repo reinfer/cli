@@ -1,4 +1,5 @@
 # Unreleased 
+- add custom label trend report
 - Add validation to dataset `--stats`
 - fix issue when adding configs from url 
 

@@ -1,6 +1,7 @@
 mod audit_events;
 mod buckets;
 mod comments;
+mod custom_label_trend_report;
 mod datasets;
 mod emails;
 mod integrations;
@@ -12,6 +13,7 @@ mod streams;
 mod users;
 
 use anyhow::Result;
+use custom_label_trend_report::GetCustomLabelTrendReportArgs;
 use reinfer_client::Client;
 use scoped_threadpool::Pool;
 use structopt::StructOpt;
@@ -96,6 +98,10 @@ pub enum GetArgs {
     #[structopt(name = "keyed-sync-states")]
     /// Get keyed sync states
     KeyedSyncStates(GetKeyedSyncStatesArgs),
+
+    #[structopt(name = "custom-label-trend-report")]
+    /// Get Custom Report
+    CustomDatasetReport(GetCustomLabelTrendReportArgs),
 }
 
 pub fn run(args: &GetArgs, client: Client, printer: &Printer, pool: &mut Pool) -> Result<()> {
@@ -116,5 +122,8 @@ pub fn run(args: &GetArgs, client: Client, printer: &Printer, pool: &mut Pool) -
         GetArgs::AuditEvents(args) => audit_events::get(&client, args, printer),
         GetArgs::Integrations(args) => integrations::get(&client, args, printer),
         GetArgs::KeyedSyncStates(args) => keyed_sync_states::get(&client, args, printer),
+        GetArgs::CustomDatasetReport(args) => {
+            custom_label_trend_report::get(&client, args, printer)
+        }
     }
 }

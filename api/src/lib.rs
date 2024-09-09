@@ -21,9 +21,9 @@ use resources::{
     bucket_statistics::GetBucketStatisticsResponse,
     comment::{AttachmentReference, CommentTimestampFilter},
     dataset::{
-        QueryRequestParams, QueryResponse,
-        StatisticsRequestParams as DatasetStatisticsRequestParams, SummaryRequestParams,
-        SummaryResponse,
+        GetAllModelsInDatasetRequest, GetAllModelsInDatasetRespone, QueryRequestParams,
+        QueryResponse, StatisticsRequestParams as DatasetStatisticsRequestParams,
+        SummaryRequestParams, SummaryResponse, UserModelMetadata,
     },
     documents::{Document, SyncRawEmailsRequest, SyncRawEmailsResponse},
     email::{Email, GetEmailResponse},
@@ -106,11 +106,13 @@ pub use crate::{
             Identifier as BucketIdentifier, Name as BucketName, NewBucket,
         },
         comment::{
-            AnnotatedComment, Comment, CommentFilter, CommentsIterPage, Continuation,
-            EitherLabelling, Entities, Entity, HasAnnotations, Id as CommentId, Label, Labelling,
+            AnnotatedComment, Comment, CommentFilter, CommentPredictionsThreshold,
+            CommentsIterPage, Continuation, EitherLabelling, Entities, Entity,
+            GetCommentPredictionsRequest, HasAnnotations, Id as CommentId, Label, Labelling,
             Message, MessageBody, MessageSignature, MessageSubject, NewAnnotatedComment,
             NewComment, NewEntities, NewLabelling, NewMoonForm, PredictedLabel, Prediction,
-            PropertyMap, PropertyValue, Sentiment, SyncCommentsResponse, Uid as CommentUid,
+            PropertyMap, PropertyValue, Sentiment, SyncCommentsResponse, TriggerLabelThreshold,
+            Uid as CommentUid,
         },
         dataset::{
             Dataset, FullName as DatasetFullName, Id as DatasetId, Identifier as DatasetIdentifier,
@@ -629,6 +631,16 @@ impl Client {
         self.get::<_, ValidationResponse>(self.endpoints.validation(dataset_name, model_version)?)
     }
 
+    pub fn get_labellers(&self, dataset_name: &DatasetFullName) -> Result<Vec<UserModelMetadata>> {
+        Ok(self
+            .post::<_, _, GetAllModelsInDatasetRespone>(
+                self.endpoints.labellers(dataset_name)?,
+                GetAllModelsInDatasetRequest {},
+                Retry::Yes,
+            )?
+            .labellers)
+    }
+
     pub fn get_label_validation(
         &self,
         label: &LabelName,
@@ -973,15 +985,22 @@ impl Client {
         dataset_name: &DatasetFullName,
         model_version: &ModelVersion,
         comment_uids: impl Iterator<Item = &'a CommentUid>,
+        threshold: Option<CommentPredictionsThreshold>,
+        labels: Option<Vec<TriggerLabelThreshold>>,
     ) -> Result<Vec<Prediction>> {
         Ok(self
             .post::<_, _, GetPredictionsResponse>(
                 self.endpoints
                     .get_comment_predictions(dataset_name, model_version)?,
-                json!({
-                    "threshold": "auto",
-                    "uids": comment_uids.into_iter().map(|id| id.0.as_str()).collect::<Vec<_>>(),
-                }),
+                GetCommentPredictionsRequest {
+                    uids: comment_uids
+                        .into_iter()
+                        .map(|id| id.0.clone())
+                        .collect::<Vec<_>>(),
+
+                    threshold,
+                    labels,
+                },
                 Retry::Yes,
             )?
             .predictions)
@@ -2148,6 +2167,13 @@ impl Endpoints {
         construct_endpoint(
             &self.base,
             &["api", "_private", "datasets", &dataset_name.0, "labellings"],
+        )
+    }
+
+    fn labellers(&self, dataset_name: &DatasetFullName) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "datasets", &dataset_name.0, "labellers"],
         )
     }
 

@@ -70,14 +70,18 @@ type UserPropertyName = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserPropertiesFilter(pub HashMap<UserPropertyName, PropertyFilter>);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct PropertyFilter {
-    #[serde(skip_serializing_if = "<[_]>::is_empty", default)]
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
     pub one_of: Vec<PropertyValue>,
-    #[serde(skip_serializing_if = "<[_]>::is_empty", default)]
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
     pub not_one_of: Vec<PropertyValue>,
-    #[serde(skip_serializing_if = "<[_]>::is_empty", default)]
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
     pub domain_not_one_of: Vec<PropertyValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minimum: Option<NotNan<f64>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maximum: Option<NotNan<f64>>,
 }
 
 impl PropertyFilter {
@@ -90,6 +94,7 @@ impl PropertyFilter {
             one_of,
             not_one_of,
             domain_not_one_of,
+            ..Default::default()
         }
     }
 }
@@ -120,6 +125,27 @@ pub struct MessagesFilter {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub to: Option<PropertyFilter>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all(serialize = "lowercase"))]
+pub enum CommentPredictionsThreshold {
+    Auto,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TriggerLabelThreshold {
+    pub name: Vec<String>,
+    pub threshold: NotNan<f64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetCommentPredictionsRequest {
+    pub uids: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub threshold: Option<CommentPredictionsThreshold>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub labels: Option<Vec<TriggerLabelThreshold>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -488,7 +514,7 @@ pub struct AnnotatedComment {
 pub struct Prediction {
     pub uid: Uid,
     #[serde(skip_serializing_if = "should_skip_serializing_optional_vec")]
-    pub labels: Option<Vec<AutoThresholdLabel>>,
+    pub labels: Option<Vec<PredictedLabel>>,
     #[serde(skip_serializing_if = "should_skip_serializing_optional_vec")]
     pub entities: Option<Vec<Entity>>,
 }
@@ -683,11 +709,20 @@ pub struct Label {
     pub metadata: Option<HashMap<String, JsonValue>>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Hash, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum PredictedLabelName {
     Parts(Vec<String>),
     String(LabelName),
+}
+
+impl PredictedLabelName {
+    pub fn to_label_name(&self) -> LabelName {
+        match self {
+            Self::Parts(parts) => LabelName(parts.join(" > ")),
+            Self::String(string) => string.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -698,13 +733,6 @@ pub struct PredictedLabel {
     pub probability: NotNan<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub auto_thresholds: Option<Vec<String>>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct AutoThresholdLabel {
-    pub name: Vec<String>,
-    pub probability: NotNan<f64>,
-    pub auto_thresholds: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
