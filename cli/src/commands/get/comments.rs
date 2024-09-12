@@ -185,6 +185,8 @@ pub fn get_single(client: &Client, args: &GetSingleCommentArgs) -> Result<()> {
     )
 }
 
+const PROPERTY_VALUE_COUNT_CIRCUIT_BREAKER: usize = 256;
+
 pub fn get_user_properties_filter_interactively(summary: &Summary) -> Result<UserPropertiesFilter> {
     let string_user_property_selections = MultiSelect::new()
         .with_prompt("Select which string user properties you want to set up filters for")
@@ -226,28 +228,40 @@ pub fn get_user_properties_filter_interactively(summary: &Summary) -> Result<Use
                 .expect("Could not get property filter action selection from user");
 
             let get_property_value_selections =
-                |prompt: String,
-                 possible_values: Vec<String>|
-                 -> Result<(Vec<usize>, Vec<PropertyValue>)> {
-                    let selections = MultiSelect::new()
-                        .with_prompt(prompt)
-                        .items(&possible_values)
-                        .interact()?;
+                |prompt: String, possible_values: &mut Vec<String>| -> Result<Vec<PropertyValue>> {
+                    if possible_values.len() < PROPERTY_VALUE_COUNT_CIRCUIT_BREAKER {
+                        let selections = MultiSelect::new()
+                            .with_prompt(prompt)
+                            .items(possible_values)
+                            .interact()?;
 
-                    Ok((
-                        selections.clone(),
-                        selections
+                        let values = selections
                             .iter()
                             .map(|selection| {
                                 let selection_value = &possible_values[*selection];
                                 PropertyValue::String(selection_value.clone())
                             })
-                            .collect(),
-                    ))
+                            .collect();
+
+                        for selection in &selections {
+                            possible_values.remove(*selection);
+                        }
+                        Ok(values)
+                    } else {
+                        let comma_sep_values: String = Input::new()
+                            .with_prompt("Please enter your values seperated by comma")
+                            .interact_text()?;
+
+                        Ok(comma_sep_values
+                            .to_lowercase()
+                            .split(',')
+                            .map(|value| PropertyValue::String(value.trim().to_string()))
+                            .collect())
+                    }
                 };
 
             let mut filter: PropertyFilter = Default::default();
-            let possible_values =
+            let mut possible_values =
                 get_possible_values_for_string_property(summary, &property.full_name)
                     .unwrap_or_else(|_| {
                         panic!(
@@ -262,10 +276,9 @@ pub fn get_user_properties_filter_interactively(summary: &Summary) -> Result<Use
                             "What values do you want to include for the property \"{}\"",
                             property.full_name
                         ),
-                        possible_values,
+                        &mut possible_values,
                     )
                     .expect("Could not get property selection from user")
-                    .1
                 }
                 "Exclusion" => {
                     filter.not_one_of = get_property_value_selections(
@@ -273,42 +286,28 @@ pub fn get_user_properties_filter_interactively(summary: &Summary) -> Result<Use
                             "What values do you want to exclude for the property \"{}\"",
                             property.full_name
                         ),
-                        possible_values,
+                        &mut possible_values,
                     )
                     .expect("Could not get property selection from user")
-                    .1
                 }
                 "Both" => {
-                    let (idxs, one_ofs) = get_property_value_selections(
+                    let one_ofs = get_property_value_selections(
                         format!(
                             "What values do you want to include for the property \"{}\"",
                             property.full_name
                         ),
-                        possible_values.clone(),
+                        &mut possible_values,
                     )
                     .expect("Could not get property selection from user");
-
-                    let remaining_values: Vec<String> = possible_values
-                        .into_iter()
-                        .enumerate()
-                        .filter_map(|(idx, value)| {
-                            if idxs.contains(&idx) {
-                                None
-                            } else {
-                                Some(value)
-                            }
-                        })
-                        .collect();
 
                     let not_one_ofs = get_property_value_selections(
                         format!(
                             "What values do you want to exclude for the property \"{}\"",
                             property.full_name
                         ),
-                        remaining_values,
+                        &mut possible_values,
                     )
-                    .expect("Could not get property selection from user")
-                    .1;
+                    .expect("Could not get property selection from user");
 
                     filter.one_of = one_ofs;
                     filter.not_one_of = not_one_ofs;
@@ -830,7 +829,7 @@ fn get_comments_from_uids(
             sources: vec![source.id],
             messages: options.messages_filter.clone(),
         },
-        limit: DEFAULT_QUERY_PAGE_SIZE,
+        limit: Some(DEFAULT_QUERY_PAGE_SIZE),
         order: if options.shuffle {
             OrderEnum::Sample {
                 seed: rand::thread_rng().gen_range(0..2_i64.pow(31) - 1) as usize,

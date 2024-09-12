@@ -186,7 +186,8 @@ pub struct QueryRequestParams {
 
     pub filter: CommentFilter,
 
-    pub limit: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<usize>,
 
     pub order: OrderEnum,
 }
@@ -401,7 +402,7 @@ mod tests {
             continuation: Some(Continuation(
                 "36498883b7f4c2c12cc364be0a44d806-8abb3088feffef3f".to_string(),
             )),
-            limit: 20,
+            limit: Some(20),
             order: OrderEnum::Recent,
         };
 
@@ -436,7 +437,7 @@ mod tests {
             continuation: Some(Continuation(
                 "36498883b7f4c2c12cc364be0a44d806-8abb3088feffef3f".to_string(),
             )),
-            limit: 20,
+            limit: Some(20),
             order: OrderEnum::ByLabel {
                 label: "Access Management".to_string(),
             },
@@ -510,7 +511,7 @@ mod tests {
         let params = QueryRequestParams {
             attribute_filters: Vec::new(),
             continuation: None,
-            limit: 20,
+            limit: Some(20),
             order: OrderEnum::Recent,
             filter: CommentFilter {
                 reviewed: None,
