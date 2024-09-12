@@ -4,7 +4,7 @@ pub mod resources;
 pub mod retry;
 
 use chrono::{DateTime, Utc};
-use http::Method;
+use http::{header::ACCEPT, Method};
 use log::debug;
 use once_cell::sync::Lazy;
 use reqwest::{
@@ -834,6 +834,7 @@ impl Client {
             &None::<()>,
             &None::<()>,
             &Retry::Yes,
+            None,
         )?;
 
         let mut buffer = Vec::new();
@@ -1061,6 +1062,26 @@ impl Client {
             serde_json::to_value(params).expect("summary params serialization error"),
             Retry::Yes,
         )
+    }
+
+    pub fn query_dataset_csv(
+        &self,
+        dataset_name: &DatasetFullName,
+        params: &QueryRequestParams,
+    ) -> Result<String> {
+        let response = self
+            .raw_request(
+                &Method::POST,
+                &self.endpoints.query_dataset(dataset_name)?,
+                &Some(serde_json::to_value(params).expect("query params serialization error")),
+                &None::<()>,
+                &Retry::Yes,
+                Some(HeaderValue::from_str("text/csv").expect("Could not parse csv header")),
+            )?
+            .text()
+            .expect("Could not get csv text");
+
+        Ok(response)
     }
 
     pub fn query_dataset(
@@ -1392,17 +1413,25 @@ impl Client {
         body: &Option<RequestT>,
         query: &Option<QueryT>,
         retry: &Retry,
+        accept_header: Option<HeaderValue>,
     ) -> Result<reqwest::blocking::Response>
     where
         LocationT: IntoUrl + Display + Clone,
         RequestT: Serialize,
         QueryT: Serialize,
     {
+        let mut headers = self.headers.clone();
+
+        if let Some(accept_header) = accept_header {
+            headers.insert(ACCEPT, accept_header);
+        }
+
         let do_request = || {
             let request = self
                 .http_client
                 .request(method.clone(), url.clone())
-                .headers(self.headers.clone());
+                .headers(headers.clone());
+
             let request = match &query {
                 Some(query) => request.query(query),
                 None => request,
@@ -1499,7 +1528,7 @@ impl Client {
         for<'de> SuccessT: Deserialize<'de>,
     {
         debug!("Attempting {} `{}`", method, url);
-        let http_response = self.raw_request(method, url, body, query, retry)?;
+        let http_response = self.raw_request(method, url, body, query, retry, None)?;
 
         let status = http_response.status();
 
@@ -2240,7 +2269,7 @@ impl Endpoints {
     }
 }
 
-const DEFAULT_HTTP_TIMEOUT_SECONDS: u64 = 120;
+const DEFAULT_HTTP_TIMEOUT_SECONDS: u64 = 240;
 
 fn build_http_client(config: &Config) -> Result<HttpClient> {
     let mut builder = HttpClient::builder()
