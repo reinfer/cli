@@ -99,6 +99,7 @@ pub fn pop_label_selection(prompt: &str, label_defs: &mut Vec<LabelDef>) -> Resu
 
     Ok(label_inclusion_selections
         .iter()
+        .rev()
         .map(|selection| label_defs.remove(*selection).name)
         .collect())
 }

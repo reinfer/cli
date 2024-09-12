@@ -1,3 +1,6 @@
+# Unreleased 
+- Fix selection index issue on custom label trend reports
+
 # v0.33.0
 - add custom label trend report
 - Add validation to dataset `--stats`
