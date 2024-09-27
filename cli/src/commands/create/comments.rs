@@ -389,7 +389,7 @@ fn upload_batch_of_comments(
         if let Some(attachments_dir) = attachments_dir {
             upload_attachments_for_comments(
                 client,
-                comments_to_put,
+                comments_to_sync,
                 attachments_dir,
                 statistics,
                 &source.id,
