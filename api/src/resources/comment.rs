@@ -876,9 +876,13 @@ pub struct NewEntityWithSpan {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
+pub struct FieldId(pub String);
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
 pub struct NewEntityWithSpans {
     pub name: EntityName,
     pub formatted_value: String,
+    pub field_id: FieldId,
     pub spans: Vec<NewEntitySpan>,
 }
 
@@ -895,6 +899,7 @@ pub struct Entity {
     pub name: EntityName,
     pub formatted_value: String,
     pub spans: Vec<EntitySpan>,
+    pub field_id: FieldId,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize, Eq)]
