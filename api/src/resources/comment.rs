@@ -873,6 +873,7 @@ pub struct NewEntityWithSpan {
     pub name: EntityName,
     pub formatted_value: String,
     pub span: NewEntitySpan,
+    pub field_id: FieldId,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
