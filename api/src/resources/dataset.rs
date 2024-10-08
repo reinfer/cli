@@ -27,6 +27,7 @@ pub enum DatasetFlag {
     ExternalMoonLlm,
     Qos,
     ZeroShotLabels,
+    Ixp,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
