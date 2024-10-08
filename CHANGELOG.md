@@ -1,5 +1,7 @@
 # Unreleased 
 - Round trip `field_id` 
+- Add `ixp` dataset flag
+- rename label def description to instructions
 
 # v0.33.1
 - Fix selection index issue on custom label trend reports

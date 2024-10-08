@@ -132,7 +132,7 @@ fn test_create_update_dataset_custom() {
                 },
                 {
                     "name": "foo",
-                    "description": "Long label description",
+                    "instructions": "Long label description",
                     "external_id": "ext id",
                     "title": "Title Me",
                     "pretrained": {
@@ -224,7 +224,7 @@ fn test_create_update_dataset_custom() {
         label_defs: vec![
             LabelDef {
                 name: LabelName("bar".to_owned()),
-                description: "".to_owned(),
+                instructions: "".to_owned(),
                 external_id: None,
                 pretrained: None,
                 title: "".to_owned(),
@@ -232,7 +232,7 @@ fn test_create_update_dataset_custom() {
             },
             LabelDef {
                 name: LabelName("foo".to_owned()),
-                description: "Long label description".to_owned(),
+                instructions: "Long label description".to_owned(),
                 external_id: Some("ext id".to_owned()),
                 pretrained: Some(LabelDefPretrained {
                     id: LabelDefPretrainedId("0000000000000001".to_owned()),
@@ -250,7 +250,7 @@ fn test_create_update_dataset_custom() {
             label_defs: vec![
                 LabelDef {
                     name: LabelName("bar".to_owned()),
-                    description: "".to_owned(),
+                    instructions: "".to_owned(),
                     external_id: None,
                     pretrained: None,
                     title: "".to_owned(),
@@ -258,7 +258,7 @@ fn test_create_update_dataset_custom() {
                 },
                 LabelDef {
                     name: LabelName("foo".to_owned()),
-                    description: "Long label description".to_owned(),
+                    instructions: "Long label description".to_owned(),
                     external_id: Some("ext id".to_owned()),
                     pretrained: Some(LabelDefPretrained {
                         id: LabelDefPretrainedId("0000000000000001".to_owned()),

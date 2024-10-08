@@ -12,7 +12,7 @@ pub struct LabelDef {
     pub name: Name,
 
     #[serde(default)]
-    pub description: String,
+    pub instructions: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub external_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -28,7 +28,7 @@ pub struct NewLabelDef {
     pub name: Name,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
+    pub instructions: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub external_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
