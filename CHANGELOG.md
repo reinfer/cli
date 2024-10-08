@@ -1,5 +1,6 @@
 # Unreleased 
 - Round trip `field_id` 
+- Default value for PropertyValue
 
 # v0.33.1
 - Fix selection index issue on custom label trend reports
