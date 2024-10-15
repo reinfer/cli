@@ -22,7 +22,7 @@ pub fn ensure_uip_user_consents_to_ai_unit_charge(base_url: &Url) -> Result<()> 
         .origin()
         .ascii_serialization()
         .to_lowercase()
-        .ends_with("reinfer.io")
+        .ends_with("reinfer.dev")
     {
         return Ok(());
     }

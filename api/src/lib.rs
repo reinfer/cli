@@ -2304,7 +2304,7 @@ fn id_list_query<'a>(ids: impl Iterator<Item = &'a String>) -> Vec<(&'static str
 }
 
 pub static DEFAULT_ENDPOINT: Lazy<Url> =
-    Lazy::new(|| Url::parse("https://reinfer.io").expect("Default URL is well-formed"));
+    Lazy::new(|| Url::parse("https://reinfer.dev").expect("Default URL is well-formed"));
 
 #[cfg(test)]
 mod tests {
