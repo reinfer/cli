@@ -1,3 +1,6 @@
+# Unreleased
+- update `reinfer.io` urls to `reinfer.dev` 
+
 # v0.34.0
 - Round trip `field_id` 
 - Add `ixp` dataset flag

@@ -148,7 +148,7 @@ fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
     Ok(client)
 }
 
-const DOMAINS_THAT_REQUIRE_CONTEXT: [&str; 2] = ["uipath.com", "reinfer.io"];
+const DOMAINS_THAT_REQUIRE_CONTEXT: [&str; 2] = ["uipath.com", "reinfer.dev"];
 
 fn check_if_context_is_a_required_field(
     config: &ReinferConfig,
