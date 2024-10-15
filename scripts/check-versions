@@ -22,7 +22,7 @@ expect_link() {
   fi
 }
 
-expect_link "https://reinfer.io/public/cli/bin/x86_64-unknown-linux-musl/$VERSION/re"
-expect_link "https://reinfer.io/public/cli/bin/x86_64-apple-darwin/$VERSION/re"
-expect_link "https://reinfer.io/public/cli/bin/x86_64-pc-windows-gnu/$VERSION/re.exe"
-expect_link "https://reinfer.io/public/cli/debian/reinfer-cli_${VERSION}_amd64.deb"
+expect_link "https://reinfer.dev/public/cli/bin/x86_64-unknown-linux-musl/$VERSION/re"
+expect_link "https://reinfer.dev/public/cli/bin/x86_64-apple-darwin/$VERSION/re"
+expect_link "https://reinfer.dev/public/cli/bin/x86_64-pc-windows-gnu/$VERSION/re.exe"
+expect_link "https://reinfer.dev/public/cli/debian/reinfer-cli_${VERSION}_amd64.deb"
