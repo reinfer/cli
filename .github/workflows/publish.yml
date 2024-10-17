@@ -13,11 +13,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-12]
+        os: [ubuntu-20.04, macos-15]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
-        if: ${{ matrix.os != 'macos-12' }}
+        if: ${{ matrix.os != 'macos-15' }}
         with:
           path: |
             ~/.cargo/registry
