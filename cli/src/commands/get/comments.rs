@@ -714,27 +714,33 @@ fn download_comments(
             messages: options.messages_filter.clone(),
         };
 
+        let total_comments = if let Some(dataset_name) = dataset_name {
+            *client
+                .get_dataset_statistics(
+                    dataset_name,
+                    &DatasetStatisticsRequestParams {
+                        comment_filter,
+                        attribute_filters: options.get_attribute_filters(),
+                        ..Default::default()
+                    },
+                )
+                .context("Operation to get dataset comment count has failed..")?
+                .num_comments as u64
+        } else {
+            *client
+                .get_source_statistics(
+                    &source.full_name(),
+                    &SourceStatisticsRequestParams { comment_filter },
+                )
+                .context("Operation to get source comment count has failed..")?
+                .num_comments as u64
+        };
+
         Ok(get_comments_progress_bar(
-            if let Some(dataset_name) = dataset_name {
-                *client
-                    .get_dataset_statistics(
-                        dataset_name,
-                        &DatasetStatisticsRequestParams {
-                            comment_filter,
-                            attribute_filters: options.get_attribute_filters(),
-                            ..Default::default()
-                        },
-                    )
-                    .context("Operation to get dataset comment count has failed..")?
-                    .num_comments as u64
+            if let Some(stop_after) = options.stop_after {
+                std::cmp::min(stop_after as u64, total_comments)
             } else {
-                *client
-                    .get_source_statistics(
-                        &source.full_name(),
-                        &SourceStatisticsRequestParams { comment_filter },
-                    )
-                    .context("Operation to get source comment count has failed..")?
-                    .num_comments as u64
+                total_comments
             },
             &statistics,
             dataset_name.is_some(),
