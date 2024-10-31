@@ -498,9 +498,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         bail!("The `reviewed_only` and `property_filter` options are mutually exclusive.")
     }
 
-    if (user_property_filter.is_some() || *interative_property_filter)
-        && user_property_filter.is_some()
-    {
+    if user_property_filter.is_some() && *interative_property_filter {
         bail!("The `interative_property_filter` and `property_filter` options are mutually exclusive.")
     }
 
