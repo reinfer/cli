@@ -33,6 +33,7 @@ use self::{
 };
 use crate::printer::Printer;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, StructOpt)]
 pub enum GetArgs {
     #[structopt(name = "buckets")]
