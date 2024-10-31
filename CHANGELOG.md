@@ -1,6 +1,7 @@
 # Unreleased
 - update `reinfer.io` urls to `reinfer.dev` 
 - fix validation when providing property filter as json
+- add stop after on `get comments` 
 
 # v0.34.0
 - Round trip `field_id` 
