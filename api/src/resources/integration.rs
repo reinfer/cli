@@ -110,7 +110,7 @@ pub struct CustomApplicationConfig {
 pub struct Mailbox {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub disabled_reason: Option<DisabledReason>,
-    pub email: Email,
+    pub email: String,
     pub enabled: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub folder_allowlist: Option<Vec<Vec<String>>>,
