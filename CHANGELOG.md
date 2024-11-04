@@ -1,4 +1,4 @@
-# Unreleased
+# v0.35.0
 - fix `get integrations`
 - update `reinfer.io` urls to `reinfer.dev` 
 - fix validation when providing property filter as json
