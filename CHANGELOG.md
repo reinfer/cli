@@ -1,4 +1,5 @@
 # Unreleased
+- fix `get integrations`
 - update `reinfer.io` urls to `reinfer.dev` 
 - fix validation when providing property filter as json
 - add stop after on `get comments` 
