@@ -3,7 +3,7 @@ mod error;
 pub mod resources;
 pub mod retry;
 
-use chrono::{DateTime, Utc};
+use chrono::{naive::serde::ts_milliseconds::deserialize, DateTime, Utc};
 use http::{header::ACCEPT, Method};
 use log::debug;
 use once_cell::sync::Lazy;
@@ -41,7 +41,7 @@ use resources::{
     },
 };
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 use std::{
     cell::Cell,
     fmt::{Debug, Display},
@@ -1532,9 +1532,16 @@ impl Client {
 
         let status = http_response.status();
 
-        http_response
-            .json::<Response<SuccessT>>()
-            .map_err(Error::BadJsonResponse)?
+        let response = http_response.text().map_err(|source| Error::ReqwestError {
+            message: "Could not get response text".to_string(),
+            source,
+        })?;
+
+        let mut deserializer = serde_json::Deserializer::from_str(&response);
+        deserializer.disable_recursion_limit();
+        let deserializer = serde_stacker::Deserializer::new(&mut deserializer);
+        Response::<SuccessT>::deserialize(&mut deserializer)
+            .map_err(Error::SerdeError)?
             .into_result(status)
     }
 
