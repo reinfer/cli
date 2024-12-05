@@ -45,6 +45,7 @@ mailparse = "0.14.0"
 diff = "0.1.13"
 rand = "0.8.5"
 csv = "1.3.0"
+serde_stacker = "0.1.11"
 
 [dev-dependencies]
 pretty_assertions = "1.3.0"

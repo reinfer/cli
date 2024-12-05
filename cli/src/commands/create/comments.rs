@@ -15,6 +15,7 @@ use reinfer_client::{
     DatasetIdentifier, NewAnnotatedComment, NewComment, Source, SourceId, SourceIdentifier,
 };
 use scoped_threadpool::Pool;
+use serde::Deserialize;
 use std::{
     collections::HashSet,
     fs::File,
@@ -254,8 +255,12 @@ fn read_comments_iter<'a>(
             Err(e) => return Some(Err(e)),
         }
 
+        let mut deserializer = serde_json::Deserializer::from_str(&line.trim_end());
+        deserializer.disable_recursion_limit();
+        let deserializer = serde_stacker::Deserializer::new(&mut deserializer);
+
         Some(
-            serde_json::from_str::<NewAnnotatedComment>(line.trim_end()).with_context(|| {
+            NewAnnotatedComment::deserialize(deserializer).with_context(|| {
                 format!("Could not parse comment at line {line_number} from input stream")
             }),
         )
