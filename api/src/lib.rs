@@ -1577,7 +1577,7 @@ impl<'a> DatasetQueryIter<'a> {
     }
 }
 
-impl<'a> Iterator for DatasetQueryIter<'a> {
+impl Iterator for DatasetQueryIter<'_> {
     type Item = Result<Vec<AnnotatedComment>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1624,7 +1624,7 @@ impl<'a> EmailsIter<'a> {
     }
 }
 
-impl<'a> Iterator for EmailsIter<'a> {
+impl Iterator for EmailsIter<'_> {
     type Item = Result<Vec<Email>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1682,7 +1682,7 @@ impl<'a> CommentsIter<'a> {
     }
 }
 
-impl<'a> Iterator for CommentsIter<'a> {
+impl Iterator for CommentsIter<'_> {
     type Item = Result<Vec<Comment>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1733,7 +1733,7 @@ impl<'a> LabellingsIter<'a> {
     }
 }
 
-impl<'a> Iterator for LabellingsIter<'a> {
+impl Iterator for LabellingsIter<'_> {
     type Item = Result<Vec<AnnotatedComment>>;
 
     fn next(&mut self) -> Option<Self::Item> {
