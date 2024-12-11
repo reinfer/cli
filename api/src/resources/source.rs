@@ -97,7 +97,7 @@ impl From<FullName> for Identifier {
     }
 }
 
-impl<'a> From<&'a Source> for Identifier {
+impl From<&Source> for Identifier {
     fn from(source: &Source) -> Self {
         Identifier::FullName(source.full_name())
     }
