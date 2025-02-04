@@ -1,10 +1,14 @@
 mod aic_classification_csv;
 mod emls;
 mod msgs;
+mod pff;
+mod pff_sys;
+mod pst;
 
 use aic_classification_csv::ParseAicClassificationCsvArgs;
 use anyhow::Result;
 use colored::Colorize;
+use pst::ParsePstArgs;
 use reinfer_client::resources::bucket::FullName as BucketFullName;
 use reinfer_client::resources::documents::Document;
 use reinfer_client::{Client, NewComment, NewEmail, Source, TransformTag};
@@ -37,6 +41,10 @@ pub enum ParseArgs {
     #[structopt(name = "aic-classification-csv")]
     /// Parse a classification CSV downloaded from AI Center
     AicClassificationCsv(ParseAicClassificationCsvArgs),
+
+    #[structopt(name = "pst")]
+    /// Parse a parse
+    Pst(ParsePstArgs),
 }
 
 pub fn run(args: &ParseArgs, client: Client, pool: &mut Pool) -> Result<()> {
@@ -44,6 +52,7 @@ pub fn run(args: &ParseArgs, client: Client, pool: &mut Pool) -> Result<()> {
         ParseArgs::Msgs(args) => msgs::parse(&client, args),
         ParseArgs::Emls(args) => emls::parse(&client, args, pool),
         ParseArgs::AicClassificationCsv(args) => aic_classification_csv::parse(&client, args, pool),
+        ParseArgs::Pst(args) => pst::parse(&client, args),
     }
 }
 

@@ -3,6 +3,7 @@ members = [
     "api",
     "cli",
 ]
+resolver = "2"
 
 
 [profile.release]

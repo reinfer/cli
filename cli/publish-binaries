@@ -30,9 +30,10 @@ build_and_upload() {
 }
 
 case $BUILD_PLATFORM in
-  "ubuntu-20.04")
+  "ubuntu-24.04")
     build_and_upload "x86_64-unknown-linux-musl" "re"
     build_and_upload "x86_64-unknown-linux-gnu" "re"
+    build_and_upload "x86_64-pc-windows-gnu" "re.exe"
 
     export LOCAL_DEB_PATH="../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb"
 
@@ -53,7 +54,6 @@ case $BUILD_PLATFORM in
     ;;
   "macos-15")
     build_and_upload "x86_64-apple-darwin" "re"
-    build_and_upload "x86_64-pc-windows-gnu" "re.exe"
 
     ;;
   *)

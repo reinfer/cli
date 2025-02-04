@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -ex
+
+case $BUILD_PLATFORM in
+  "ubuntu-24.04")
+    rustup target add x86_64-unknown-linux-musl
+    sudo apt-get install          \
+      autoconf                    \
+      automake                    \
+      autopoint                   \
+      libtool                     \
+      pkg-config                  
+    ;;
+  "macos-15")
+    wget https://github.com/macports/macports-base/releases/download/v2.10.5/MacPorts-2.10.5-15-Sequoia.pkg
+    sudo installer -pkg MacPorts-2.10.5-15-Sequoia.pkg -target /
+    export PATH=/opt/local/bin:/opt/local/sbin:$PATH
+    sudo port install             \
+      autoconf                    \
+      automake                    \
+      gettext                     \
+      libtool                     \
+      pkgconfig
+    ;;
+  *)
+    >&2 echo "fatal: unknown BUILD_PLATFORM '$BUILD_PLATFORM'"
+    exit 1
+    ;;
+esac

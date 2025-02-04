@@ -12,34 +12,64 @@ env:
 
 jobs:
   clippy:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-clippy
+            cli/libpff-20231205
+          key: ${{ runner.os }}-build-${{ hashFiles('**/Cargo.lock', 'scripts/build-install') }}
+
+      - name: Install build dependencies
+        run: sudo apt install git autoconf automake autopoint libtool pkg-config
       # Needs to be separate job because clippy currently (incorrectly) shares cache with cargo
       # (See https://github.com/rust-lang/rust-clippy/issues/4612)
+
       - name: Run clippy
         run: cargo clippy --all-targets --locked -- -D warnings
 
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, macos-15]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v4
+
+      - name: Setup mac dependencies 
+        if: matrix.os == 'macos-15'
+        run: |
+          # Create directory for Macport installs
+          sudo mkdir -p /opt/local
+          
+          # Conigure permissions on that directory
+          sudo chmod -R 777 /opt/local
+         
+          # Add the path to GITHUB_PATH
+          echo "/opt/local/bin:/opt/local/sbin" >> "$GITHUB_PATH"
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+            cli/libpff-20231205
+            /opt/local
+          key: ${{ runner.os }}-build-${{ hashFiles('**/Cargo.lock', 'scripts/build-install') }}
+
+      - name: Install build deps
+        run: ./scripts/build-install
+        env:
+          BUILD_PLATFORM: ${{ matrix.os }}
+
       - name: Build
         run: ./scripts/build
+
       - name: Run tests
         run: ./scripts/check
         env:
