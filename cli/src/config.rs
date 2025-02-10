@@ -44,7 +44,7 @@ impl ReinferConfig {
             if self
                 .current_context
                 .as_ref()
-                .map_or(false, |current_context| current_context == name)
+                .is_some_and(|current_context| current_context == name)
             {
                 self.current_context = None
             }

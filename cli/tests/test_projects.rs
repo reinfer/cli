@@ -25,11 +25,12 @@ impl TestProject {
         );
 
         // Creating projects is complex and can sometimes cause race conditions,
-        // So we loop until the project is created, or we time out.
+        // So we loop until the project is created with our user in, or we time out.
         let start_time = std::time::Instant::now();
         loop {
-            let output = cli.run(["get", "projects", &name]);
-            if output.contains(&name) {
+            let output = cli.run(["get", "users", "--project", &name, "--user", &user.id.0]);
+
+            if output.contains(&user.id.0) {
                 break;
             }
 
