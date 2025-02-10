@@ -13,10 +13,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-15]
+        os: [ubuntu-24.04, macos-15]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         if: ${{ matrix.os != 'macos-15' }}
         with:
           path: |
@@ -47,7 +47,7 @@ jobs:
         env:
           BUILD_PLATFORM: ${{ matrix.os }}
       - name: Publish Crates
-        if: ${{ matrix.os == 'ubuntu-20.04' }}
+        if: ${{ matrix.os == 'ubuntu-24.04' }}
         run: |
           cargo login ${{ secrets.CRATES_IO_TOKEN }}
           ./scripts/publish

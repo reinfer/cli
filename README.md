@@ -77,6 +77,20 @@ Ensure you have the cargo bin directory in your path (typically `~/.cargo/bin`).
 
 #### Manual
 
+Make sure you have the following build dependencies installed: 
+
+##### Debian/Ubuntu
+
+```
+sudo apt install autoconf automake autopoint libtool pkg-config
+```
+
+##### macOS
+
+```
+sudo port install autoconf automake gettext libtool pkgconfig
+```
+
 Build it the usual way using cargo
 
 ```

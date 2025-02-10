@@ -3,7 +3,7 @@
 set -ex
 
 case $BUILD_PLATFORM in
-  "ubuntu-20.04")
+  "ubuntu-24.04")
     rustup target add x86_64-unknown-linux-musl
     sudo apt-get install          \
       musl-tools                  \

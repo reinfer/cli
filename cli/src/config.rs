@@ -41,6 +41,7 @@ impl ReinferConfig {
     pub fn delete_context(&mut self, name: &str) -> bool {
         if let Some(index) = self.context_position(name) {
             self.contexts.remove(index);
+
             if self
                 .current_context
                 .as_ref()
