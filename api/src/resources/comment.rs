@@ -648,7 +648,7 @@ where
     T: HasAnnotations,
 {
     fn has_annotations(&self) -> bool {
-        self.as_ref().map_or(false, HasAnnotations::has_annotations)
+        self.as_ref().is_some_and(HasAnnotations::has_annotations)
     }
 }
 
