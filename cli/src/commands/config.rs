@@ -109,9 +109,7 @@ pub fn run(
             for context in contexts.iter() {
                 let active = config
                     .get_current_context()
-                    .map_or(false, |current_context| {
-                        current_context.name == context.name
-                    });
+                    .is_some_and(|current_context| current_context.name == context.name);
                 table.add_row(row![
                     if active { "    ->" } else { "" },
                     if active {
