@@ -9,7 +9,7 @@ case $BUILD_PLATFORM in
     sudo apt-get install          \
       musl-tools                  \
       python3-toml                \
-      x86_64-w64-mingw32-gcc
+      gcc-mingw-w64-x86-64
     cargo install cargo-deb
     ;;
   "macos-15")
