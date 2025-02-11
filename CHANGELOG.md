@@ -1,4 +1,4 @@
-# Unreleased
+# v0.36.0
 - Add `parse pst`
 
 # v0.35.0
