@@ -31,7 +31,6 @@ build_and_upload() {
 
 case $BUILD_PLATFORM in
   "ubuntu-24.04")
-    build_and_upload "x86_64-unknown-linux-musl" "re"
     build_and_upload "x86_64-unknown-linux-gnu" "re"
     build_and_upload "x86_64-pc-windows-gnu" "re.exe"
 
