@@ -16,36 +16,62 @@ jobs:
         os: [ubuntu-24.04, macos-15]
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup mac dependencies 
+        if: matrix.os == 'macos-15'
+        run: |
+          # Create directory for Macport installs
+          sudo mkdir -p /opt/local
+          
+          # Conigure permissions on that directory
+          sudo chmod -R 777 /opt/local
+         
+          # Add the path to GITHUB_PATH
+          echo "/opt/local/bin:/opt/local/sbin" >> "$GITHUB_PATH"
+
       - uses: actions/cache@v4
-        if: ${{ matrix.os != 'macos-15' }}
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+            cli/libpff-20231205
+            /opt/local
+         key: ${{ runner.os }}-build-${{ hashFiles('**/Cargo.lock', 'scripts/build-install') }}
+
+      - name: Install build deps
+        run: ./scripts/build-install
+        env:
+          BUILD_PLATFORM: ${{ matrix.os }}
+
       - name: Build
         run: ./scripts/build
+
       - name: Run tests
         run: ./scripts/check
         env:
           REINFER_CLI_TEST_PROJECT: ${{ secrets.REINFER_CLI_TEST_PROJECT }}
           REINFER_CLI_TEST_TOKEN: ${{ secrets.REINFER_CLI_TEST_TOKEN }}
           REINFER_CLI_TEST_ENDPOINT: ${{ secrets.REINFER_CLI_TEST_ENDPOINT }}
+
       - name: Install publish dependencies
         run: ./scripts/publish-install
         env:
           BUILD_PLATFORM: ${{ matrix.os }}
+
       - name: GCP Auth
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
       - uses: google-github-actions/setup-gcloud@v1
         name: Set up Cloud SDK
+
       - name: Publish Binaries
         run: ./cli/publish-binaries
         env:
           BUILD_PLATFORM: ${{ matrix.os }}
+
       - name: Publish Crates
         if: ${{ matrix.os == 'ubuntu-24.04' }}
         run: |

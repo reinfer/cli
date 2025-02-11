@@ -5,6 +5,7 @@ set -ex
 case $BUILD_PLATFORM in
   "ubuntu-24.04")
     rustup target add x86_64-unknown-linux-musl
+    rustup target add x86_64-pc-windows-gnu
     sudo apt-get install          \
       musl-tools                  \
       python3-toml
@@ -12,7 +13,6 @@ case $BUILD_PLATFORM in
     ;;
   "macos-15")
     rustup target add x86_64-apple-darwin
-    rustup target add x86_64-pc-windows-gnu
     pip install toml
     brew install mingw-w64
     ;;
