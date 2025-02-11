@@ -36,7 +36,7 @@ jobs:
             target
             cli/libpff-20231205
             /opt/local
-         key: ${{ runner.os }}-build-${{ hashFiles('**/Cargo.lock', 'scripts/build-install') }}
+          key: ${{ runner.os }}-build-${{ hashFiles('**/Cargo.lock', 'scripts/build-install') }}
 
       - name: Install build deps
         run: ./scripts/build-install
