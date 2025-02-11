@@ -43,7 +43,7 @@ pub enum ParseArgs {
     AicClassificationCsv(ParseAicClassificationCsvArgs),
 
     #[structopt(name = "pst")]
-    /// Parse a parse
+    /// Parse a pst
     Pst(ParsePstArgs),
 }
 
