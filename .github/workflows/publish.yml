@@ -28,7 +28,6 @@ jobs:
          
           # Add the path to GITHUB_PATH
           echo "/opt/local/bin:/opt/local/sbin" >> "$GITHUB_PATH"
-
       - uses: actions/cache@v4
         with:
           path: |
