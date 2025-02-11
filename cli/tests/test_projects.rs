@@ -1,6 +1,6 @@
 use crate::common::TestCli;
 use pretty_assertions::assert_eq;
-use reinfer_client::Project;
+use reinfer_client::{Project, User};
 use uuid::Uuid;
 
 pub struct TestProject {
@@ -12,36 +12,46 @@ impl TestProject {
         TestProject::new_args(&[])
     }
 
-    pub fn new_args(args: &[&str]) -> Self {
-        let cli = TestCli::get();
-        let name = Uuid::new_v4().to_string();
-
-        let user = cli.user();
-
-        cli.run(
-            ["create", "project", &name, "--user-ids", &user.id.0]
-                .iter()
-                .chain(args),
-        );
-
+    fn wait_for_project(cli: &TestCli, name: &str, user: &User) -> bool {
         // Creating projects is complex and can sometimes cause race conditions,
         // So we loop until the project is created with our user in, or we time out.
         let start_time = std::time::Instant::now();
         loop {
-            let output = cli.run(["get", "users", "--project", &name, "--user", &user.id.0]);
+            let output = cli.run(["get", "users", "--project", name, "--user", &user.id.0]);
 
             if output.contains(&user.id.0) {
-                break;
+                return true;
             }
 
-            if start_time.elapsed().as_secs() > 120 {
-                panic!("Timed out waiting for project to be created");
+            if start_time.elapsed().as_secs() > 30 {
+                log::warn!("Timed out waiting for project to be created");
+                return false;
             }
 
             std::thread::sleep(std::time::Duration::from_millis(50));
         }
+    }
 
-        Self { name }
+    pub fn new_args(args: &[&str]) -> Self {
+        let cli = TestCli::get();
+
+        // We retry up to 5 times due to some flakey race conditions
+        for _ in 0..5 {
+            let name = Uuid::new_v4().to_string();
+
+            let user = cli.user();
+
+            cli.run(
+                ["create", "project", &name, "--user-ids", &user.id.0]
+                    .iter()
+                    .chain(args),
+            );
+
+            if Self::wait_for_project(cli, &name, &user) {
+                return Self { name };
+            }
+        }
+        panic!("Could not create project: Timed out waiting for project to be created");
     }
 
     pub fn name(&self) -> &str {
