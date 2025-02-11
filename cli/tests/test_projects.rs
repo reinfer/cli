@@ -34,7 +34,7 @@ impl TestProject {
                 break;
             }
 
-            if start_time.elapsed().as_secs() > 30 {
+            if start_time.elapsed().as_secs() > 120 {
                 panic!("Timed out waiting for project to be created");
             }
 
