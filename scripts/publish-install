@@ -8,7 +8,8 @@ case $BUILD_PLATFORM in
     rustup target add x86_64-pc-windows-gnu
     sudo apt-get install          \
       musl-tools                  \
-      python3-toml
+      python3-toml                \
+      x86_64-w64-mingw32-gcc
     cargo install cargo-deb
     ;;
   "macos-15")
