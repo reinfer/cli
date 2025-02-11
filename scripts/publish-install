@@ -13,7 +13,7 @@ case $BUILD_PLATFORM in
     cargo install cargo-deb
     ;;
   "macos-15")
-    rustup target add x86_64-apple-darwin
+    rustup target add aarch64-apple-darwin
     pip install toml
     brew install mingw-w64
     ;;

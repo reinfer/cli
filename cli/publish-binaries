@@ -52,7 +52,7 @@ case $BUILD_PLATFORM in
     # fi
     ;;
   "macos-15")
-    build_and_upload "x86_64-apple-darwin" "re"
+    build_and_upload "aarch64-apple-darwin" "re"
 
     ;;
   *)
