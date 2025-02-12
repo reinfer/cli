@@ -9,6 +9,7 @@ license = "Apache-2.0"
 edition = "2021"
 autotests = false
 build = "build.rs"
+exclude = ["tests"]
 
 [[bin]]
 name = "re"
