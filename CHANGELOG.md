@@ -1,4 +1,4 @@
-# Unreleased
+# v0.36.2
 - Add ai unit charge consent for `parse pst` 
 
 # v0.36.1
