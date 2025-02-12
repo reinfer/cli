@@ -8,7 +8,7 @@ ROOT="$PWD"
 cd "$ROOT/api"
 VERSION="$(python -c 'import toml; fh = open("Cargo.toml"); data = toml.load(fh); print(data["package"]["version"])')"
 
-if ! cargo search reinfer-client | grep -q "reinfer-client = \"$VERSION\""; then
+if ! $(cargo search reinfer-client --registry crates-io | grep -q "reinfer-client = \"$VERSION\""); then
   cargo publish
 fi
 
@@ -18,7 +18,6 @@ sleep 30
 
 cd "$ROOT/cli"
 VERSION="$(python -c 'import toml; fh = open("Cargo.toml"); data = toml.load(fh); print(data["package"]["version"])')"
-
-if ! cargo search reinfer-cli | grep -q "reinfer-cli = \"$VERSION\""; then
+if ! $(cargo search reinfer-cli --registry crates-io | grep -q "reinfer-cli = \"$VERSION\""); then
   cargo publish
 fi
