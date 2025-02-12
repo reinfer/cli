@@ -62,11 +62,13 @@ fn build_libpff(libpff_dir: &Path, configure_mode: LibPffConfigureMode) {
 
     let configure_status = match configure_mode {
         LibPffConfigureMode::Native => Command::new("./configure")
+            .arg("--disable-shared")
             .status()
             .expect("Could not get configure status (native)"),
         LibPffConfigureMode::HostMingw32BuildLinuxGnu => Command::new("./configure")
             .arg("--host=x86_64-w64-mingw32")
             .arg("--build=x86_64-pc-linux-gnu")
+            .arg("--disable-shared")
             .status()
             .expect("Could not get configure status (HostMingw32BuildLinuxGnu)"),
     };
@@ -115,11 +117,6 @@ fn download_and_build_libpff() {
         let configure_mode = get_lib_pff_configure_mode();
         build_libpff(&libpff_dir, configure_mode);
     }
-
-    // This is needed for `cargo test` to work on mac
-    if cfg!(target_os = "macos") {
-        move_dylib_to_deps(&deps_dir);
-    }
 }
 
 fn get_lib_pff_configure_mode() -> LibPffConfigureMode {
@@ -130,13 +127,6 @@ fn get_lib_pff_configure_mode() -> LibPffConfigureMode {
     } else {
         LibPffConfigureMode::Native
     }
-}
-
-fn move_dylib_to_deps(deps_dir: &Path) {
-    let libs_path = get_libs_dir(deps_dir);
-    let dylib_path = libs_path.join(DYLIB_FILE_NAME);
-    let destintation_path = deps_dir.join(DYLIB_FILE_NAME);
-    fs::copy(dylib_path, destintation_path).expect("Could not copy dylib to deps dir");
 }
 
 fn get_deps_dir() -> PathBuf {
