@@ -1,3 +1,6 @@
+# v0.36.1
+- Fixes an issue where dependencies could not be found on mac
+
 # v0.36.0
 - Add `parse pst`
 
