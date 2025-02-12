@@ -6,11 +6,19 @@ cd "$(dirname "$0")/.."
 ROOT="$PWD"
 
 cd "$ROOT/api"
-cargo publish
+VERSION="$(python -c 'import toml; fh = open("Cargo.toml"); data = toml.load(fh); print(data["package"]["version"])')"
+
+if ! cargo search reinfer-client | grep -q "reinfer-client = \"$VERSION\""; then
+  cargo publish
+fi
 
 # Wait for crates.io metadata to update with the new crate we just published
 # Otherwise we get a 'no such dependency' error
 sleep 30
 
 cd "$ROOT/cli"
-cargo publish
+VERSION="$(python -c 'import toml; fh = open("Cargo.toml"); data = toml.load(fh); print(data["package"]["version"])')"
+
+if ! cargo search reinfer-cli | grep -q "reinfer-cli = \"$VERSION\""; then
+  cargo publish
+fi
