@@ -5,7 +5,6 @@ use std::{
 };
 
 const LIB_PFF_TAG: &str = "20231205";
-const DYLIB_FILE_NAME: &str = "libpff.1.dylib";
 
 enum LibPffConfigureMode {
     Native,
@@ -88,20 +87,8 @@ fn build_libpff(libpff_dir: &Path, configure_mode: LibPffConfigureMode) {
 }
 
 fn libpff_built(deps_dir: &Path) -> bool {
-    let target = std::env::var("TARGET").expect("Could not get target");
     let libs_path = get_libs_dir(deps_dir);
-
-    if target.contains("linux") {
-        return libs_path.join("libpff.a").exists();
-    }
-    if target.contains("windows") {
-        return libs_path.join("libpff-1.dll").exists();
-    }
-    if target.contains("macos") {
-        return libs_path.join(DYLIB_FILE_NAME).exists();
-    }
-
-    false
+    libs_path.join("libpff.a").exists()
 }
 
 fn download_and_build_libpff() {
