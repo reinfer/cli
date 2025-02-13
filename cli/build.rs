@@ -88,7 +88,7 @@ fn build_libpff(libpff_dir: &Path, configure_mode: LibPffConfigureMode) {
 
 fn libpff_built(deps_dir: &Path) -> bool {
     let libs_path = get_libs_dir(deps_dir);
-    return libs_path.join("libpff.a").exists();
+    libs_path.join("libpff.a").exists()
 }
 
 fn download_and_build_libpff() {
