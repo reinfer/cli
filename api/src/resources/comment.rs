@@ -873,8 +873,6 @@ pub struct NewEntityWithSpan {
     pub name: EntityName,
     pub formatted_value: String,
     pub span: NewEntitySpan,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub field_id: Option<FieldId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
@@ -884,8 +882,6 @@ pub struct FieldId(pub String);
 pub struct NewEntityWithSpans {
     pub name: EntityName,
     pub formatted_value: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub field_id: Option<FieldId>,
     pub spans: Vec<NewEntitySpan>,
 }
 
