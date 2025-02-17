@@ -22,7 +22,7 @@ pub struct GetDatasetsArgs {
     include_stats: bool,
 
     #[structopt(long = "source")]
-    /// If specified, only list this datasets containing this source (name or id)
+    /// If specified, only list the datasets containing this source (name or id)
     source_identifier: Option<SourceIdentifier>,
 }
 
