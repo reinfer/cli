@@ -1,6 +1,7 @@
 # Unreleased 
 - Fix a typo in get datasets docs 
 - Allow for round tripping regex pattens in entity defs 
+- Don't round trip field ids due to new server side matching logic 
 
 # v0.36.2
 - Add ai unit charge consent for `parse pst` 
