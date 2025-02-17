@@ -17,6 +17,37 @@ pub struct EntityDef {
     #[serde(default)]
     #[serde(rename = "_entity_def_flags")]
     pub entity_def_flags: Vec<EntityDefFlag>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rules: Option<EntityDefRuleSet>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct EntityDefRuleSet {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    regex: Option<RegexPattern>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum RegexPattern {
+    EntityTemplatesProperty(EntityTemplatesProperty),
+    LegacyEntityPatten(LegacyEntityPattern),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct LegacyEntityPattern {
+    pub pattern: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct EntityTemplatesProperty {
+    templates: Vec<EntityTemplateProperty>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct EntityTemplateProperty {
+    template: String,
+    pattern: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -34,6 +65,8 @@ pub struct NewEntityDef {
     #[serde(rename = "_entity_def_flags")]
     #[serde(default)]
     pub entity_def_flags: Vec<EntityDefFlag>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rules: Option<EntityDefRuleSet>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]

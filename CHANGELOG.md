@@ -1,5 +1,6 @@
 # Unreleased 
 - Fix a typo in get datasets docs 
+- Allow for round tripping regex pattens in entity defs 
 
 # v0.36.2
 - Add ai unit charge consent for `parse pst` 
