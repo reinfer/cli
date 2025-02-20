@@ -29,6 +29,10 @@ pub struct UpdateSourceArgs {
     #[structopt(long = "transform-tag")]
     /// Set the transform tag of the source
     transform_tag: Option<TransformTag>,
+
+    #[structopt(long = "detach-bucket")]
+    /// Detach bucket from source
+    detach_bucket: bool,
 }
 
 pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Result<()> {
@@ -39,6 +43,7 @@ pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Re
         should_translate,
         bucket,
         transform_tag,
+        detach_bucket,
     } = args;
 
     let bucket_id = match bucket.to_owned() {
@@ -59,6 +64,8 @@ pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Re
             .context("Fetching source id.")?
             .full_name(),
     };
+
+    let bucket_id = if *detach_bucket { None } else { bucket_id };
 
     let source = client
         .update_source(

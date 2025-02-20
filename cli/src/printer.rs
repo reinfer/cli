@@ -194,7 +194,7 @@ impl DisplayTable for Project {
 
 impl DisplayTable for Source {
     fn to_table_headers() -> Row {
-        row![bFg => "Name", "ID", "Updated (UTC)", "Transform Tag", "Title"]
+        row![bFg => "Name", "ID", "Updated (UTC)", "Transform Tag", "Title", "Bucket"]
     }
 
     fn to_table_row(&self) -> Row {
@@ -208,6 +208,10 @@ impl DisplayTable for Source {
                 None => "missing".dimmed(),
             },
             self.title,
+            match &self.bucket_id {
+                Some(bucket) => bucket.0.as_str().into(),
+                None => "missing".dimmed(),
+            }
         ]
     }
 }
