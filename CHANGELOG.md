@@ -1,5 +1,5 @@
 # Unreleased 
-- Add --remove-bucket to `update source` 
+- Add --detach-bucket to `update source` 
 
 # v0.36.3
 - Fix a typo in get datasets docs 
