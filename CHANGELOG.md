@@ -1,3 +1,6 @@
+# Unreleased 
+- Add --remove-bucket to `update source` 
+
 # v0.36.3
 - Fix a typo in get datasets docs 
 - Allow for round tripping regex pattens in entity defs 
