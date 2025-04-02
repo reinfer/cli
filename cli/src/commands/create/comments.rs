@@ -487,7 +487,7 @@ fn upload_comments_from_reader(
                 },
                 labelling: new_comment.labelling,
                 entities: new_comment.entities,
-                moon_forms: new_comment.moon_forms.map(Into::into),
+                moon_forms: new_comment.moon_forms,
             });
         }
 

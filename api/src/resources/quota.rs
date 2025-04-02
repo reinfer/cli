@@ -13,6 +13,8 @@ pub enum TenantQuotaKind {
     EntitiesPerDataset,
     Comments,
     CommentsPerSource,
+    CommentsInIxpDesigntime,
+    CommentsInIxpRuntime,
     ReviewedCommentsPerDataset,
     Integrations,
     MailboxesPerIntegration,
@@ -39,6 +41,8 @@ impl FromStr for TenantQuotaKind {
             "entities_per_dataset" => TenantQuotaKind::EntitiesPerDataset,
             "comments" => TenantQuotaKind::Comments,
             "comments_per_source" => TenantQuotaKind::CommentsPerSource,
+            "comments_in_ixp_designtime" => TenantQuotaKind::CommentsInIxpDesigntime,
+            "comments_in_ixp_runtime" => TenantQuotaKind::CommentsInIxpRuntime,
             "reviewed_comments_per_dataset" => TenantQuotaKind::ReviewedCommentsPerDataset,
             "integrations" => TenantQuotaKind::Integrations,
             "mailboxes_per_integration" => TenantQuotaKind::MailboxesPerIntegration,
@@ -74,6 +78,9 @@ impl Display for TenantQuotaKind {
                 TenantQuotaKind::EntitiesPerDataset => "entities_per_dataset",
                 TenantQuotaKind::Comments => "comments",
                 TenantQuotaKind::CommentsPerSource => "comments_per_source",
+                TenantQuotaKind::CommentsInIxpDesigntime => "comments_in_ixp_designtime",
+
+                TenantQuotaKind::CommentsInIxpRuntime => "comments_in_ixp_runtime",
                 TenantQuotaKind::ReviewedCommentsPerDataset => "reviewed_comments_per_dataset",
                 TenantQuotaKind::Integrations => "integrations",
                 TenantQuotaKind::MailboxesPerIntegration => "mailboxes_per_integration",
@@ -121,23 +128,52 @@ mod tests {
 
     #[test]
     fn tenant_quota_kind_roundtrips() {
-        assert_eq!(
-            TenantQuotaKind::Sources,
-            TenantQuotaKind::from_str("sources").unwrap()
-        );
-        assert_eq!(
-            &serde_json::ser::to_string(&TenantQuotaKind::Sources).unwrap(),
-            "\"sources\""
-        );
+        let kinds = vec![
+            ("sources", TenantQuotaKind::Sources),
+            ("sources_per_dataset", TenantQuotaKind::SourcesPerDataset),
+            ("datasets", TenantQuotaKind::Datasets),
+            ("datasets_per_source", TenantQuotaKind::DatasetsPerSource),
+            ("labels_per_dataset", TenantQuotaKind::LabelsPerDataset),
+            ("entities_per_dataset", TenantQuotaKind::EntitiesPerDataset),
+            ("comments", TenantQuotaKind::Comments),
+            ("comments_per_source", TenantQuotaKind::CommentsPerSource),
+            (
+                "comments_in_ixp_designtime",
+                TenantQuotaKind::CommentsInIxpDesigntime,
+            ),
+            (
+                "comments_in_ixp_runtime",
+                TenantQuotaKind::CommentsInIxpRuntime,
+            ),
+            (
+                "reviewed_comments_per_dataset",
+                TenantQuotaKind::ReviewedCommentsPerDataset,
+            ),
+            ("integrations", TenantQuotaKind::Integrations),
+            (
+                "mailboxes_per_integration",
+                TenantQuotaKind::MailboxesPerIntegration,
+            ),
+            ("triggers", TenantQuotaKind::Triggers),
+            ("triggers_per_dataset", TenantQuotaKind::TriggersPerDataset),
+            ("users", TenantQuotaKind::Users),
+            ("alerts", TenantQuotaKind::Alerts),
+            ("buckets", TenantQuotaKind::Buckets),
+            ("projects", TenantQuotaKind::Projects),
+            ("pinned_models", TenantQuotaKind::PinnedModels),
+            (
+                "extraction_predictions",
+                TenantQuotaKind::ExtractionPredictions,
+            ),
+        ];
 
-        assert_eq!(
-            TenantQuotaKind::SourcesPerDataset,
-            TenantQuotaKind::from_str("sources_per_dataset").unwrap()
-        );
-        assert_eq!(
-            &serde_json::ser::to_string(&TenantQuotaKind::SourcesPerDataset).unwrap(),
-            "\"sources_per_dataset\""
-        );
+        for (string, kind) in kinds {
+            assert_eq!(TenantQuotaKind::from_str(string).unwrap(), kind);
+            assert_eq!(
+                &serde_json::ser::to_string(&kind).unwrap(),
+                &format!("\"{}\"", string)
+            );
+        }
     }
 
     #[test]
