@@ -45,6 +45,10 @@ pub struct ParsePstArgs {
     #[structopt(long = "resume-on-error")]
     /// Whether to attempt to resume processing on error
     resume_on_error: bool,
+
+    #[structopt(short = "y", long = "yes")]
+    /// Consent to ai unit charge. Suppresses confirmation prompt.
+    yes: bool,
 }
 
 #[derive(Debug)]
@@ -142,7 +146,9 @@ fn get_progress_bar(total_bytes: u64, statistics: &Arc<Statistics>) -> Progress 
 pub fn parse(client: &Client, args: &ParsePstArgs) -> Result<()> {
     let statistics = Arc::new(Statistics::new());
 
-    ensure_uip_user_consents_to_ai_unit_charge(client.base_url())?;
+    if !args.no_charge && !args.yes {
+        ensure_uip_user_consents_to_ai_unit_charge(client.base_url())?;
+    }
 
     let bucket = client.get_bucket(args.bucket.clone())?;
 
