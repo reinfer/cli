@@ -264,7 +264,7 @@ pub struct CommentIdComment {
     pub id: CommentId,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NewAnnotation {
     pub comment: CommentIdComment,
     #[serde(skip_serializing_if = "Option::is_none")]

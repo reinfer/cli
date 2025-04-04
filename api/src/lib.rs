@@ -8,7 +8,10 @@ use http::{header::ACCEPT, Method};
 use log::debug;
 use once_cell::sync::Lazy;
 use reqwest::{
-    blocking::{multipart::Form, Client as HttpClient, Response as HttpResponse},
+    blocking::{
+        multipart::{Form, Part},
+        Client as HttpClient, Response as HttpResponse,
+    },
     header::{self, HeaderMap, HeaderValue},
     IntoUrl, Proxy, Result as ReqwestResult,
 };
@@ -21,9 +24,10 @@ use resources::{
     bucket_statistics::GetBucketStatisticsResponse,
     comment::{AttachmentReference, CommentTimestampFilter},
     dataset::{
-        GetAllModelsInDatasetRequest, GetAllModelsInDatasetRespone, QueryRequestParams,
-        QueryResponse, StatisticsRequestParams as DatasetStatisticsRequestParams,
-        SummaryRequestParams, SummaryResponse, UserModelMetadata,
+        CreateIxpDatasetRequest, CreateIxpDatasetResponse, GetAllModelsInDatasetRequest,
+        GetAllModelsInDatasetRespone, IxpDatasetNew, QueryRequestParams, QueryResponse,
+        StatisticsRequestParams as DatasetStatisticsRequestParams, SummaryRequestParams,
+        SummaryResponse, UploadIxpDocumentResponse, UserModelMetadata,
     },
     documents::{Document, SyncRawEmailsRequest, SyncRawEmailsResponse},
     email::{Email, GetEmailResponse},
@@ -32,6 +36,7 @@ use resources::{
         PostIntegrationRequest, PostIntegrationResponse, PutIntegrationRequest,
         PutIntegrationResponse,
     },
+    label_def::{CreateOrUpdateLabelDefsBulkRequest, CreateOrUpdateLabelDefsBulkResponse},
     project::ForceDeleteProject,
     quota::{GetQuotasResponse, Quota},
     source::StatisticsRequestParams as SourceStatisticsRequestParams,
@@ -303,6 +308,19 @@ impl Client {
                     .source
             }
         })
+    }
+
+    pub fn create_label_defs_bulk(
+        &self,
+        dataset_name: &DatasetFullName,
+        label_group: LabelGroupName,
+        label_defs: Vec<NewLabelDef>,
+    ) -> Result<()> {
+        self.put::<_, _, CreateOrUpdateLabelDefsBulkResponse>(
+            self.endpoints.label_group(dataset_name, label_group)?,
+            CreateOrUpdateLabelDefsBulkRequest { label_defs },
+        )?;
+        Ok(())
     }
 
     /// Create a new source.
@@ -778,6 +796,44 @@ impl Client {
         Ok(())
     }
 
+    pub fn upload_ixp_document(
+        &self,
+        source_id: &SourceId,
+        filename: String,
+        bytes: Vec<u8>,
+    ) -> Result<CommentId> {
+        let endpoint = self.endpoints.ixp_documents(source_id)?;
+
+        let do_request = || {
+            let form = Form::new().part(
+                "file",
+                Part::bytes(bytes.clone()).file_name(filename.clone()),
+            );
+            let request = self
+                .http_client
+                .request(Method::PUT, endpoint.clone())
+                .multipart(form)
+                .headers(self.headers.clone());
+
+            request.send()
+        };
+
+        let result = self.with_retries(do_request);
+
+        let http_response = result.map_err(|source| Error::ReqwestError {
+            source,
+            message: "Operation failed.".to_string(),
+        })?;
+
+        let status = http_response.status();
+
+        Ok(http_response
+            .json::<Response<UploadIxpDocumentResponse>>()
+            .map_err(Error::BadJsonResponse)?
+            .into_result(status)?
+            .comment_id)
+    }
+
     pub fn upload_comment_attachment(
         &self,
         source_id: &SourceId,
@@ -827,10 +883,18 @@ impl Client {
             .into_result(status)
     }
 
-    pub fn get_attachment(&self, reference: &AttachmentReference) -> Result<Vec<u8>> {
+    pub fn get_ixp_document(
+        &self,
+        source_id: &SourceId,
+        comment_id: &CommentId,
+    ) -> Result<Vec<u8>> {
+        self.get_octet_stream(&self.endpoints.ixp_document(source_id, comment_id)?)
+    }
+
+    fn get_octet_stream(&self, endpoint: &Url) -> Result<Vec<u8>> {
         let mut response = self.raw_request(
             &Method::GET,
-            &self.endpoints.attachment_reference(reference)?,
+            endpoint,
             &None::<()>,
             &None::<()>,
             &Retry::Yes,
@@ -845,8 +909,11 @@ impl Client {
                 message: "Failed to read buffer".to_string(),
                 source: Box::new(source),
             })?;
-
         Ok(buffer)
+    }
+
+    pub fn get_attachment(&self, reference: &AttachmentReference) -> Result<Vec<u8>> {
+        self.get_octet_stream(&self.endpoints.attachment_reference(reference)?)
     }
 
     pub fn get_integrations(&self) -> Result<Vec<Integration>> {
@@ -881,6 +948,16 @@ impl Client {
                     .dataset
             }
         })
+    }
+
+    /// Create a ixp dataset.
+    pub fn create_ixp_dataset(&self, dataset: IxpDatasetNew) -> Result<Dataset> {
+        Ok(self
+            .put::<_, _, CreateIxpDatasetResponse>(
+                self.endpoints.ixp_datasets()?,
+                CreateIxpDatasetRequest { dataset },
+            )?
+            .dataset)
     }
 
     /// Create a dataset.
@@ -1531,7 +1608,6 @@ impl Client {
         let http_response = self.raw_request(method, url, body, query, retry, None)?;
 
         let status = http_response.status();
-
         http_response
             .json::<Response<SuccessT>>()
             .map_err(Error::BadJsonResponse)?
@@ -1814,6 +1890,55 @@ impl Endpoints {
             current_user,
             projects,
         })
+    }
+
+    fn label_group(
+        &self,
+        dataset_name: &DatasetFullName,
+        label_group: LabelGroupName,
+    ) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "datasets",
+                &dataset_name.0,
+                "labels",
+                &label_group.0,
+            ],
+        )
+    }
+
+    fn ixp_datasets(&self) -> Result<Url> {
+        construct_endpoint(&self.base, &["api", "_private", "ixp", "datasets"])
+    }
+
+    fn ixp_documents(&self, source_id: &SourceId) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "sources",
+                &format!("id:{0}", source_id.0),
+                "documents",
+            ],
+        )
+    }
+
+    fn ixp_document(&self, source_id: &SourceId, comment_id: &CommentId) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "sources",
+                &format!("id:{0}", source_id.0),
+                "documents",
+                &comment_id.0,
+            ],
+        )
     }
 
     fn keyed_sync_states(&self, bucket_id: &BucketId) -> Result<Url> {

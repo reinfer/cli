@@ -1,7 +1,7 @@
 use crate::{
     commands::{
-        config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs, parse::ParseArgs,
-        update::UpdateArgs,
+        config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs,
+        package::PackageArgs, parse::ParseArgs, update::UpdateArgs,
     },
     printer::OutputFormat,
 };
@@ -110,6 +110,13 @@ pub enum Command {
     Parse {
         #[structopt(subcommand)]
         parse_args: ParseArgs,
+    },
+
+    #[structopt(name = "package")]
+    /// Create packages for moving data around
+    Package {
+        #[structopt(subcommand)]
+        package_args: PackageArgs,
     },
 }
 

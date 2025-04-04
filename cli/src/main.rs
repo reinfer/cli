@@ -8,10 +8,12 @@ mod thousands;
 mod utils;
 
 use anyhow::{anyhow, Context, Result};
+use commands::package;
 use log::{error, warn};
+use once_cell::sync::Lazy;
 use reinfer_client::{
     retry::{RetryConfig, RetryStrategy},
-    Client, Config as ClientConfig, Token, DEFAULT_ENDPOINT,
+    Client, Config as ClientConfig, ProjectName, Token, DEFAULT_ENDPOINT,
 };
 use scoped_threadpool::Pool;
 use std::{env, fs, io, path::PathBuf, process};
@@ -25,6 +27,9 @@ use crate::{
 };
 
 const NUM_THREADS_ENV_VARIABLE_NAME: &str = "REINFER_CLI_NUM_THREADS";
+
+static DEFAULT_PROJECT_NAME: Lazy<ProjectName> =
+    Lazy::new(|| ProjectName("DefaultProject".to_string()));
 
 fn run(args: Args) -> Result<()> {
     let config_path = find_configuration(&args)?;
@@ -76,6 +81,10 @@ fn run(args: Args) -> Result<()> {
         }
         Command::Parse { parse_args } => {
             parse::run(parse_args, client_from_args(&args, &config)?, &mut pool)
+        }
+
+        Command::Package { package_args } => {
+            package::run(package_args, client_from_args(&args, &config)?, &mut pool)
         }
     }
 }
