@@ -11,7 +11,7 @@ use crate::{
         source::Id as SourceId,
         user::Username,
     },
-    AnnotatedComment, CommentFilter, Continuation,
+    AnnotatedComment, CommentFilter, Continuation, ProjectName,
 };
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -71,10 +71,27 @@ impl Dataset {
     pub fn full_name(&self) -> FullName {
         FullName(format!("{}/{}", self.owner.0, self.name.0))
     }
+
+    pub fn has_flag(&self, flag: DatasetFlag) -> bool {
+        self.dataset_flags.contains(&flag)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Name(pub String);
+
+impl Name {
+    pub fn with_project(self, project: &ProjectName) -> Result<FullName> {
+        FullName::from_str(&format!("{0}/{1}", project.0, self.0))
+    }
+}
+impl FromStr for Name {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        Ok(Name(s.to_string()))
+    }
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct FullName(pub String);

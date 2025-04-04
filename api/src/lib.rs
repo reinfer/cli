@@ -827,10 +827,18 @@ impl Client {
             .into_result(status)
     }
 
-    pub fn get_attachment(&self, reference: &AttachmentReference) -> Result<Vec<u8>> {
+    pub fn get_ixp_document(
+        &self,
+        source_id: &SourceId,
+        comment_id: &CommentId,
+    ) -> Result<Vec<u8>> {
+        self.get_octet_stream(&self.endpoints.ixp_document(source_id, comment_id)?)
+    }
+
+    fn get_octet_stream(&self, endpoint: &Url) -> Result<Vec<u8>> {
         let mut response = self.raw_request(
             &Method::GET,
-            &self.endpoints.attachment_reference(reference)?,
+            endpoint,
             &None::<()>,
             &None::<()>,
             &Retry::Yes,
@@ -845,8 +853,11 @@ impl Client {
                 message: "Failed to read buffer".to_string(),
                 source: Box::new(source),
             })?;
-
         Ok(buffer)
+    }
+
+    pub fn get_attachment(&self, reference: &AttachmentReference) -> Result<Vec<u8>> {
+        self.get_octet_stream(&self.endpoints.attachment_reference(reference)?)
     }
 
     pub fn get_integrations(&self) -> Result<Vec<Integration>> {
@@ -1814,6 +1825,20 @@ impl Endpoints {
             current_user,
             projects,
         })
+    }
+
+    fn ixp_document(&self, source_id: &SourceId, comment_id: &CommentId) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "sources",
+                &format!("id:{0}", source_id.0),
+                "documents",
+                &comment_id.0,
+            ],
+        )
     }
 
     fn keyed_sync_states(&self, bucket_id: &BucketId) -> Result<Url> {

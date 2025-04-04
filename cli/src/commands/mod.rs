@@ -14,6 +14,7 @@ pub mod config;
 pub mod create;
 pub mod delete;
 pub mod get;
+pub mod package;
 pub mod parse;
 pub mod update;
 
