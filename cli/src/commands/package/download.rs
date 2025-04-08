@@ -45,7 +45,7 @@ pub struct DownloadPackageArgs {
     batch_size: usize,
 
     #[structopt(long = "max-attachment-memory-mb", default_value = "256")]
-    /// Maximum number of kb to use to store attachments in memory
+    /// Maximum number of mb to use to store attachments in memory
     max_attachment_memory_mb: u64,
 }
 
@@ -197,7 +197,7 @@ fn package_batch_of_documents(
     });
 
     if let Ok(error) = error_receiver.try_recv() {
-        return Err(anyhow!("Failed to upload document {}", error));
+        return Err(anyhow!("Failed to download document {}", error));
     };
 
     drop(document_sender);

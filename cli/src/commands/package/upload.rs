@@ -1,4 +1,3 @@
-use chrono::Utc;
 use colored::Colorize;
 use itertools::Itertools;
 use std::{
@@ -11,7 +10,7 @@ use std::{
         Arc,
     },
     thread::sleep,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use anyhow::{anyhow, Context, Result};
@@ -44,13 +43,13 @@ pub struct UploadPackageArgs {
 
     #[structopt(long = "dataset-creation-timeout", default_value = "30")]
     /// Maximum number of seconds to wait for dataset to be created
-    dataset_creation_timeout: i64,
+    dataset_creation_timeout: u64,
 }
 
-fn wait_for_dataset_to_exist(dataset: &Dataset, client: &Client, timeout_s: i64) -> Result<()> {
-    let start_time = Utc::now();
+fn wait_for_dataset_to_exist(dataset: &Dataset, client: &Client, timeout_s: u64) -> Result<()> {
+    let start_time = Instant::now();
 
-    while (start_time - Utc::now()).num_seconds() <= timeout_s {
+    while (start_time - Instant::now()).as_secs() <= timeout_s {
         let datasets = client.get_datasets()?;
 
         let dataset_exists = datasets
@@ -72,7 +71,7 @@ fn create_dataset(
     name: DatasetName,
     label_defs: Vec<LabelDef>,
     client: &Client,
-    timeout_s: i64,
+    timeout_s: u64,
 ) -> Result<Dataset> {
     let mut new_label_defs = Vec::new();
 

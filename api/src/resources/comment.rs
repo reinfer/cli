@@ -929,9 +929,9 @@ pub struct MoonFormFieldAnnotation {
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct EntitySpanUtf16 {
     content_part: String,
-    message_index: i32,
-    utf16_byte_start: i32,
-    utf16_byte_end: i32,
+    message_index: u32,
+    utf16_byte_start: u32,
+    utf16_byte_end: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -944,8 +944,8 @@ pub struct MoonFormFieldAnnotationNew {
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct DocumentSpan {
-    page_index: i32,
-    attachment_index: i32,
+    page_index: u32,
+    attachment_index: u32,
     polygon: PagePolygon,
 }
 
@@ -956,8 +956,8 @@ pub struct PagePolygon {
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct Vertex {
-    x: f32,
-    y: f32,
+    x: f64,
+    y: f64,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize, Eq)]
