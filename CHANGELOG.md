@@ -1,5 +1,6 @@
 # Unreleased 
 - Add --detach-bucket to `update source` 
+- Add package commands
 
 # v0.36.3
 - Fix a typo in get datasets docs 

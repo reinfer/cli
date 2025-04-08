@@ -262,12 +262,12 @@ impl ReducibleResponse for SyncCommentsResponse {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GetCommentResponse {
     pub comment: Comment,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Comment {
     pub id: Id,
     pub uid: Uid,
@@ -495,7 +495,7 @@ impl<'de> Visitor<'de> for PropertyMapVisitor {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct AnnotatedComment {
     pub comment: Comment,
     #[serde(skip_serializing_if = "should_skip_serializing_labelling")]
@@ -630,7 +630,7 @@ impl HasAnnotations for EitherLabelling {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NewAnnotatedComment {
     pub comment: NewComment,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -781,42 +781,52 @@ pub struct NewEntities {
     pub dismissed: Vec<NewEntity>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct MoonFormCapture {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub fields: Vec<Entity>,
+    pub fields: Vec<MoonFormFieldAnnotation>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct MoonFormLabelCaptures {
     pub label: Label,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub captures: Vec<MoonFormCapture>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct MoonForm {
     pub group: LabelGroupName,
     #[serde(default)]
     pub assigned: Vec<MoonFormLabelCaptures>,
     #[serde(skip_serializing_if = "should_skip_serializing_optional_vec", default)]
     pub predicted: Option<Vec<MoonFormLabelCaptures>>,
+    #[serde(default)]
+    pub dismissed: Vec<MoonFormLabelCaptures>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NewMoonFormCapture {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub fields: Vec<NewEntity>,
+    pub fields: Vec<MoonFormFieldAnnotationNew>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NewMoonFormLabelCaptures {
     pub label: Label,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub captures: Vec<NewMoonFormCapture>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct MoonFormDismissedUpdate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captures: Option<Vec<NewMoonFormLabelCaptures>>,
+    pub entities: Vec<MoonFormFieldAnnotationNew>,
+    #[serde(default)]
+    pub labels: Vec<Label>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NewMoonForm {
     pub group: LabelGroupName,
     #[serde(default)]
@@ -900,6 +910,54 @@ pub struct Entity {
     pub spans: Vec<EntitySpan>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub field_id: Option<FieldId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct MoonFormFieldAnnotation {
+    pub name: String,
+    pub spans: Vec<EntitySpan>,
+    pub kind: EntityName,
+
+    pub formatted_value: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub field_id: Option<FieldId>,
+
+    pub document_spans: Vec<DocumentSpan>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct EntitySpanUtf16 {
+    content_part: String,
+    message_index: u32,
+    utf16_byte_start: u32,
+    utf16_byte_end: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct MoonFormFieldAnnotationNew {
+    pub name: String,
+    pub spans: Vec<EntitySpanUtf16>,
+    pub formatted_value: String,
+    pub document_spans: Vec<DocumentSpan>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+pub struct DocumentSpan {
+    page_index: u32,
+    attachment_index: u32,
+    polygon: PagePolygon,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+pub struct PagePolygon {
+    vertices: Vec<Vertex>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+pub struct Vertex {
+    x: f64,
+    y: f64,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize, Eq)]

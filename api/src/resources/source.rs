@@ -133,6 +133,8 @@ pub enum SourceKind {
     Call,
     Chat,
     Unknown(Box<str>),
+    IxpRuntime,
+    IxpDesignTime,
 }
 
 impl FromStr for SourceKind {
@@ -142,6 +144,8 @@ impl FromStr for SourceKind {
         Ok(match string {
             "call" => SourceKind::Call,
             "chat" => SourceKind::Chat,
+            "ixp_runtime" => SourceKind::IxpRuntime,
+            "ixp_design" => SourceKind::IxpDesignTime,
             value => SourceKind::Unknown(value.into()),
         })
     }
@@ -156,6 +160,8 @@ impl Display for SourceKind {
                 SourceKind::Call => "call",
                 SourceKind::Chat => "chat",
                 SourceKind::Unknown(value) => value.as_ref(),
+                SourceKind::IxpRuntime => "ixp_runtime",
+                SourceKind::IxpDesignTime => "ixp_design",
             }
         )
     }
