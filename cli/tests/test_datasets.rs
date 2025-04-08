@@ -269,7 +269,7 @@ fn test_create_update_dataset_custom() {
                     moon_form: Some(vec![MoonFormFieldDef {
                         name: "luna".to_owned(),
                         kind: "ent".to_owned(),
-                        instructions: None,
+                        instructions: Some(String::new()),
                     }]),
                 },
             ],
