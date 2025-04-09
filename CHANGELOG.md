@@ -1,6 +1,7 @@
 # Unreleased 
 - Add --detach-bucket to `update source` 
 - Add package commands
+- Add --dry-run to `re parse pst` to print parse errors
 
 # v0.36.3
 - Fix a typo in get datasets docs 
