@@ -8,6 +8,7 @@ use reinfer_client::{
     BucketIdentifier, Client, EmailId, Mailbox, MimeContent, NewEmail,
 };
 use std::{
+    collections::HashMap,
     path::PathBuf,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -49,6 +50,10 @@ pub struct ParsePstArgs {
     #[structopt(short = "y", long = "yes")]
     /// Consent to ai unit charge. Suppresses confirmation prompt.
     yes: bool,
+
+    #[structopt(short = "d", long = "dry-run")]
+    /// Print any parsing errors without uploading the pst
+    dry_run: bool,
 }
 
 #[derive(Debug)]
@@ -146,11 +151,11 @@ fn get_progress_bar(total_bytes: u64, statistics: &Arc<Statistics>) -> Progress 
 pub fn parse(client: &Client, args: &ParsePstArgs) -> Result<()> {
     let statistics = Arc::new(Statistics::new());
 
+    let mut errors = HashMap::<String, usize>::new();
+
     if !args.no_charge && !args.yes {
         ensure_uip_user_consents_to_ai_unit_charge(client.base_url())?;
     }
-
-    let bucket = client.get_bucket(args.bucket.clone())?;
 
     log::info!("Opening pst file...");
     let pst = PstFile::open(&args.pst_path).context("Could not open PST file")?;
@@ -184,16 +189,17 @@ pub fn parse(client: &Client, args: &ParsePstArgs) -> Result<()> {
                     match pst_message_to_new_email(message, Mailbox(pst_file_name.clone())) {
                         Ok(email) => emails.push(email),
                         Err(e) => {
-                            if !args.resume_on_error {
+                            if !args.resume_on_error && !args.dry_run {
                                 return Err(e);
                             } else {
                                 statistics.add_failed_to_parse(1);
+                                *errors.entry(e.to_string()).or_insert(0) += 1;
                             }
                         }
                     }
                 }
                 Err(e) => {
-                    if !args.resume_on_error {
+                    if !args.resume_on_error && !args.dry_run {
                         return Err(e);
                     } else {
                         statistics.add_failed_to_parse(1);
@@ -203,37 +209,53 @@ pub fn parse(client: &Client, args: &ParsePstArgs) -> Result<()> {
         }
 
         let batch_len = emails.len();
-
-        if args.resume_on_error {
-            let result = client
-                .put_emails_split_on_failure(&bucket.full_name(), emails, args.no_charge)
-                .context("Could not upload batch of emails")?;
-            statistics.add_uploaded(batch_len - result.num_failed);
-            statistics.add_failed_to_upload(result.num_failed);
+        if !args.dry_run {
+            let bucket = client.get_bucket(args.bucket.clone())?;
+            if args.resume_on_error {
+                let result = client
+                    .put_emails_split_on_failure(&bucket.full_name(), emails, args.no_charge)
+                    .context("Could not upload batch of emails")?;
+                statistics.add_uploaded(batch_len - result.num_failed);
+                statistics.add_failed_to_upload(result.num_failed);
+            } else {
+                client.put_emails(&bucket.full_name(), emails, args.no_charge)?;
+                statistics.add_uploaded(batch_len);
+            };
         } else {
-            client.put_emails(&bucket.full_name(), emails, args.no_charge)?;
             statistics.add_uploaded(batch_len);
-        };
+        }
     }
+    if args.dry_run {
+        if !errors.is_empty() {
+            let errors_msg = errors
+                .iter()
+                .map(|(error, count)| format!("{count} failed to parse due to the error: {error}"))
+                .join("\n");
 
-    if statistics.num_failed_to_parse() > 0 {
-        log::warn!(
-            "{} emails failed to parse.",
-            statistics.num_failed_to_parse()
-        )
+            log::error!("Parse errors found:\n\n{errors_msg}");
+        } else {
+            log::info!("No parse errors found");
+        }
+    } else {
+        if statistics.num_failed_to_parse() > 0 {
+            log::warn!(
+                "{} emails failed to parse.",
+                statistics.num_failed_to_parse()
+            )
+        }
+
+        if statistics.num_failed_to_upload() > 0 {
+            log::warn!(
+                "{} emails failed to upload.",
+                statistics.num_failed_to_upload()
+            )
+        }
+
+        log::info!(
+            "{} emails uploaded successfully.",
+            statistics.num_uploaded()
+        );
     }
-
-    if statistics.num_failed_to_upload() > 0 {
-        log::warn!(
-            "{} emails failed to upload.",
-            statistics.num_failed_to_upload()
-        )
-    }
-
-    log::info!(
-        "{} emails uploaded successfully.",
-        statistics.num_uploaded()
-    );
 
     Ok(())
 }
@@ -242,7 +264,8 @@ pub fn pst_message_to_new_email(pst_message: PstMessage, mailbox: Mailbox) -> Re
     // Parse Headers
     let raw_headers = pst_message
         .get_transport_headers()?
-        .context("Could not read transport headers")?;
+        .context("Could not read transport headers. Sent items are dropped when psts are exported from outlook. Please export from exchange.")?;
+
     let (parsed_headers, _) = mailparse::parse_headers(raw_headers.as_bytes())?;
 
     // Get Message ID
@@ -349,10 +372,9 @@ pub fn pst_message_to_new_email(pst_message: PstMessage, mailbox: Mailbox) -> Re
     let body = if let Some(html_body) = pst_message.get_html_body()? {
         html_body
     } else {
-        pst_message.get_plain_text_body()?.context(format!(
-            "Plain text and html body missing for message {}",
-            &id.0
-        ))?
+        pst_message
+            .get_plain_text_body()?
+            .context("Plain text and html body missing for message. Rtf content not supported.")?
     };
 
     let mime_content = MimeContent(format!("{headers_as_mime_string}\r\n\r\n{body}"));
