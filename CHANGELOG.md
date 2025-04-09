@@ -1,4 +1,4 @@
-# Unreleased 
+# v0.37.0
 - Add --detach-bucket to `update source` 
 - Add package commands
 - Add --dry-run to `re parse pst` to print parse errors
