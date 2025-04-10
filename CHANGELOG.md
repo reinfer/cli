@@ -1,3 +1,6 @@
+# unreleased
+- Add `BadJsonResponse` to batch splitting logic
+
 # v0.37.0
 - Add --detach-bucket to `update source` 
 - Add package commands
