@@ -1554,6 +1554,10 @@ impl Client {
             if let Error::Api { status_code, .. } = error {
                 *status_code == reqwest::StatusCode::UNPROCESSABLE_ENTITY
                     || *status_code == reqwest::StatusCode::BAD_REQUEST
+            } else if let Error::BadJsonResponse(_) = error {
+                // This is for the case where some sort of network config (e.g. cloudflare) blocks
+                // the request and returns invalid content
+                true
             } else {
                 false
             }
