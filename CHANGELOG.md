@@ -1,4 +1,4 @@
-# unreleased
+# v0.37.1
 - Add `BadJsonResponse` to batch splitting logic
 
 # v0.37.0
