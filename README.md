@@ -53,13 +53,13 @@ The [api](/api) directory contains a Rust client library for reinfer which can b
 
 Statically linked binaries with no dependencies are provided for selected platforms:
 
-- [Ubuntu (x86_64-unknown-linux-gnu)](https://reinfer.dev/public/cli/bin/x86_64-unknown-linux-gnu/0.37.1/re)
-- [macOS (aarch64-apple-darwin)](https://reinfer.dev/public/cli/bin/aarch64-apple-darwin/0.37.1/re)
-- [Windows (x86_64-pc-windows-gnu)](https://reinfer.dev/public/cli/bin/x86_64-pc-windows-gnu/0.37.1/re.exe)
+- [Ubuntu (x86_64-unknown-linux-gnu)](https://reinfer.dev/public/cli/bin/x86_64-unknown-linux-gnu/0.37.2/re)
+- [macOS (aarch64-apple-darwin)](https://reinfer.dev/public/cli/bin/aarch64-apple-darwin/0.37.2/re)
+- [Windows (x86_64-pc-windows-gnu)](https://reinfer.dev/public/cli/bin/x86_64-pc-windows-gnu/0.37.2/re.exe)
 
 ### Debian / Ubuntu
 
-You can download a `.deb` package [here](https://reinfer.dev/public/cli/debian/reinfer-cli_0.37.1_amd64.deb).
+You can download a `.deb` package [here](https://reinfer.dev/public/cli/debian/reinfer-cli_0.37.2_amd64.deb).
 
 ### From Source
 

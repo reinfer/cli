@@ -1,4 +1,4 @@
-# Unreleased
+# v0.37.2
 - Fix a bug where updating a source would result in it's bucket becoming detached 
 
 # v0.37.1
