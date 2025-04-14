@@ -1,3 +1,6 @@
+# Unreleased
+- Fix a bug where updating a source would result in it's bucket becoming detached 
+
 # v0.37.1
 - Add `BadJsonResponse` to batch splitting logic
 

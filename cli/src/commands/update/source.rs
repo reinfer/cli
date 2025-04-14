@@ -46,6 +46,10 @@ pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Re
         detach_bucket,
     } = args;
 
+    let existing_source = client
+        .get_source(source.to_owned())
+        .context("Fetching existing source")?;
+
     let bucket_id = match bucket.to_owned() {
         Some(BucketIdentifier::Id(bucket_id)) => Some(bucket_id),
         Some(full_name @ BucketIdentifier::FullName(_)) => Some(
@@ -54,18 +58,15 @@ pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Re
                 .context("Fetching bucket for id.")?
                 .id,
         ),
-        None => None,
-    };
-
-    let source_full_name = match source.to_owned() {
-        SourceIdentifier::FullName(name) => name,
-        source @ SourceIdentifier::Id(_) => client
-            .get_source(source)
-            .context("Fetching source id.")?
-            .full_name(),
+        None => existing_source.bucket_id.clone(),
     };
 
     let bucket_id = if *detach_bucket { None } else { bucket_id };
+
+    let source_full_name = match source.to_owned() {
+        SourceIdentifier::FullName(name) => name,
+        SourceIdentifier::Id(_) => existing_source.full_name(),
+    };
 
     let source = client
         .update_source(
