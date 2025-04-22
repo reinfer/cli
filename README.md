@@ -1,11 +1,11 @@
 <p align="center">
-    <a href="https://reinfer.dev">
-    <img alt="reinfer-cli" src="https://user-images.githubusercontent.com/797170/86259580-19d33180-bbb4-11ea-9909-3c31251345f1.png" width="128">
+    <a href="https://docs.uipath.com/communications-mining/automation-cloud/latest/developer-guide/overview-cli">
+    <img alt="reinfer-cli" src="https://avatars.githubusercontent.com/u/375663?s=200&v=4" width="128">
   </a>
 </p>
 
 <p align="center">
-  Command line interface for Re:infer
+  Command line interface for UiPath IXP
 </p>
 
 <p align="center">
@@ -19,23 +19,23 @@
 </p>
 
 <p align="center">
-  <a href="https://reinfer.dev/docs">
+  <a href="https://docs.uipath.com/communications-mining/automation-cloud/latest/developer-guide/overview-cli">
     API Documentation
-  </a> | <a href="https://reinfer.dev">
+  </a> | <a href="https://docs.uipath.com/communications-mining/automation-cloud/latest/developer-guide/overview-cli">
     Website
   </a>
 </p>
 
-`re` is the official command line interface for [Re:infer](https://reinfer.dev). It simplifies managing resources, such as sources and datasets, as well as importing or exporting communications data. Additionally, `re` maintains multiple contexts, making it easy to switch between multiple authentication tokens for different users (and endpoints for multiple clusters if needed).
+`re` is the official command line interface for [UiPath IXP](https://docs.uipath.com/). It simplifies managing resources, such as sources and datasets, as well as importing or exporting communications data. Additionally, `re` maintains multiple contexts, making it easy to switch between multiple authentication tokens for different users (and endpoints for multiple clusters if needed).
 
 #### API Library
 
-The [api](/api) directory contains a Rust client library for reinfer which can be used for API access independently. Please refer to that directory for more information. The rest of the README is about the command line tool for managing reinfer resources.
+The [api](/api) directory contains a Rust client library for IXP which can be used for API access independently. Please refer to that directory for more information. The rest of the README is about the command line tool for managing IXP resources.
 
 ### Features
 
 - _Create, get, update and delete_ operations for sources, datasets, comments and more.
-- Context management for multiple endpoints (reinfer clusters) and user tokens.
+- Context management for multiple endpoints (IXP clusters) and user tokens.
 - Upload new verbatims to a source.
 - Easily download raw verbatims from a set of sources and datasets together
   with human applied annotations. Useful for backups, migrating data or for
@@ -132,25 +132,17 @@ The token can also be specified using `--token`
 This is not generally a good idea (e.g. it'll be stored in your shell history). Better to store in a environment variable.
 
 ```
-➜ re --token $REINFER_TOKEN get datasets
+➜ re --token $IXP_TOKEN get datasets
 ```
 
 Even better to use contexts, see further below.
-
-#### Different Clusters
-
-By default, the endpoint for all commands is `https://reinfer.dev`. This can be overidden using `--endpoint`, e.g.
-
-```
-re --endpoint http://localhost:8000 --token $REINFER_TOKEN get datasets
-```
 
 #### Contexts (stateful authentication)
 
 Contexts help avoid having to manually specify the token and endpoint with every command. A _context_ is composed of
 
 - The authentication token (which user?)
-- The Re:infer cluster endpoint to talk to, typically `https://reinfer.dev`
+- The IXP cluster endpoint to talk to, typically `cloud.uipath.com/<tenant>/<org>/reinfer_`
 - (Optional) An HTTP proxy to use for all requests
 - A memorable name which serves as an identifier for the "context"
 
@@ -159,7 +151,7 @@ Commands for managing _contexts_ are under `re config` and allow one to create, 
 When creating the very first context, this will be set as the active one
 
 ```
-➜ re config add --name production --endpoint https://reinfer.dev/
+➜ re config add --name production --endpoint cloud.uipath.com/<tenant>/<org>/reinfer_
 I A new context `production` will be created.
 * Enter API token [none]: MYSUPERSECRETTOKEN
 W Be careful, API tokens are stored in cleartext in /home/marius/.config/reinfer/contexts.json.
