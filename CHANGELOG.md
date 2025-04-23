@@ -1,3 +1,6 @@
+# Unreleased
+- Allow users to specify projects when downloading packages
+
 # v0.37.2
 - Fix a bug where updating a source would result in it's bucket becoming detached 
 
