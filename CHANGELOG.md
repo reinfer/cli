@@ -1,3 +1,6 @@
+# Unreleased
+- Allow users to specifiy project name when uploading packge 
+
 # v0.37.3
 - Allow users to specify projects when downloading packages
 

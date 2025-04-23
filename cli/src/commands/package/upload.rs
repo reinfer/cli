@@ -44,6 +44,10 @@ pub struct UploadPackageArgs {
     #[structopt(long = "dataset-creation-timeout", default_value = "30")]
     /// Maximum number of seconds to wait for dataset to be created
     dataset_creation_timeout: u64,
+
+    #[structopt(long = "name", short = "n")]
+    /// The name of the new project
+    new_project_name: Option<DatasetName>,
 }
 
 fn wait_for_dataset_to_exist(dataset: &Dataset, client: &Client, timeout_s: u64) -> Result<()> {
@@ -339,6 +343,7 @@ pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result
         resume_on_error,
         max_attachment_memory_mb,
         dataset_creation_timeout,
+        new_project_name,
     } = args;
 
     let mut package =
@@ -357,7 +362,7 @@ pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result
             .context("Could not get ixp source from package")?;
 
         let new_dataset = create_dataset(
-            dataset.name,
+            new_project_name.clone().unwrap_or(dataset.name),
             dataset.label_defs,
             client,
             *dataset_creation_timeout,
