@@ -1,4 +1,4 @@
-# Unreleased
+# v0.37.3
 - Allow users to specify projects when downloading packages
 
 # v0.37.2
