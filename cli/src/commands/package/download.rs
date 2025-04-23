@@ -1,6 +1,7 @@
 use std::{
     fs::remove_file,
     path::PathBuf,
+    str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
         mpsc::channel,
@@ -14,8 +15,8 @@ use reinfer_client::{
         attachments::AttachmentMetadata,
         dataset::{DatasetFlag, QueryRequestParams},
     },
-    Client, CommentFilter, CommentId, Dataset, DatasetFullName, DatasetIdentifier, DatasetName,
-    HasAnnotations, SourceId,
+    Client, CommentFilter, CommentId, Dataset, DatasetFullName, DatasetName, HasAnnotations,
+    SourceId,
 };
 use scoped_threadpool::Pool;
 use structopt::StructOpt;
@@ -27,10 +28,30 @@ use crate::{
 };
 use colored::Colorize;
 
+#[derive(Debug)]
+struct IxpDatasetIdentifier(DatasetFullName);
+
+impl FromStr for IxpDatasetIdentifier {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let identifier = match DatasetFullName::from_str(s) {
+            Ok(full_name) => IxpDatasetIdentifier(full_name),
+            Err(_) => {
+                let full_name =
+                    DatasetName(s.to_string()).with_project(&DEFAULT_PROJECT_NAME.clone())?;
+
+                IxpDatasetIdentifier(full_name)
+            }
+        };
+        Ok(identifier)
+    }
+}
+
 #[derive(Debug, StructOpt)]
 pub struct DownloadPackageArgs {
     /// The api name of the project
-    project: DatasetName,
+    project: IxpDatasetIdentifier,
 
     /// Path to save the package to
     #[structopt(short = "f", long = "file", parse(from_os_str))]
@@ -49,17 +70,11 @@ pub struct DownloadPackageArgs {
     max_attachment_memory_mb: u64,
 }
 
-fn get_project(project: &DatasetName, client: &Client) -> Result<Dataset> {
-    let default_project_name = DEFAULT_PROJECT_NAME.clone();
-
-    let dataset = client
-        .get_dataset(DatasetIdentifier::FullName(
-            project.clone().with_project(&default_project_name)?,
-        ))
-        .context(format!(
-            "Could not get project with the name {0}",
-            project.0
-        ))?;
+fn get_project(project: &IxpDatasetIdentifier, client: &Client) -> Result<Dataset> {
+    let dataset = client.get_dataset(project.0.clone()).context(format!(
+        "Could not get project with the name {0}",
+        project.0
+    ))?;
 
     if !dataset.has_flag(DatasetFlag::Ixp) {
         return Err(anyhow!(
