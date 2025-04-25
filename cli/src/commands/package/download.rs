@@ -362,7 +362,7 @@ fn get_progress_bar(total_comments: u64, statistics: &Arc<Statistics>) -> Progre
             let num_annotations = statistics.num_annotations();
             let num_docs_written = statistics.num_document_writes();
             (
-                (num_comments + num_docs_downloaded + num_docs_written) as u64,
+                ((num_comments + num_docs_downloaded + num_docs_written) / 3) as u64,
                 format!(
                     "{} {} {} {} {} {} {} {}",
                     num_comments.to_string().bold(),

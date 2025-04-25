@@ -1,5 +1,6 @@
 # Unreleased
 - Allow users to specifiy project name when uploading packge 
+- Fix issue where package upload progress bar would show incorrect total
 
 # v0.37.3
 - Allow users to specify projects when downloading packages
