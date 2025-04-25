@@ -1,4 +1,4 @@
-# Unreleased
+# v0.37.4
 - Allow users to specifiy project name when uploading packge 
 - Fix issue where package upload progress bar would show incorrect total
 
