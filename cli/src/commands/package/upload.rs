@@ -361,8 +361,12 @@ pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result
         let packaged_sources = get_ixp_source(&dataset, SourceProvider::Packaged(&mut package))
             .context("Could not get ixp source from package")?;
 
+        // We use title here as the name will already have a hex appended, the api will normalize
+        // the title into an api name
         let new_dataset = create_dataset(
-            new_project_name.clone().unwrap_or(dataset.name),
+            new_project_name
+                .clone()
+                .unwrap_or(DatasetName(dataset.title)),
             dataset.label_defs,
             client,
             *dataset_creation_timeout,
