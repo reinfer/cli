@@ -84,10 +84,7 @@ fn create_dataset(
         Ok(())
     })?;
 
-    let dataset = client
-        .create_ixp_dataset(IxpDatasetNew { name })
-        .context("Error when creating dataset")
-        .map_err(anyhow::Error::msg)?;
+    let dataset = client.create_ixp_dataset(IxpDatasetNew { name })?;
 
     wait_for_dataset_to_exist(&dataset, client, timeout_s)?;
 
