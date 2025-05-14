@@ -1,4 +1,4 @@
-use crate::printer::Printer;
+use crate::{commands::auth::refresh_user_permissions, printer::Printer};
 use anyhow::{Context, Result};
 use log::info;
 use reinfer_client::{Client, NewProject, ProjectName, UserId};
@@ -24,6 +24,8 @@ pub struct CreateProjectArgs {
 }
 
 pub fn create(client: &Client, args: &CreateProjectArgs, printer: &Printer) -> Result<()> {
+    refresh_user_permissions(client, false)?;
+
     let CreateProjectArgs {
         name,
         title,

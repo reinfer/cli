@@ -1,6 +1,6 @@
 use crate::{
     commands::{
-        config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs,
+        auth::AuthArgs, config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs,
         package::PackageArgs, parse::ParseArgs, update::UpdateArgs,
     },
     printer::OutputFormat,
@@ -117,6 +117,13 @@ pub enum Command {
     Package {
         #[structopt(subcommand)]
         package_args: PackageArgs,
+    },
+
+    #[structopt(name = "auth")]
+    /// Manage authentication for the current user
+    Authentication {
+        #[structopt(subcommand)]
+        auth_args: AuthArgs,
     },
 }
 

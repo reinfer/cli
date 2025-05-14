@@ -8,7 +8,7 @@ mod thousands;
 mod utils;
 
 use anyhow::{anyhow, Context, Result};
-use commands::package;
+use commands::{auth, package};
 use log::{error, warn};
 use once_cell::sync::Lazy;
 use reinfer_client::{
@@ -85,6 +85,9 @@ fn run(args: Args) -> Result<()> {
 
         Command::Package { package_args } => {
             package::run(package_args, client_from_args(&args, &config)?, &mut pool)
+        }
+        Command::Authentication { auth_args } => {
+            auth::run(auth_args, client_from_args(&args, &config)?)
         }
     }
 }

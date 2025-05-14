@@ -17,6 +17,7 @@ use reqwest::{
 };
 use resources::{
     attachments::UploadAttachmentResponse,
+    auth::{RefreshUserPermissionsRequest, RefreshUserPermissionsResponse},
     bucket::{
         GetKeyedSyncStateIdsRequest, GetKeyedSyncStateIdsResponse, GetKeyedSyncStatesResponse,
         KeyedSyncState, KeyedSyncStateId,
@@ -1108,6 +1109,14 @@ impl Client {
         )
     }
 
+    pub fn refresh_user_permissions(&self) -> Result<RefreshUserPermissionsResponse> {
+        self.post::<_, _, RefreshUserPermissionsResponse>(
+            self.endpoints.refresh_user_permissions()?,
+            RefreshUserPermissionsRequest {},
+            Retry::Yes,
+        )
+    }
+
     pub fn get_current_user(&self) -> Result<User> {
         Ok(self
             .get::<_, GetCurrentUserResponse>(self.endpoints.current_user.clone())?
@@ -1894,6 +1903,10 @@ impl Endpoints {
             current_user,
             projects,
         })
+    }
+
+    fn refresh_user_permissions(&self) -> Result<Url> {
+        construct_endpoint(&self.base, &["auth", "refresh-user-permissions"])
     }
 
     fn label_group(

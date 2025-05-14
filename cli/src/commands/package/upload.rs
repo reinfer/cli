@@ -23,7 +23,10 @@ use scoped_threadpool::Pool;
 use structopt::StructOpt;
 
 use crate::{
-    commands::package::{AttachmentKey, CommentBatchKey, Package},
+    commands::{
+        auth::refresh_user_permissions,
+        package::{AttachmentKey, CommentBatchKey, Package},
+    },
     progress::Progress,
 };
 
@@ -54,6 +57,7 @@ fn wait_for_dataset_to_exist(dataset: &Dataset, client: &Client, timeout_s: u64)
     let start_time = Instant::now();
 
     while (start_time - Instant::now()).as_secs() <= timeout_s {
+        refresh_user_permissions(client, false)?;
         let datasets = client.get_datasets()?;
 
         let dataset_exists = datasets
@@ -335,6 +339,7 @@ fn upload_batch(
 }
 
 pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result<()> {
+    refresh_user_permissions(client, false)?;
     let UploadPackageArgs {
         file,
         resume_on_error,
