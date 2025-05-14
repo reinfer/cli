@@ -1,4 +1,4 @@
-# Unreleased
+# v0.37.5
 - Use dataset title when creating ixp datasets from a package.
 - Improve error message when creating ixp dataset during package upload
 - Refresh auth user permissions after creating projects
