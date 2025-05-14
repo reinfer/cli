@@ -10,6 +10,7 @@ use once_cell::sync::Lazy;
 use reinfer_client::TransformTag;
 use url::Url;
 
+pub mod auth;
 pub mod config;
 pub mod create;
 pub mod delete;
