@@ -6,9 +6,9 @@ case $BUILD_PLATFORM in
   "ubuntu-24.04")
     rustup target add x86_64-unknown-linux-musl
     rustup target add x86_64-pc-windows-gnu
+    pip install toml
     sudo apt-get install          \
       musl-tools                  \
-      python3-toml                \
       gcc-mingw-w64-x86-64
     cargo install cargo-deb
     ;;
