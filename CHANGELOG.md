@@ -1,3 +1,7 @@
+# Unreleased
+- add default to document_spans 
+- bump `zip` version
+
 # v0.37.5
 - Use dataset title when creating ixp datasets from a package.
 - Improve error message when creating ixp dataset during package upload
