@@ -923,6 +923,7 @@ pub struct MoonFormFieldAnnotation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub field_id: Option<FieldId>,
 
+    #[serde(default)]
     pub document_spans: Vec<DocumentSpan>,
 }
 
@@ -939,6 +940,7 @@ pub struct MoonFormFieldAnnotationNew {
     pub name: String,
     pub spans: Vec<EntitySpanUtf16>,
     pub formatted_value: String,
+    #[serde(default)]
     pub document_spans: Vec<DocumentSpan>,
 }
 
