@@ -1,4 +1,4 @@
-# Unreleased
+# v0.37.6
 - add default to document_spans 
 - bump `zip` version
 
