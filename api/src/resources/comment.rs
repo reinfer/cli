@@ -807,6 +807,7 @@ pub struct MoonForm {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NewMoonFormCapture {
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub fields: Vec<MoonFormFieldAnnotationNew>,
 }
 
