@@ -9,7 +9,8 @@ case $BUILD_PLATFORM in
       automake                    \
       autopoint                   \
       libtool                     \
-      pkg-config                  
+      pkg-config                  \
+      musl-tools
     ;;
   "macos-15")
     wget https://github.com/macports/macports-base/releases/download/v2.10.5/MacPorts-2.10.5-15-Sequoia.pkg
