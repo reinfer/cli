@@ -1,4 +1,4 @@
-# Unreleased 
+# v0.38.0
 - Update linux build to musl
 
 # v0.37.7
