@@ -9,6 +9,7 @@ const LIB_PFF_TAG: &str = "20231205";
 enum LibPffConfigureMode {
     Native,
     HostMingw32BuildLinuxGnu,
+    HostLinuxMuslBuildLinuxGnu,
 }
 
 fn download_libpff(libpff_dir: &Path) {
@@ -70,6 +71,13 @@ fn build_libpff(libpff_dir: &Path, configure_mode: LibPffConfigureMode) {
             .arg("--disable-shared")
             .status()
             .expect("Could not get configure status (HostMingw32BuildLinuxGnu)"),
+        LibPffConfigureMode::HostLinuxMuslBuildLinuxGnu => Command::new("./configure")
+            .arg("--host=x86_64-unknown-linux-musl")
+            .arg("--build=x86_64-unknown-linux-gnu")
+            .arg("--disable-shared")
+            .env("CC", "musl-gcc")
+            .status()
+            .expect("Could not get configure status (HostLinuxMuslBuildLinuxGnu)"),
     };
 
     if !configure_status.success() {
@@ -111,6 +119,8 @@ fn get_lib_pff_configure_mode() -> LibPffConfigureMode {
 
     if cfg!(target_os = "linux") && target == "x86_64-pc-windows-gnu" {
         LibPffConfigureMode::HostMingw32BuildLinuxGnu
+    } else if target == "x86_64-unknown-linux-musl" {
+        LibPffConfigureMode::HostLinuxMuslBuildLinuxGnu
     } else {
         LibPffConfigureMode::Native
     }
