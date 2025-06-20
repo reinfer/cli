@@ -42,6 +42,7 @@ use resources::{
     quota::{GetQuotasResponse, Quota},
     source::StatisticsRequestParams as SourceStatisticsRequestParams,
     stream::{GetStreamResponse, NewStream, PutStreamRequest, PutStreamResponse},
+    tenant_id::UiPathTenantId,
     validation::{
         LabelValidation, LabelValidationRequest, LabelValidationResponse, ValidationResponse,
     },
@@ -377,9 +378,9 @@ impl Client {
     }
 
     /// Get quotas for current tenant
-    pub fn get_quotas(&self) -> Result<Vec<Quota>> {
+    pub fn get_quotas(&self, tenant_id: &Option<UiPathTenantId>) -> Result<Vec<Quota>> {
         Ok(self
-            .get::<_, GetQuotasResponse>(self.endpoints.quotas()?)?
+            .get::<_, GetQuotasResponse>(self.endpoints.quotas(tenant_id)?)?
             .quotas)
     }
 
@@ -2224,8 +2225,12 @@ impl Endpoints {
         construct_endpoint(&self.base, &["api", "v1", "sources", &source_name.0])
     }
 
-    fn quotas(&self) -> Result<Url> {
-        construct_endpoint(&self.base, &["api", "_private", "quotas"])
+    fn quotas(&self, tenant_id: &Option<UiPathTenantId>) -> Result<Url> {
+        if let Some(tenant_id) = tenant_id {
+            construct_endpoint(&self.base, &["api", "_private", "quotas", &tenant_id.0])
+        } else {
+            construct_endpoint(&self.base, &["api", "_private", "quotas"])
+        }
     }
 
     fn quota(&self, tenant_id: &TenantId, tenant_quota_kind: TenantQuotaKind) -> Result<Url> {

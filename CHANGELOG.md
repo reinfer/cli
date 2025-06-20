@@ -1,3 +1,6 @@
+# Unreleased 
+- Add ability to get quotas for tenant other than current one 
+
 # v0.38.0
 - Update linux build to musl
 
