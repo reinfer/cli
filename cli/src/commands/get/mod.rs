@@ -14,6 +14,7 @@ mod users;
 
 use anyhow::Result;
 use custom_label_trend_report::GetCustomLabelTrendReportArgs;
+use quota::GetQuotaArgs;
 use reinfer_client::Client;
 use scoped_threadpool::Pool;
 use structopt::StructOpt;
@@ -86,7 +87,7 @@ pub enum GetArgs {
 
     #[structopt(name = "quotas")]
     /// List all quotas for current tenant
-    Quotas,
+    Quotas(GetQuotaArgs),
 
     #[structopt(name = "audit-events")]
     /// Get audit events for current tenant
@@ -119,7 +120,7 @@ pub fn run(args: &GetArgs, client: Client, printer: &Printer, pool: &mut Pool) -
         GetArgs::StreamStats(args) => streams::get_stream_stats(&client, args, printer, pool),
         GetArgs::Users(args) => users::get(&client, args, printer),
         GetArgs::CurrentUser => users::get_current_user(&client, printer),
-        GetArgs::Quotas => quota::get(&client, printer),
+        GetArgs::Quotas(args) => quota::get(&client, args, printer),
         GetArgs::AuditEvents(args) => audit_events::get(&client, args, printer),
         GetArgs::Integrations(args) => integrations::get(&client, args, printer),
         GetArgs::KeyedSyncStates(args) => keyed_sync_states::get(&client, args, printer),

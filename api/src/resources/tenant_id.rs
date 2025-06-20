@@ -6,7 +6,7 @@ use std::{fmt::Display, str::FromStr};
 pub struct ReinferTenantId(String);
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct UiPathTenantId(String);
+pub struct UiPathTenantId(pub String);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TenantId {
