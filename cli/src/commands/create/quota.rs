@@ -63,8 +63,6 @@ pub fn create(client: &Client, args: &CreateQuotaArgs) -> Result<()> {
         )
         .context("Operation to set quota has failed")?;
 
-    info!(
-        "New quota `{tenant_quota_kind}` set successfully in tenant with id `{tenant_id}`"
-    );
+    info!("New quota `{tenant_quota_kind}` set successfully in tenant with id `{tenant_id}`");
     Ok(())
 }

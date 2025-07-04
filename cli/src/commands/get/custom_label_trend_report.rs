@@ -303,9 +303,7 @@ pub fn get(
     let total_comment_count = get_comment_count(client, &dataset, comment_filter)?;
 
     let report_multiply_ratio = if total_comment_count >= MAX_COMMENT_SAMPLE {
-        warn!(
-            "Dataset size too big, sampling from first {MAX_COMMENT_SAMPLE}"
-        );
+        warn!("Dataset size too big, sampling from first {MAX_COMMENT_SAMPLE}");
         total_comment_count / MAX_COMMENT_SAMPLE
     } else {
         1
