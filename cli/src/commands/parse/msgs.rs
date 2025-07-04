@@ -121,8 +121,7 @@ fn utf16le_stream_to_string(data: &[u8]) -> String {
 
 fn get_attachment_store_path(attachment_number: usize) -> PathBuf {
     PathBuf::from(format!(
-        "{}{:08}",
-        STREAM_PATH_ATTACHMENT_STORE_PREFIX, attachment_number
+        "{STREAM_PATH_ATTACHMENT_STORE_PREFIX}{attachment_number:08}"
     ))
 }
 
@@ -281,7 +280,7 @@ pub fn parse(client: &Client, args: &ParseMsgArgs) -> Result<()> {
     send(&mut documents)?;
 
     for error in errors {
-        error!("{}", error);
+        error!("{error}");
     }
 
     Ok(())

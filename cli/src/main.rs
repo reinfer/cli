@@ -238,7 +238,7 @@ fn main() {
     if let Err(error) = run(args) {
         error!("An error occurred:");
         for cause in error.chain() {
-            error!(" |- {}", cause);
+            error!(" |- {cause}");
         }
 
         #[cfg(feature = "backtrace")]
