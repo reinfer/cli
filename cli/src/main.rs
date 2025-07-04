@@ -8,7 +8,10 @@ mod thousands;
 mod utils;
 
 use anyhow::{anyhow, Context, Result};
-use commands::{auth, package};
+use commands::{
+    auth::{self, refresh_user_permissions},
+    package,
+};
 use log::{error, warn};
 use once_cell::sync::Lazy;
 use reinfer_client::{
@@ -72,24 +75,37 @@ fn run(args: Args) -> Result<()> {
         }
         Command::Create { create_args } => create::run(
             create_args,
-            client_from_args(&args, &config)?,
+            get_client_and_refresh_permission(&args, &config)?,
             &printer,
             &mut pool,
         ),
-        Command::Update { update_args } => {
-            update::run(update_args, client_from_args(&args, &config)?, &printer)
-        }
-        Command::Parse { parse_args } => {
-            parse::run(parse_args, client_from_args(&args, &config)?, &mut pool)
-        }
+        Command::Update { update_args } => update::run(
+            update_args,
+            get_client_and_refresh_permission(&args, &config)?,
+            &printer,
+        ),
+        Command::Parse { parse_args } => parse::run(
+            parse_args,
+            get_client_and_refresh_permission(&args, &config)?,
+            &mut pool,
+        ),
 
-        Command::Package { package_args } => {
-            package::run(package_args, client_from_args(&args, &config)?, &mut pool)
-        }
-        Command::Authentication { auth_args } => {
-            auth::run(auth_args, client_from_args(&args, &config)?)
-        }
+        Command::Package { package_args } => package::run(
+            package_args,
+            get_client_and_refresh_permission(&args, &config)?,
+            &mut pool,
+        ),
+        Command::Authentication { auth_args } => auth::run(
+            auth_args,
+            get_client_and_refresh_permission(&args, &config)?,
+        ),
     }
+}
+
+fn get_client_and_refresh_permission(args: &Args, config: &ReinferConfig) -> Result<Client> {
+    let client = client_from_args(args, config)?;
+    refresh_user_permissions(&client, false)?;
+    Ok(client)
 }
 
 fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
