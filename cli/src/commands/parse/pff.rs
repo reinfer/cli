@@ -280,7 +280,7 @@ impl PstMessage {
         let value = headers
             .get_first_value(header)
             .map(|value| value.trim().to_owned())
-            .context(format!("{} header is missing", header))?;
+            .context(format!("{header} header is missing"))?;
 
         if value.is_empty() {
             Err(anyhow!("{} header is empty", header))

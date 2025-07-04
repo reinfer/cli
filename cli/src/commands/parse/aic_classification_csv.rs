@@ -166,7 +166,7 @@ pub fn parse(client: &Client, args: &ParseAicClassificationCsvArgs, pool: &mut P
                 statistics.increment_processed()
             }
             Err(_) => {
-                error!("Failed to process row {}", idx);
+                error!("Failed to process row {idx}");
                 statistics.increment_failed();
                 statistics.increment_processed()
             }

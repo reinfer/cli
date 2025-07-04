@@ -1,5 +1,7 @@
+use std::{thread::sleep, time::Duration};
+
 use crate::{commands::auth::refresh_user_permissions, printer::Printer};
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use log::info;
 use reinfer_client::{Client, NewProject, ProjectName, UserId};
 use structopt::StructOpt;
@@ -24,8 +26,6 @@ pub struct CreateProjectArgs {
 }
 
 pub fn create(client: &Client, args: &CreateProjectArgs, printer: &Printer) -> Result<()> {
-    refresh_user_permissions(client, false)?;
-
     let CreateProjectArgs {
         name,
         title,
@@ -43,6 +43,26 @@ pub fn create(client: &Client, args: &CreateProjectArgs, printer: &Printer) -> R
             user_ids,
         )
         .context("Operation to create a project has failed")?;
+
+    // Block until project is created
+    let mut project_found = false;
+    for _ in 0..10 {
+        let projects = client.get_projects()?;
+        if projects.iter().any(|p| p.name.0 == name.0) {
+            project_found = true;
+            break;
+        }
+        sleep(Duration::from_secs(1));
+    }
+
+    refresh_user_permissions(client, false)?;
+
+    if !project_found {
+        return Err(anyhow!(
+            "Could not create project, timed out waiting for it to exist"
+        ));
+    }
+
     info!("New project `{}` created successfully", project.name.0,);
     printer.print_resources(&[project])?;
     Ok(())

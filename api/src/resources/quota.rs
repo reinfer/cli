@@ -171,7 +171,7 @@ mod tests {
             assert_eq!(TenantQuotaKind::from_str(string).unwrap(), kind);
             assert_eq!(
                 &serde_json::ser::to_string(&kind).unwrap(),
-                &format!("\"{}\"", string)
+                &format!("\"{string}\"")
             );
         }
     }

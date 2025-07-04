@@ -72,9 +72,9 @@ fn overwrite_integration(
 
     for diff in diff::lines(&old_json_str, &new_json_str) {
         match diff {
-            diff::Result::Left(l) => println!("{}", format!("-{}", l).red()),
-            diff::Result::Both(l, _) => println!("{}", format!(" {}", l).dimmed()),
-            diff::Result::Right(r) => println!("{}", format!("+{}", r).green()),
+            diff::Result::Left(l) => println!("{}", format!("-{l}").red()),
+            diff::Result::Both(l, _) => println!("{}", format!(" {l}").dimmed()),
+            diff::Result::Right(r) => println!("{}", format!("+{r}").green()),
         }
     }
 

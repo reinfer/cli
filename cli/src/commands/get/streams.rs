@@ -150,12 +150,12 @@ impl DisplayTable for StreamStat {
                 "none".dimmed()
             },
             if let Some(threshold) = self.maintain_recall_threshold {
-                format!("{:.5}", threshold).normal()
+                format!("{threshold:.5}").normal()
             } else {
                 "none".dimmed()
             },
             if let Some(threshold) = self.maintain_precision_threshold {
-                format!("{:.5}", threshold).normal()
+                format!("{threshold:.5}").normal()
             } else {
                 "none".dimmed()
             }
@@ -164,7 +164,7 @@ impl DisplayTable for StreamStat {
 }
 
 fn red_if_lower_green_otherwise(test: NotNan<f64>, threshold: NotNan<f64>) -> ColoredString {
-    let test_str = format!("{:.3}", test);
+    let test_str = format!("{test:.3}");
 
     let diff = test - threshold;
 

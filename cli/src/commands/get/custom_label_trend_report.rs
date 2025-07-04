@@ -303,10 +303,7 @@ pub fn get(
     let total_comment_count = get_comment_count(client, &dataset, comment_filter)?;
 
     let report_multiply_ratio = if total_comment_count >= MAX_COMMENT_SAMPLE {
-        warn!(
-            "Dataset size too big, sampling from first {}",
-            MAX_COMMENT_SAMPLE
-        );
+        warn!("Dataset size too big, sampling from first {MAX_COMMENT_SAMPLE}");
         total_comment_count / MAX_COMMENT_SAMPLE
     } else {
         1
@@ -518,7 +515,7 @@ fn has_exceeded_threshold(
     let value_for_label_str: String = record[&label.0].clone();
     let value_for_label: f64 = value_for_label_str
         .parse()
-        .unwrap_or_else(|_| panic!("Could not parse value '{}' as f64", value_for_label_str));
+        .unwrap_or_else(|_| panic!("Could not parse value '{value_for_label_str}' as f64"));
     value_for_label > *threshold.threshold
 }
 

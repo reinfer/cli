@@ -637,7 +637,7 @@ fn get_label_attribute_filter(
         .collect();
 
     if label_names.is_empty() {
-        info!("No label names matching the filter '{}'", filter);
+        info!("No label names matching the filter '{filter}'");
         Ok(None)
     } else {
         info!("Filtering on label(s):\n- {}", label_names.join("\n- "));

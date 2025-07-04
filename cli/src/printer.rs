@@ -235,8 +235,8 @@ impl DisplayTable for PrintableBucket {
         );
         let count_str = if let Some(stats) = &self.stats {
             match &stats.count {
-                Count::LowerBoundBucketCount { value } => format!(">={}", value),
-                Count::ExactBucketCount { value } => format!("={}", value),
+                Count::LowerBoundBucketCount { value } => format!(">={value}"),
+                Count::ExactBucketCount { value } => format!("={value}"),
             }
         } else {
             "none".dimmed().to_string()

@@ -123,7 +123,7 @@ pub fn parse(client: &Client, args: &ParseEmlArgs, pool: &mut Pool) -> Result<()
     send_if_needed(&mut emails, true)?;
 
     for error in errors {
-        error!("{}", error);
+        error!("{error}");
     }
     Ok(())
 }

@@ -120,7 +120,7 @@ impl PackageContentId<'_> {
                 extension,
             } => {
                 let extension_part = if let Some(extension) = extension {
-                    format!("{0} ", extension)
+                    format!("{extension} ")
                 } else {
                     String::new()
                 };

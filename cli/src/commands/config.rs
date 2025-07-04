@@ -166,7 +166,7 @@ pub fn run(
                 ));
             } else {
                 config::write_reinfer_config(config_path, &config)?;
-                info!("Switched to context `{}`.", name);
+                info!("Switched to context `{name}`.");
             }
         }
         ConfigArgs::CurrentContext => config.get_current_context().map_or_else(
@@ -233,7 +233,7 @@ fn parse_context_from_url(
             match Url::parse(&utils::read_from_stdin("URL", None)?) {
                 Ok(url) => break url,
                 Err(error) => {
-                    error!("Invalid URL: {}", error);
+                    error!("Invalid URL: {error}");
                 }
             }
         },
@@ -295,9 +295,9 @@ fn add_or_edit_context(
 
     let existing_context = config.get_context(&name);
     if existing_context.is_some() {
-        info!("Context `{}` already exists, it will be modified.", name);
+        info!("Context `{name}` already exists, it will be modified.");
     } else {
-        info!("A new context `{}` will be created.", name);
+        info!("A new context `{name}` will be created.");
     }
 
     // Get API token (either argument or from stdin)
@@ -331,7 +331,7 @@ fn add_or_edit_context(
             )?) {
                 Ok(url) => break url,
                 Err(error) => {
-                    error!("Invalid endpoint URL: {}", error);
+                    error!("Invalid endpoint URL: {error}");
                 }
             }
         },
@@ -354,16 +354,16 @@ fn add_or_edit_context(
     let update_existing = existing_context.is_some();
     let is_new_context = !config.set_context(context);
     if is_new_context && config.num_contexts() == 1 {
-        info!("Default context set to `{}`.", name);
+        info!("Default context set to `{name}`.");
         config.set_current_context(&name);
     }
 
     config::write_reinfer_config(config_path, &config)?;
 
     if update_existing {
-        info!("Context `{}` was updated.", name);
+        info!("Context `{name}` was updated.");
     } else {
-        info!("New context `{}` was created.", name);
+        info!("New context `{name}` was created.");
     }
 
     Ok(())

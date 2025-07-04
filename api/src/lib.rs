@@ -1427,7 +1427,7 @@ impl Client {
         LocationT: IntoUrl + Display + Clone,
         QueryT: Serialize,
     {
-        debug!("Attempting DELETE `{}`", url);
+        debug!("Attempting DELETE `{url}`");
 
         let attempts = Cell::new(0);
         let http_response = self
@@ -1618,7 +1618,7 @@ impl Client {
         QueryT: Serialize + Clone,
         for<'de> SuccessT: Deserialize<'de>,
     {
-        debug!("Attempting {} `{}`", method, url);
+        debug!("Attempting {method} `{url}`");
         let http_response = self.raw_request(method, url, body, query, retry, None)?;
 
         let status = http_response.status();
