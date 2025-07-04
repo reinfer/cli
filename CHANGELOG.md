@@ -1,4 +1,4 @@
-# Unreleased 
+# v0.38.1
 - Add ability to get quotas for tenant other than current one 
 - Refresh user permissions every run 
 - Wait block `create project` until project exists
