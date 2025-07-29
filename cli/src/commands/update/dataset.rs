@@ -58,6 +58,7 @@ pub fn update(client: &Client, args: &UpdateDatasetArgs, printer: &Printer) -> R
                 source_ids: source_ids.as_deref(),
                 title: title.as_deref(),
                 description: description.as_deref(),
+                model_config: None,
             },
         )
         .context("Operation to update a dataset has failed.")?;
