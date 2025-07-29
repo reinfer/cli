@@ -70,6 +70,118 @@ pub struct Dataset {
     pub label_groups: Vec<LabelGroup>,
     #[serde(rename = "_dataset_flags")]
     pub dataset_flags: Vec<DatasetFlag>,
+    #[serde(rename = "_model_config", default)]
+    pub model_config: ModelConfig,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ModelConfig {
+    Cm,
+    DocPathIxp,
+    GptIxp(GptIxpModelConfig),
+}
+
+impl Default for ModelConfig {
+    fn default() -> Self {
+        Self::Cm
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
+pub struct DocPathIxpModelConfig {
+    #[serde(
+        rename = "num_pages_per_chunk",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub num_pages_per_chunk: Option<Option<i32>>,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, Eq)]
+pub struct GptIxpModelConfig {
+    #[serde(
+        rename = "num_pages_per_chunk",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub num_pages_per_chunk: Option<i32>,
+    #[serde(rename = "model_version", skip_serializing_if = "Option::is_none")]
+    pub model_version: Option<GptModelVersion>,
+    #[serde(
+        rename = "input_config",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub input_config: Option<Option<InputConfig>>,
+    #[serde(
+        rename = "system_prompt_override",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub system_prompt_override: Option<String>,
+    #[serde(rename = "frequency_penalty", skip_serializing_if = "Option::is_none")]
+    pub frequency_penalty: Option<NotNan<f64>>,
+    #[serde(rename = "temperature", skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<NotNan<f64>>,
+    #[serde(rename = "top_p", skip_serializing_if = "Option::is_none")]
+    pub top_p: Option<NotNan<f64>>,
+    #[serde(rename = "seed", skip_serializing_if = "Option::is_none")]
+    pub seed: Option<i32>,
+    #[serde(rename = "flags")]
+    pub flags: Vec<GptIxpFlag>,
+    #[serde(rename = "iterative_config", skip_serializing_if = "Option::is_none")]
+    pub iterative_config: Option<IterativeConfig>,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, Eq)]
+pub struct IterativeConfig {
+    #[serde(
+        rename = "max_num_calls",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub max_num_calls: Option<Option<i32>>,
+    #[serde(
+        rename = "chunk_size",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub chunk_size: Option<Option<i32>>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum GptModelVersion {
+    #[serde(rename = "gpt_4o_2024_05_13")]
+    Gpt4o20240513,
+}
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, Eq)]
+pub struct InputConfig {
+    #[serde(rename = "mode", skip_serializing_if = "Option::is_none")]
+    pub mode: Option<InputConfigMode>,
+    #[serde(rename = "text_config")]
+    pub text_config: TextConfig,
+}
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, Eq)]
+pub struct TextConfig {}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum InputConfigMode {
+    #[serde(rename = "text_plus_image")]
+    TextPlusImage,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum GptIxpFlag {
+    #[serde(rename = "append_taxonomy_descriptions")]
+    AppendTaxonomyDescriptions,
+    #[serde(rename = "append_type_descriptions")]
+    AppendTypeDescriptions,
+    #[serde(rename = "append_group_descriptions")]
+    AppendGroupDescriptions,
+    #[serde(rename = "append_field_descriptions")]
+    AppendFieldDescriptions,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -400,6 +512,9 @@ pub struct UpdateDataset<'request> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<&'request str>,
+
+    #[serde(rename = "_model_config", skip_serializing_if = "Option::is_none")]
+    pub model_config: Option<ModelConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]

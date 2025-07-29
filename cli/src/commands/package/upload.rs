@@ -15,9 +15,9 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 use reinfer_client::{
-    resources::dataset::IxpDatasetNew, Client, CommentUid, Dataset, DatasetFullName, DatasetName,
-    LabelDef, NewAnnotatedComment, NewLabelDef, Source, SourceId, SourceKind,
-    DEFAULT_LABEL_GROUP_NAME,
+    resources::dataset::{IxpDatasetNew, ModelConfig},
+    Client, CommentUid, Dataset, DatasetFullName, DatasetName, LabelDef, NewAnnotatedComment,
+    NewLabelDef, Source, SourceId, SourceKind, UpdateDataset, DEFAULT_LABEL_GROUP_NAME,
 };
 use scoped_threadpool::Pool;
 use structopt::StructOpt;
@@ -80,6 +80,7 @@ fn create_dataset(
     label_defs: Vec<LabelDef>,
     client: &Client,
     timeout_s: u64,
+    model_config: ModelConfig,
 ) -> Result<Dataset> {
     let mut new_label_defs = Vec::new();
 
@@ -91,6 +92,16 @@ fn create_dataset(
     let dataset = client.create_ixp_dataset(IxpDatasetNew { name })?;
 
     wait_for_dataset_to_exist(&dataset, client, timeout_s)?;
+
+    client.update_dataset(
+        &dataset.full_name(),
+        UpdateDataset {
+            model_config: Some(model_config),
+            source_ids: None,
+            title: None,
+            description: None,
+        },
+    )?;
 
     client
         .create_label_defs_bulk(
@@ -372,6 +383,7 @@ pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result
             dataset.label_defs,
             client,
             *dataset_creation_timeout,
+            dataset.model_config,
         )
         .context("Could not create dataset")?;
 
