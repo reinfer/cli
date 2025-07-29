@@ -1,4 +1,4 @@
-# Unreleased
+# v0.38.2
 - Round trip model config on datasets
 
 # v0.38.1
