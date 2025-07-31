@@ -17,7 +17,8 @@ use anyhow::{anyhow, Context, Result};
 use reinfer_client::{
     resources::dataset::{IxpDatasetNew, ModelConfig},
     Client, CommentUid, Dataset, DatasetFullName, DatasetName, LabelDef, NewAnnotatedComment,
-    NewLabelDef, Source, SourceId, SourceKind, UpdateDataset, DEFAULT_LABEL_GROUP_NAME,
+    NewEntityDef, NewLabelDef, Source, SourceId, SourceKind, UpdateDataset,
+    DEFAULT_LABEL_GROUP_NAME,
 };
 use scoped_threadpool::Pool;
 use structopt::StructOpt;
@@ -81,6 +82,7 @@ fn create_dataset(
     client: &Client,
     timeout_s: u64,
     model_config: ModelConfig,
+    entity_defs: Vec<NewEntityDef>,
 ) -> Result<Dataset> {
     let mut new_label_defs = Vec::new();
 
@@ -100,6 +102,7 @@ fn create_dataset(
             source_ids: None,
             title: None,
             description: None,
+            entity_defs,
         },
     )?;
 
@@ -384,6 +387,19 @@ pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result
             client,
             *dataset_creation_timeout,
             dataset.model_config,
+            dataset
+                .entity_defs
+                .into_iter()
+                .map(|def| NewEntityDef {
+                    entity_def_flags: def.entity_def_flags,
+                    inherits_from: def.inherits_from,
+                    name: def.name,
+                    rules: def.rules,
+                    title: def.title,
+                    trainable: def.trainable,
+                    instructions: def.instructions,
+                })
+                .collect(),
         )
         .context("Could not create dataset")?;
 

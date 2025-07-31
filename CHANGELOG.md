@@ -1,3 +1,6 @@
+# Unreleased
+- Fix issue where entity definitons were not round tripped for ixp packages 
+
 # v0.38.2
 - Round trip model config on datasets
 

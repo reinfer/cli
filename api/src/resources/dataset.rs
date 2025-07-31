@@ -515,6 +515,9 @@ pub struct UpdateDataset<'request> {
 
     #[serde(rename = "_model_config", skip_serializing_if = "Option::is_none")]
     pub model_config: Option<ModelConfig>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub entity_defs: Vec<NewEntityDef>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
