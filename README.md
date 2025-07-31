@@ -53,13 +53,13 @@ The [api](/api) directory contains a Rust client library for IXP which can be us
 
 Statically linked binaries with no dependencies are provided for selected platforms:
 
-- [Linux (x86_64-unknown-linux-musl)](https://reinfer.dev/public/cli/bin/x86_64-unknown-linux-musl/0.38.2/re)
-- [macOS (aarch64-apple-darwin)](https://reinfer.dev/public/cli/bin/aarch64-apple-darwin/0.38.2/re)
-- [Windows (x86_64-pc-windows-gnu)](https://reinfer.dev/public/cli/bin/x86_64-pc-windows-gnu/0.38.2/re.exe)
+- [Linux (x86_64-unknown-linux-musl)](https://reinfer.dev/public/cli/bin/x86_64-unknown-linux-musl/0.38.3/re)
+- [macOS (aarch64-apple-darwin)](https://reinfer.dev/public/cli/bin/aarch64-apple-darwin/0.38.3/re)
+- [Windows (x86_64-pc-windows-gnu)](https://reinfer.dev/public/cli/bin/x86_64-pc-windows-gnu/0.38.3/re.exe)
 
 ### Debian / Ubuntu
 
-You can download a `.deb` package [here](https://reinfer.dev/public/cli/debian/reinfer-cli_0.38.2_amd64.deb).
+You can download a `.deb` package [here](https://reinfer.dev/public/cli/debian/reinfer-cli_0.38.3_amd64.deb).
 
 ### From Source
 
