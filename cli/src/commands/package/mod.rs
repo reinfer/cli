@@ -2,7 +2,9 @@ use anyhow::{Context, Result};
 use download::DownloadPackageArgs;
 use itertools::Itertools;
 use reinfer_client::{
-    AnnotatedComment, Client, CommentId, Dataset, DatasetId, NewAnnotatedComment, Source, SourceId,
+    resources::{bucket::Id as BucketId, email::Email},
+    AnnotatedComment, Bucket, Client, CommentId, Dataset, DatasetId, NewAnnotatedComment, NewEmail,
+    Source, SourceId,
 };
 use scoped_threadpool::Pool;
 use serde::{de::DeserializeOwned, Serialize};
@@ -29,6 +31,8 @@ pub enum PackageArgs {
     Upload(UploadPackageArgs),
 }
 
+pub struct EmailBatchKey(usize);
+
 pub struct CommentBatchKey(usize);
 #[derive(Clone)]
 pub struct AttachmentKey(usize);
@@ -47,9 +51,16 @@ pub enum PackageContentId<'a> {
     Source {
         source_id: &'a SourceId,
     },
+    Bucket {
+        bucket_id: &'a BucketId,
+    },
     CommentBatch {
         key: CommentBatchKey,
         source_id: &'a SourceId,
+    },
+    EmailBatch {
+        key: EmailBatchKey,
+        bucket_id: &'a BucketId,
     },
     Document {
         source_id: &'a SourceId,
@@ -62,14 +73,24 @@ pub enum PackageContentId<'a> {
 static DATASET_POSTFIX_AND_EXTENSION: &str = "dataset.json";
 static SOURCE_POSTFIX_AND_EXTENSION: &str = "source.json";
 static COMMENTS_POSTFIX_AND_EXTENSION: &str = "comments.json";
+static EMAILS_POSTFIX_AND_EXTENSION: &str = "emails.json";
+static BUCKET_POSTFIX_AND_EXTENSION: &str = "buckets.json";
 static DATASETS_FOLDER_NAME: &str = "datasets";
 static SOURCES_FOLDER_NAME: &str = "sources";
+static BUCKETS_FOLDER_NAME: &str = "buckets";
+static EMAILS_FOLDER_NAME: &str = "emails";
 static COMMENTS_FOLDER_NAME: &str = "comments";
 static DOCUMENTS_FOLDER_NAME: &str = "documents";
 
 impl PackageContentId<'_> {
     fn filename(&self) -> String {
         match self {
+            PackageContentId::Bucket { bucket_id } => {
+                format!(
+                    "{BUCKETS_FOLDER_NAME}/{0}.{BUCKET_POSTFIX_AND_EXTENSION}",
+                    bucket_id.0
+                )
+            }
             PackageContentId::Dataset { dataset_id } => {
                 format!(
                     "{DATASETS_FOLDER_NAME}/{0}.{DATASET_POSTFIX_AND_EXTENSION}",
@@ -86,6 +107,12 @@ impl PackageContentId<'_> {
                 format!(
                     "{COMMENTS_FOLDER_NAME}/{0}.{1}.{COMMENTS_POSTFIX_AND_EXTENSION}",
                     source_id.0, key.0
+                )
+            }
+            PackageContentId::EmailBatch { key, bucket_id } => {
+                format!(
+                    "{EMAILS_FOLDER_NAME}/{0}.{1}.{EMAILS_POSTFIX_AND_EXTENSION}",
+                    bucket_id.0, key.0
                 )
             }
             PackageContentId::Document {
@@ -110,8 +137,12 @@ impl PackageContentId<'_> {
         match self {
             PackageContentId::Dataset { dataset_id } => format!("dataset {}", dataset_id.0),
             PackageContentId::Source { source_id } => format!("source {}", source_id.0),
+            PackageContentId::Bucket { bucket_id } => format!("bucket {}", bucket_id.0),
             PackageContentId::CommentBatch { key, source_id } => {
                 format!("comment batch {0} for source {1}", key.0, source_id.0)
+            }
+            PackageContentId::EmailBatch { key, bucket_id } => {
+                format!("email batch {0} for bucket {1}", key.0, bucket_id.0)
             }
             PackageContentId::Document {
                 source_id,
@@ -187,6 +218,29 @@ impl Package {
         self.read_json_content_by_id(PackageContentId::Source { source_id })
     }
 
+    pub fn get_bucket_by_id(&mut self, bucket_id: &BucketId) -> Result<Bucket> {
+        self.read_json_content_by_id(PackageContentId::Bucket { bucket_id })
+    }
+    pub fn get_email_batch(
+        &mut self,
+        bucket_id: &BucketId,
+        key: EmailBatchKey,
+    ) -> Result<Vec<NewEmail>> {
+        let content_id = PackageContentId::EmailBatch { key, bucket_id };
+
+        self.read_jsonl_content_by_id(content_id)
+    }
+
+    pub fn get_email_batch_count_for_bucket(&mut self, bucket_id: &BucketId) -> usize {
+        self.get_filenames_with_postfix_and_extension(EMAILS_POSTFIX_AND_EXTENSION)
+            .iter()
+            .filter(|filename| {
+                let path = Path::new(filename);
+                path.file_name()
+                    .is_some_and(|name| name.to_string_lossy().starts_with(&bucket_id.0))
+            })
+            .count()
+    }
     pub fn get_comment_batch(
         &mut self,
         source_id: &SourceId,
@@ -215,6 +269,28 @@ impl Package {
                 let path = Path::new(name);
                 path.parent()
                     .is_some_and(|folder| folder.to_string_lossy() == DOCUMENTS_FOLDER_NAME)
+            })
+            .count()
+    }
+
+    pub fn get_comment_batch_count(&mut self) -> usize {
+        self.archive
+            .file_names()
+            .filter(|name| {
+                let path = Path::new(name);
+                path.parent()
+                    .is_some_and(|folder| folder.to_string_lossy() == COMMENTS_FOLDER_NAME)
+            })
+            .count()
+    }
+
+    pub fn get_emails_batch_count(&mut self) -> usize {
+        self.archive
+            .file_names()
+            .filter(|name| {
+                let path = Path::new(name);
+                path.parent()
+                    .is_some_and(|folder| folder.to_string_lossy() == EMAILS_FOLDER_NAME)
             })
             .count()
     }
@@ -293,6 +369,20 @@ impl PackageWriter {
     pub fn write_source(&mut self, source: &Source) -> Result<()> {
         let source_id = &source.id;
         self.write_json(PackageContentId::Source { source_id }, source)
+    }
+
+    pub fn write_bucket(&mut self, bucket: &Bucket) -> Result<()> {
+        let bucket_id = &bucket.id;
+        self.write_json(PackageContentId::Bucket { bucket_id }, bucket)
+    }
+
+    pub fn write_email_batch(
+        &mut self,
+        bucket_id: &BucketId,
+        key: EmailBatchKey,
+        emails: &[Email],
+    ) -> Result<()> {
+        self.write_jsonl(PackageContentId::EmailBatch { key, bucket_id }, emails)
     }
 
     pub fn write_comment_batch(

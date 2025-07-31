@@ -114,7 +114,7 @@ pub struct GptIxpModelConfig {
         with = "::serde_with::rust::double_option",
         skip_serializing_if = "Option::is_none"
     )]
-    pub input_config: Option<Option<InputConfig>>,
+    pub input_config: Option<Option<IxpInputConfig>>,
     #[serde(
         rename = "system_prompt_override",
         skip_serializing_if = "Option::is_none"
@@ -149,7 +149,7 @@ pub struct IterativeConfig {
         with = "::serde_with::rust::double_option",
         skip_serializing_if = "Option::is_none"
     )]
-    pub chunk_size: Option<Option<i32>>,
+    pub chunk_size: Option<Option<NotNan<f64>>>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
@@ -157,18 +157,39 @@ pub enum GptModelVersion {
     #[serde(rename = "gpt_4o_2024_05_13")]
     Gpt4o20240513,
 }
-#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, Eq)]
-pub struct InputConfig {
+
+#[derive(Eq, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum IxpInputConfig {
+    TextImageInputConfig(TextImageInputConfig),
+    ImageInputConfig(ImageInputConfig),
+}
+
+#[derive(Eq, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct TextImageInputConfig {
     #[serde(rename = "mode", skip_serializing_if = "Option::is_none")]
-    pub mode: Option<InputConfigMode>,
+    pub mode: Option<TextImageInputConfigMode>,
     #[serde(rename = "text_config")]
     pub text_config: TextConfig,
 }
+
+#[derive(Eq, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ImageInputConfig {
+    #[serde(rename = "mode", skip_serializing_if = "Option::is_none")]
+    pub mode: Option<ImageInputConfigMode>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum ImageInputConfigMode {
+    #[serde(rename = "image_only")]
+    ImageOnly,
+}
+
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, Eq)]
 pub struct TextConfig {}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub enum InputConfigMode {
+pub enum TextImageInputConfigMode {
     #[serde(rename = "text_plus_image")]
     TextPlusImage,
 }
