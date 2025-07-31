@@ -10,19 +10,23 @@ use std::{
 };
 
 use anyhow::{anyhow, Context, Result};
+use itertools::Itertools;
 use reinfer_client::{
     resources::{
         attachments::AttachmentMetadata,
+        bucket::Id as BucketId,
         dataset::{DatasetFlag, QueryRequestParams},
     },
-    Client, CommentFilter, CommentId, Dataset, DatasetFullName, DatasetName, HasAnnotations,
-    SourceId,
+    Bucket, Client, CommentFilter, CommentId, Dataset, DatasetFullName, DatasetName,
+    HasAnnotations, SourceId,
 };
 use scoped_threadpool::Pool;
 use structopt::StructOpt;
 
 use crate::{
-    commands::package::{AttachmentKey, CommentBatchKey, PackageContentId, PackageWriter},
+    commands::package::{
+        AttachmentKey, CommentBatchKey, EmailBatchKey, PackageContentId, PackageWriter,
+    },
     progress::Progress,
     DEFAULT_PROJECT_NAME,
 };
@@ -50,7 +54,7 @@ impl FromStr for IxpDatasetIdentifier {
 
 #[derive(Debug, StructOpt)]
 pub struct DownloadPackageArgs {
-    /// The api name of the project
+    /// The api name of the Unstructued Docs project / CM dataset
     project: IxpDatasetIdentifier,
 
     /// Path to save the package to
@@ -70,19 +74,30 @@ pub struct DownloadPackageArgs {
     max_attachment_memory_mb: u64,
 }
 
-fn get_project(project: &IxpDatasetIdentifier, client: &Client) -> Result<Dataset> {
-    let dataset = client.get_dataset(project.0.clone()).context(format!(
-        "Could not get project with the name {0}",
-        project.0
-    ))?;
+#[allow(clippy::too_many_arguments)]
+fn package_bucket_contents(
+    bucket: &Bucket,
+    batch_size: usize,
+    package_writer: &mut PackageWriter,
+    client: &Client,
+    statistics: &Arc<Statistics>,
+) -> Result<()> {
+    let bucket_full_name = bucket.full_name();
+    let bucket_emails_iter = client.get_emails_iter(&bucket_full_name, Some(batch_size));
 
-    if !dataset.has_flag(DatasetFlag::Ixp) {
-        return Err(anyhow!(
-            "Can only get packages for Unstructured and Complex Document projects"
-        ));
-    }
+    bucket_emails_iter
+        .enumerate()
+        .try_for_each(|(idx, result)| -> Result<()> {
+            let emails = result.context("Failed to read email batch")?;
+            package_writer.write_email_batch(&bucket.id, EmailBatchKey(idx), &emails)?;
+            statistics.add_emails(emails.len());
+            Ok(())
+        })
+}
 
-    Ok(dataset)
+enum SourceType {
+    CommunicationsMining,
+    UnstructedAndComplexDocs,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -95,6 +110,7 @@ fn package_source_contents(
     statistics: &Arc<Statistics>,
     max_attachment_memory_mb: &u64,
     pool: &mut Pool,
+    source_type: SourceType,
 ) -> Result<()> {
     let mut query = QueryRequestParams {
         limit: Some(batch_size),
@@ -112,7 +128,7 @@ fn package_source_contents(
     source_comments_iter
         .enumerate()
         .try_for_each(|(idx, result)| -> Result<()> {
-            let comments = result.context("Failed to read coment batch")?;
+            let comments = result.context("Failed to read comment batch")?;
 
             package_writer
                 .write_comment_batch(source_id, CommentBatchKey(idx), &comments)
@@ -121,32 +137,40 @@ fn package_source_contents(
             statistics.add_comments(comments.len());
             statistics.add_annotations(comments.iter().filter(|c| c.has_annotations()).count());
 
-            documents.append(
-                &mut comments
-                    .iter()
-                    .flat_map(|comment| {
-                        comment
-                            .comment
-                            .clone()
-                            .attachments
-                            .into_iter()
-                            .enumerate()
-                            .map(|(idx, attachment)| {
-                                (
-                                    attachment,
-                                    AttachmentKey(idx),
-                                    source_id.clone(),
-                                    comment.comment.id.clone(),
-                                )
-                            })
-                    })
-                    .collect(),
-            );
+            if matches!(source_type, SourceType::UnstructedAndComplexDocs) {
+                documents.append(
+                    &mut comments
+                        .iter()
+                        .flat_map(|comment| {
+                            comment
+                                .comment
+                                .clone()
+                                .attachments
+                                .into_iter()
+                                .enumerate()
+                                .map(|(idx, attachment)| {
+                                    (
+                                        attachment,
+                                        AttachmentKey(idx),
+                                        source_id.clone(),
+                                        comment.comment.id.clone(),
+                                    )
+                                })
+                        })
+                        .collect(),
+                );
 
-            if should_package_batch_of_documents(&documents, max_attachment_memory_mb) {
-                package_batch_of_documents(&documents, statistics, package_writer, client, pool)
+                if should_package_batch_of_documents(&documents, max_attachment_memory_mb) {
+                    package_batch_of_documents(
+                        &documents,
+                        statistics,
+                        package_writer,
+                        client,
+                        pool,
+                    )
                     .context("Failed to package document batch")?;
-                documents.clear();
+                    documents.clear();
+                }
             }
 
             Ok(())
@@ -238,32 +262,99 @@ fn get_comment_count(dataset: &Dataset, client: &Client) -> Result<u64> {
     Ok(total_comments)
 }
 
-pub fn run(args: &DownloadPackageArgs, client: &Client, pool: &mut Pool) -> Result<()> {
-    let DownloadPackageArgs {
-        project,
-        file,
-        overwrite,
-        batch_size,
-        max_attachment_memory_mb,
-    } = args;
-    // Delete output file if overwriting
-    if *overwrite && file.is_file() {
-        remove_file(file).context("Failed to remove existing file")?;
+fn package_cm_project(
+    client: &Client,
+    dataset: &Dataset,
+    file: &PathBuf,
+    batch_size: &usize,
+    max_attachment_memory_mb: &u64,
+    pool: &mut Pool,
+) -> Result<()> {
+    let total_comments =
+        get_comment_count(dataset, client).context("Failed to get comment count")?;
+
+    let mut package_writer =
+        PackageWriter::new(file.into()).context("Failed to create new package writer")?;
+
+    // Write dataset
+    package_writer
+        .write_dataset(dataset)
+        .context("Failed to write dataset")?;
+
+    // Get buckets
+    let buckets: Vec<Bucket> = dataset
+        .source_ids
+        .iter()
+        .map(|source_id| -> Result<Option<BucketId>> {
+            let source = client.get_source(source_id.clone())?;
+            Ok(source.bucket_id)
+        })
+        .try_collect::<Option<BucketId>, Vec<Option<BucketId>>, anyhow::Error>()?
+        .into_iter()
+        .flatten()
+        .map(|bucket_id| client.get_bucket(bucket_id.clone()))
+        .try_collect()?;
+
+    // Get Progress Bar
+    let statistics = Arc::new(Statistics::new());
+    let _progress_bar = get_cm_progress_bar(total_comments, !buckets.is_empty(), &statistics);
+
+    // Write buckets and raw emails
+    for bucket in buckets {
+        package_writer.write_bucket(&bucket)?;
+        package_bucket_contents(
+            &bucket,
+            *batch_size,
+            &mut package_writer,
+            client,
+            &statistics,
+        )?;
     }
 
-    // Get dataset, statistics and progres bar
-    let dataset = get_project(project, client).context("Failed to get project")?;
+    // Write sources and comments
+    for source_id in &dataset.source_ids {
+        let source = client
+            .get_source(source_id.clone())
+            .context("Failed to get source")?;
+
+        package_writer
+            .write_source(&source)
+            .context("Failed to write source")?;
+
+        package_source_contents(
+            &dataset.full_name(),
+            source_id,
+            *batch_size,
+            &mut package_writer,
+            client,
+            &statistics,
+            max_attachment_memory_mb,
+            pool,
+            SourceType::CommunicationsMining,
+        )?;
+    }
+    Ok(())
+}
+
+fn package_ixp_project(
+    client: &Client,
+    dataset: &Dataset,
+    file: &PathBuf,
+    batch_size: &usize,
+    max_attachment_memory_mb: &u64,
+    pool: &mut Pool,
+) -> Result<()> {
     let total_comments =
-        get_comment_count(&dataset, client).context("Failed to get comment count")?;
+        get_comment_count(dataset, client).context("Failed to get comment count")?;
 
     let statistics = Arc::new(Statistics::new());
-    let _progress_bar = get_progress_bar(total_comments, &statistics);
+    let _progress_bar = get_ixp_progress_bar(total_comments, &statistics);
 
     // Write dataset
     let mut package_writer =
         PackageWriter::new(file.into()).context("Failed to create new package writer")?;
     package_writer
-        .write_dataset(&dataset)
+        .write_dataset(dataset)
         .context("Failed to write dataset")?;
 
     // Package each source
@@ -285,6 +376,7 @@ pub fn run(args: &DownloadPackageArgs, client: &Client, pool: &mut Pool) -> Resu
             &statistics,
             max_attachment_memory_mb,
             pool,
+            SourceType::UnstructedAndComplexDocs,
         )
         .context("Failed to package source context")?;
     }
@@ -296,9 +388,50 @@ pub fn run(args: &DownloadPackageArgs, client: &Client, pool: &mut Pool) -> Resu
     Ok(())
 }
 
+pub fn run(args: &DownloadPackageArgs, client: &Client, pool: &mut Pool) -> Result<()> {
+    let DownloadPackageArgs {
+        project,
+        file,
+        overwrite,
+        batch_size,
+        max_attachment_memory_mb,
+    } = args;
+    // Delete output file if overwriting
+    if *overwrite && file.is_file() {
+        remove_file(file).context("Failed to remove existing file")?;
+    }
+
+    // Get dataset, statistics and progres bar
+    let dataset = client.get_dataset(project.0.clone()).context(format!(
+        "Could not get project with the name {0}",
+        project.0
+    ))?;
+
+    if dataset.has_flag(DatasetFlag::Ixp) {
+        package_ixp_project(
+            client,
+            &dataset,
+            file,
+            batch_size,
+            max_attachment_memory_mb,
+            pool,
+        )
+    } else {
+        package_cm_project(
+            client,
+            &dataset,
+            file,
+            batch_size,
+            max_attachment_memory_mb,
+            pool,
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct Statistics {
     comments: AtomicUsize,
+    emails: AtomicUsize,
     document_downloads: AtomicUsize,
     document_writes: AtomicUsize,
     annotations: AtomicUsize,
@@ -308,6 +441,7 @@ impl Statistics {
     fn new() -> Self {
         Self {
             comments: AtomicUsize::new(0),
+            emails: AtomicUsize::new(0),
             annotations: AtomicUsize::new(0),
             document_downloads: AtomicUsize::new(0),
             document_writes: AtomicUsize::new(0),
@@ -317,6 +451,11 @@ impl Statistics {
     #[inline]
     fn add_comments(&self, num: usize) {
         self.comments.fetch_add(num, Ordering::SeqCst);
+    }
+
+    #[inline]
+    fn add_emails(&self, num: usize) {
+        self.emails.fetch_add(num, Ordering::SeqCst);
     }
 
     #[inline]
@@ -340,6 +479,11 @@ impl Statistics {
     }
 
     #[inline]
+    fn num_emails(&self) -> usize {
+        self.emails.load(Ordering::SeqCst)
+    }
+
+    #[inline]
     fn num_document_downloaded(&self) -> usize {
         self.document_downloads.load(Ordering::SeqCst)
     }
@@ -354,7 +498,43 @@ impl Statistics {
         self.annotations.load(Ordering::SeqCst)
     }
 }
-fn get_progress_bar(total_comments: u64, statistics: &Arc<Statistics>) -> Progress {
+
+fn get_cm_progress_bar(
+    total_comments: u64,
+    has_buckets: bool,
+    statistics: &Arc<Statistics>,
+) -> Progress {
+    let total = if has_buckets {
+        total_comments * 2
+    } else {
+        total_comments
+    };
+
+    Progress::new(
+        move |statistics| {
+            let num_comments = statistics.num_comments();
+            let num_annotations = statistics.num_annotations();
+            let num_emails = statistics.num_emails();
+            (
+                (num_comments + num_emails) as u64,
+                format!(
+                    "{} {} {} {} {} {}",
+                    num_comments.to_string().bold(),
+                    "comments".dimmed(),
+                    num_annotations.to_string().bold(),
+                    "annotations".dimmed(),
+                    num_emails.to_string().bold(),
+                    "emails downloaded".dimmed(),
+                ),
+            )
+        },
+        statistics,
+        Some(total),
+        crate::progress::Options { bytes_units: false },
+    )
+}
+
+fn get_ixp_progress_bar(total_comments: u64, statistics: &Arc<Statistics>) -> Progress {
     Progress::new(
         move |statistics| {
             let num_comments = statistics.num_comments();
