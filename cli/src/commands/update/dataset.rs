@@ -59,6 +59,7 @@ pub fn update(client: &Client, args: &UpdateDatasetArgs, printer: &Printer) -> R
                 title: title.as_deref(),
                 description: description.as_deref(),
                 model_config: None,
+                entity_defs: Vec::new(),
             },
         )
         .context("Operation to update a dataset has failed.")?;
