@@ -23,10 +23,24 @@ pub struct EntityDef {
     pub instructions: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, Eq)]
 pub struct EntityDefRuleSet {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub suppressors: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub choices: Vec<FieldChoiceApi>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    regex: Option<RegexPattern>,
+    pub regex: Option<RegexPattern>,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, Eq)]
+pub struct FieldChoiceApi {
+    #[serde(rename = "id")]
+    pub id: String,
+    #[serde(rename = "name")]
+    pub name: String,
+    #[serde(rename = "values")]
+    pub values: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -68,9 +82,27 @@ pub struct NewEntityDef {
     #[serde(default)]
     pub entity_def_flags: Vec<EntityDefFlag>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub rules: Option<EntityDefRuleSet>,
+    pub rules: Option<EntityRuleSetNew>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub instructions: Option<String>,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, Eq)]
+pub struct EntityRuleSetNew {
+    #[serde(rename = "suppressors", skip_serializing_if = "Vec::is_empty")]
+    pub suppressors: Vec<String>,
+    #[serde(rename = "choices", skip_serializing_if = "Vec::is_empty")]
+    pub choices: Vec<FieldChoiceNew>,
+    #[serde(rename = "regex")]
+    pub regex: Option<RegexPattern>,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, Eq)]
+pub struct FieldChoiceNew {
+    #[serde(rename = "name")]
+    pub name: String,
+    #[serde(rename = "values")]
+    pub values: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]

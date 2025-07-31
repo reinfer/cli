@@ -20,6 +20,7 @@ use reinfer_client::{
         bucket::{Bucket, Id as BucketId},
         dataset::{DatasetFlag, IxpDatasetNew, ModelConfig},
         entity_def::NewGeneralFieldDef,
+        entity_def::{EntityRuleSetNew, FieldChoiceNew},
     },
     Client, CommentUid, Dataset, DatasetFullName, DatasetName, LabelDef, NewAnnotatedComment,
     NewBucket, NewComment, NewDataset, NewEntityDef, NewLabelDef, NewLabelDefPretrained, NewSource,
@@ -500,7 +501,19 @@ fn unpack_cm_dataset(
                                     entity_def_flags: def.entity_def_flags,
                                     inherits_from: def.inherits_from,
                                     name: def.name,
-                                    rules: def.rules,
+                                    rules: def.rules.map(|rule| EntityRuleSetNew {
+                                        suppressors: rule.suppressors,
+                                        choices: rule
+                                            .choices
+                                            .into_iter()
+                                            .map(|choice| FieldChoiceNew {
+                                                name: choice.name,
+                                                values: choice.values,
+                                            })
+                                            .collect(),
+                                        regex: rule.regex,
+                                    }),
+
                                     title: def.title,
                                     trainable: def.trainable,
                                     instructions: def.instructions,
@@ -763,7 +776,18 @@ fn unpack_ixp(
                 entity_def_flags: def.entity_def_flags,
                 inherits_from: def.inherits_from,
                 name: def.name,
-                rules: def.rules,
+                rules: def.rules.map(|rule| EntityRuleSetNew {
+                    suppressors: rule.suppressors,
+                    choices: rule
+                        .choices
+                        .into_iter()
+                        .map(|choice| FieldChoiceNew {
+                            name: choice.name,
+                            values: choice.values,
+                        })
+                        .collect(),
+                    regex: rule.regex,
+                }),
                 title: def.title,
                 trainable: def.trainable,
                 instructions: def.instructions,

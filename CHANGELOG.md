@@ -1,5 +1,6 @@
 # unreleased
 - Add ixp cm packages
+- Round trip choice fields in entity defs
 
 # v0.38.3
 - Fix issue where entity definitons were not round tripped for ixp packages 
