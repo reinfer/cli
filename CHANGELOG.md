@@ -1,3 +1,6 @@
+# Unreleased
+- Resume timeouts on error
+
 # v0.38.4
 - Add ixp cm packages
 - Round trip choice fields in entity defs
