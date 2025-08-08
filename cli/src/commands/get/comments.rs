@@ -57,6 +57,10 @@ pub struct GetSingleCommentArgs {
     #[structopt(short = "f", long = "file", parse(from_os_str))]
     /// Path where to write comments as JSON. If not specified, stdout will be used.
     path: Option<PathBuf>,
+
+    #[structopt(long = "attachments")]
+    /// Save attachment content for each comment
+    include_attachment_content: Option<bool>,
 }
 
 #[derive(Debug, StructOpt)]
@@ -160,15 +164,19 @@ pub fn get_single(client: &Client, args: &GetSingleCommentArgs) -> Result<()> {
         source,
         comment_id,
         path,
+        include_attachment_content,
     } = args;
-    let file: Option<Box<dyn Write>> = match path {
-        Some(path) => Some(Box::new(
-            File::create(path)
-                .with_context(|| format!("Could not open file for writing `{}`", path.display()))
-                .map(BufWriter::new)?,
-        )),
-        None => None,
-    };
+
+    if path.is_none() && include_attachment_content.is_some() {
+        bail!("Cannot include attachment content when no file is provided")
+    }
+
+    let include_attachment_content = include_attachment_content.unwrap_or_default();
+
+    let OutputLocations {
+        jsonl_file: file,
+        attachments_dir,
+    } = get_output_locations(path, include_attachment_content)?;
 
     let stdout = io::stdout();
     let mut writer: Box<dyn Write> = file.unwrap_or_else(|| Box::new(stdout.lock()));
@@ -176,6 +184,10 @@ pub fn get_single(client: &Client, args: &GetSingleCommentArgs) -> Result<()> {
         .get_source(source.to_owned())
         .context("Operation to get source has failed.")?;
     let comment = client.get_comment(&source.full_name(), comment_id)?;
+
+    if let Some(attachments_dir) = attachments_dir {
+        download_comment_attachments(client, &attachments_dir, &comment, None)?;
+    }
     print_resources_as_json(
         std::iter::once(AnnotatedComment {
             comment,
@@ -397,17 +409,17 @@ fn get_possible_values_for_string_property(
 
 #[derive(Default)]
 struct OutputLocations {
-    jsonl_file: Option<BufWriter<std::fs::File>>,
+    jsonl_file: Option<Box<dyn Write>>,
     attachments_dir: Option<PathBuf>,
 }
 
 fn get_output_locations(path: &Option<PathBuf>, attachments: bool) -> Result<OutputLocations> {
     if let Some(path) = path {
-        let jsonl_file = Some(
+        let jsonl_file: Option<Box<dyn Write>> = Some(Box::new(
             File::create(path)
                 .with_context(|| format!("Could not open file for writing `{}`", path.display()))
                 .map(BufWriter::new)?,
-        );
+        ));
 
         let attachments_dir = if attachments {
             let attachments_dir = path
@@ -915,7 +927,7 @@ fn get_comments_from_uids(
                         client,
                         attachments_dir,
                         &comment.comment,
-                        statistics,
+                        Some(statistics),
                     )
                 })?;
             }
@@ -939,7 +951,7 @@ fn get_comments_from_uids(
                         client,
                         attachments_dir,
                         &comment.comment,
-                        statistics,
+                        Some(statistics),
                     )
                 })?;
             }
@@ -954,7 +966,7 @@ fn download_comment_attachments(
     client: &Client,
     attachments_dir: &Path,
     comment: &Comment,
-    statistics: &Arc<Statistics>,
+    statistics: Option<&Arc<Statistics>>,
 ) -> Result<()> {
     comment
         .attachments
@@ -972,7 +984,9 @@ fn download_comment_attachments(
                     let attachment_buf = client.get_attachment(attachment_reference)?;
 
                     if local_attachment.write(attachment_buf)? {
-                        statistics.add_attachments(1);
+                        if let Some(statistics) = statistics {
+                            statistics.add_attachments(1);
+                        }
                     };
                 }
             }
@@ -1006,7 +1020,12 @@ fn get_reviewed_comments_in_bulk(
 
         if let Some(attachments_dir) = &options.attachments_dir {
             page.iter().try_for_each(|comment| -> Result<()> {
-                download_comment_attachments(client, attachments_dir, &comment.comment, statistics)
+                download_comment_attachments(
+                    client,
+                    attachments_dir,
+                    &comment.comment,
+                    Some(statistics),
+                )
             })?;
         }
 
