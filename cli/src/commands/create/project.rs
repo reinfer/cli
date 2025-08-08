@@ -45,7 +45,7 @@ pub fn create_project(
     name: &ProjectName,
     description: &Option<String>,
     title: &Option<String>,
-    user_ids: &Vec<UserId>,
+    user_ids: &[UserId],
 ) -> Result<Project> {
     let project = client
         .create_project(

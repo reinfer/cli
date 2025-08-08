@@ -700,7 +700,7 @@ fn unpack_cm(
                     &new_project_name.to_project_name(),
                     &None,
                     &None,
-                    &vec![client.get_current_user()?.id],
+                    &[client.get_current_user()?.id],
                 )?;
                 refresh_user_permissions(client, false)?;
             }
