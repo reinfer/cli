@@ -57,10 +57,7 @@ pub fn update(client: &Client, args: &UpdateUsersArgs) -> Result<()> {
         }
     };
 
-    info!(
-        concat!("Successfully updated {} users",),
-        statistics.num_updated(),
-    );
+    info!("Successfully updated {} users", statistics.num_updated(),);
 
     Ok(())
 }

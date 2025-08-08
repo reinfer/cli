@@ -116,10 +116,7 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
         }
     };
 
-    info!(
-        concat!("Successfully uploaded {} emails",),
-        statistics.num_uploaded(),
-    );
+    info!("Successfully uploaded {} emails", statistics.num_uploaded());
 
     Ok(())
 }

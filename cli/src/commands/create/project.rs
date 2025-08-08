@@ -3,7 +3,7 @@ use std::{thread::sleep, time::Duration};
 use crate::{commands::auth::refresh_user_permissions, printer::Printer};
 use anyhow::{anyhow, Context, Result};
 use log::info;
-use reinfer_client::{Client, NewProject, ProjectName, UserId};
+use reinfer_client::{Client, NewProject, Project, ProjectName, UserId};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -33,6 +33,20 @@ pub fn create(client: &Client, args: &CreateProjectArgs, printer: &Printer) -> R
         user_ids,
     } = args;
 
+    let project = create_project(client, name, description, title, user_ids)?;
+
+    info!("New project `{}` created successfully", project.name.0,);
+    printer.print_resources(&[project])?;
+    Ok(())
+}
+
+pub fn create_project(
+    client: &Client,
+    name: &ProjectName,
+    description: &Option<String>,
+    title: &Option<String>,
+    user_ids: &[UserId],
+) -> Result<Project> {
     let project = client
         .create_project(
             name,
@@ -47,6 +61,7 @@ pub fn create(client: &Client, args: &CreateProjectArgs, printer: &Printer) -> R
     // Block until project is created
     let mut project_found = false;
     for _ in 0..10 {
+        refresh_user_permissions(client, false)?;
         let projects = client.get_projects()?;
         if projects.iter().any(|p| p.name.0 == name.0) {
             project_found = true;
@@ -63,7 +78,5 @@ pub fn create(client: &Client, args: &CreateProjectArgs, printer: &Printer) -> R
         ));
     }
 
-    info!("New project `{}` created successfully", project.name.0,);
-    printer.print_resources(&[project])?;
-    Ok(())
+    Ok(project)
 }
