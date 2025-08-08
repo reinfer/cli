@@ -19,12 +19,11 @@ use reinfer_client::{
     resources::{
         bucket::{Bucket, Id as BucketId},
         dataset::{DatasetFlag, IxpDatasetNew, ModelConfig},
-        entity_def::NewGeneralFieldDef,
-        entity_def::{EntityRuleSetNew, FieldChoiceNew},
+        entity_def::{EntityRuleSetNew, FieldChoiceNew, NewGeneralFieldDef},
     },
     Client, CommentUid, Dataset, DatasetFullName, DatasetName, LabelDef, NewAnnotatedComment,
     NewBucket, NewComment, NewDataset, NewEntityDef, NewLabelDef, NewLabelDefPretrained, NewSource,
-    Source, SourceId, SourceKind, UpdateDataset, Username, DEFAULT_LABEL_GROUP_NAME,
+    ProjectName, Source, SourceId, SourceKind, UpdateDataset, Username, DEFAULT_LABEL_GROUP_NAME,
 };
 use scoped_threadpool::Pool;
 use structopt::StructOpt;
@@ -32,14 +31,20 @@ use structopt::StructOpt;
 use crate::{
     commands::{
         auth::refresh_user_permissions,
-        create::annotations::{
-            upload_batch_of_annotations, AnnotationStatistic, CommentIdComment, NewAnnotation,
+        create::{
+            annotations::{
+                upload_batch_of_annotations, AnnotationStatistic, CommentIdComment, NewAnnotation,
+            },
+            project::create_project,
         },
         ensure_uip_user_consents_to_ai_unit_charge,
         package::{AttachmentKey, CommentBatchKey, EmailBatchKey, Package},
     },
     progress::Progress,
 };
+
+const MAX_UNPACK_CM_ATTEMPTS: u64 = 20;
+const UNPACK_CM_SLEEP_SECONDS: u64 = 3;
 
 #[derive(Debug, StructOpt)]
 pub struct UploadPackageArgs {
@@ -646,6 +651,10 @@ impl DatasetOrOwnerName {
     fn to_username(&self) -> Username {
         Username(self.0.clone())
     }
+
+    fn to_project_name(&self) -> ProjectName {
+        ProjectName(self.0.clone())
+    }
 }
 
 impl FromStr for DatasetOrOwnerName {
@@ -681,6 +690,22 @@ fn unpack_cm(
         .try_collect()?;
 
     let mut packaged_to_new_source_id: HashMap<SourceId, SourceId> = HashMap::new();
+
+    if let Some(new_project_name) = new_project_name {
+        match client.get_project(&new_project_name.to_project_name()) {
+            Ok(_) => {}
+            Err(_) => {
+                create_project(
+                    client,
+                    &new_project_name.to_project_name(),
+                    &None,
+                    &None,
+                    &vec![client.get_current_user()?.id],
+                )?;
+                refresh_user_permissions(client, false)?;
+            }
+        }
+    }
 
     for packaged_source_info in packaged_sources {
         // Unpack bucket, if it exists
@@ -853,21 +878,43 @@ pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result
                 max_attachment_memory_mb,
             )?;
         } else {
-            unpack_cm(
-                client,
-                dataset,
-                &mut package,
-                dataset_creation_timeout,
-                pool,
-                resume_on_error,
-                *no_charge,
-                new_project_name,
-            )?;
+            // Attempt to unpack the dataset with retries for project creation due to race
+            // condition
+            for attempt in 1..=MAX_UNPACK_CM_ATTEMPTS {
+                match unpack_cm(
+                    client,
+                    dataset.clone(),
+                    &mut package,
+                    dataset_creation_timeout,
+                    pool,
+                    resume_on_error,
+                    *no_charge,
+                    new_project_name,
+                ) {
+                    Ok(_) => break,
+                    Err(err) if is_project_not_found_error(&err) && new_project_name.is_some() => {
+                        sleep(Duration::from_secs(UNPACK_CM_SLEEP_SECONDS));
+                        refresh_user_permissions(client, false)?;
+
+                        if attempt == MAX_UNPACK_CM_ATTEMPTS {
+                            return Err(anyhow!(
+                                "Failed to upload package after {} attempts. Project creation timed out. Last error: {}",
+                                MAX_UNPACK_CM_ATTEMPTS,
+                                err
+                            ));
+                        }
+                    }
+                    Err(err) => return Err(err.context("Failed to unpack dataset")),
+                }
+            }
         }
     }
-
     log::info!("Package uploaded.");
     Ok(())
+}
+
+fn is_project_not_found_error(err: &anyhow::Error) -> bool {
+    err.to_string().contains("No such project")
 }
 
 #[derive(Debug)]
