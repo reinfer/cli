@@ -1,4 +1,4 @@
-# Unreleased
+# v0.38.7
 - Add `--attachments` to get comment
 
 # v0.38.6
