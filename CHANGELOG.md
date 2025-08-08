@@ -1,3 +1,6 @@
+# Unreleased
+- Add `--attachments` to get comment
+
 # v0.38.6
 - Create project when unpacking ixp packages
 
