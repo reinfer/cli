@@ -1,3 +1,6 @@
+# Unreleased 
+- Only ask for ai unit consumpion consent when unpacking CM packages
+
 # v0.38.7
 - Add `--attachments` to get comment
 
