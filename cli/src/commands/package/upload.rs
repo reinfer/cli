@@ -855,9 +855,8 @@ pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result
         no_charge,
         yes,
     } = args;
-    if !no_charge && !yes {
-        ensure_uip_user_consents_to_ai_unit_charge(client.base_url())?;
-    }
+
+    let mut has_consented_to_ai_unit_consumption = false;
 
     let mut package =
         Package::new(file).context("Failed to read package, check path is correct.")?;
@@ -878,6 +877,10 @@ pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result
                 max_attachment_memory_mb,
             )?;
         } else {
+            if !no_charge && !yes && !has_consented_to_ai_unit_consumption {
+                ensure_uip_user_consents_to_ai_unit_charge(client.base_url())?;
+                has_consented_to_ai_unit_consumption = true;
+            }
             // Attempt to unpack the dataset with retries for project creation due to race
             // condition
             for attempt in 1..=MAX_UNPACK_CM_ATTEMPTS {
