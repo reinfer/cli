@@ -19,11 +19,12 @@ use reinfer_client::{
     resources::{
         bucket::{Bucket, Id as BucketId},
         dataset::{DatasetFlag, IxpDatasetNew, ModelConfig},
-        entity_def::{EntityRuleSetNew, FieldChoiceNew, NewGeneralFieldDef},
+        entity_def::{EntityRuleSetNew, FieldChoiceNew, Name as EntityDefName, NewGeneralFieldDef},
     },
-    Client, CommentUid, Dataset, DatasetFullName, DatasetName, LabelDef, NewAnnotatedComment,
-    NewBucket, NewComment, NewDataset, NewEntityDef, NewLabelDef, NewLabelDefPretrained, NewSource,
-    ProjectName, Source, SourceId, SourceKind, UpdateDataset, Username, DEFAULT_LABEL_GROUP_NAME,
+    Client, CommentUid, Dataset, DatasetFullName, DatasetName, EntityDefId, LabelDef,
+    NewAnnotatedComment, NewBucket, NewComment, NewDataset, NewEntityDef, NewLabelDef,
+    NewLabelDefPretrained, NewSource, ProjectName, Source, SourceId, SourceKind, UpdateDataset,
+    Username, DEFAULT_LABEL_GROUP_NAME,
 };
 use scoped_threadpool::Pool;
 use structopt::StructOpt;
@@ -489,6 +490,13 @@ fn unpack_cm_dataset(
         packaged_dataset.owner = new_project_name.to_username();
     }
 
+    let entify_def_id_to_name: HashMap<EntityDefId, EntityDefName> = packaged_dataset
+        .entity_defs
+        .clone()
+        .into_iter()
+        .map(|def| (def.id, def.name))
+        .collect();
+
     match client.get_dataset(packaged_dataset.full_name()) {
         Ok(dataset) => Ok(dataset),
         Err(_) => {
@@ -535,7 +543,14 @@ fn unpack_cm_dataset(
                                 .map(|def| NewGeneralFieldDef {
                                     api_name: def.api_name.clone(),
                                     field_type_id: def.field_type_id.clone(),
-                                    field_type_name: def.field_type_name.clone(),
+                                    field_type_name: if let Some(field_type_id) = &def.field_type_id
+                                    {
+                                        entify_def_id_to_name
+                                            .get(&EntityDefId(field_type_id.clone()))
+                                            .cloned()
+                                    } else {
+                                        None
+                                    },
                                 })
                                 .collect::<Vec<NewGeneralFieldDef>>(),
                         ),
