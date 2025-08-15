@@ -76,6 +76,10 @@ pub struct UploadPackageArgs {
     #[structopt(short = "y", long = "yes")]
     /// Consent to ai unit charge. Suppresses confirmation prompt.
     yes: bool,
+
+    #[structopt(long = "skip-comment-upload")]
+    /// Don't upload comments for CM packages
+    skip_comment_upload: bool,
 }
 
 fn wait_for_dataset_to_exist(dataset: &Dataset, client: &Client, timeout_s: u64) -> Result<()> {
@@ -434,6 +438,7 @@ fn unpack_cm_source(
     no_charge: bool,
     statistics: &Arc<CmStatistics>,
     new_project_name: Option<DatasetOrOwnerName>,
+    skip_comment_upload: bool,
 ) -> Result<Source> {
     // Get existing source or create a new one if it doesn't exist
     if let Some(project_name) = new_project_name {
@@ -456,6 +461,11 @@ fn unpack_cm_source(
             },
         )?,
     };
+
+    if skip_comment_upload {
+        return Ok(source);
+    }
+
     // Upload comment batches to the source
     let comment_batch_count = package.get_comment_batch_count();
     for idx in 0..comment_batch_count {
@@ -690,6 +700,7 @@ fn unpack_cm(
     resume_on_error: &bool,
     no_charge: bool,
     new_project_name: &Option<DatasetOrOwnerName>,
+    skip_comment_upload: &bool,
 ) -> Result<()> {
     let total_comment_batches = package.get_comment_batch_count();
     let total_email_batches = package.get_emails_batch_count();
@@ -749,6 +760,7 @@ fn unpack_cm(
             no_charge,
             &statistics,
             new_project_name.clone(),
+            *skip_comment_upload,
         )?;
 
         packaged_to_new_source_id.insert(packaged_source_info.id.clone(), source.id.clone());
@@ -869,6 +881,7 @@ pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result
         new_project_name,
         no_charge,
         yes,
+        skip_comment_upload,
     } = args;
 
     let mut has_consented_to_ai_unit_consumption = false;
@@ -908,6 +921,7 @@ pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result
                     resume_on_error,
                     *no_charge,
                     new_project_name,
+                    skip_comment_upload,
                 ) {
                     Ok(_) => break,
                     Err(err) if is_project_not_found_error(&err) && new_project_name.is_some() => {
