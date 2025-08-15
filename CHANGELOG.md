@@ -1,5 +1,6 @@
 # Unreleased 
 - Only ask for ai unit consumpion consent when unpacking CM packages
+- Remap entity field type names on cm package upload
 
 # v0.38.7
 - Add `--attachments` to get comment
