@@ -1,4 +1,4 @@
-# Unreleased 
+# v0.38.8
 - Only ask for ai unit consumpion consent when unpacking CM packages
 - Remap entity field type names on cm package upload
 - Add `--skip-comment-upload` when unpacking CM packages
