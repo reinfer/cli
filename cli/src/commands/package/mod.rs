@@ -1,11 +1,12 @@
 use anyhow::{Context, Result};
 use download::DownloadPackageArgs;
 use itertools::Itertools;
-use reinfer_client::{
-    resources::{bucket::Id as BucketId, email::Email},
-    AnnotatedComment, Bucket, Client, CommentId, Dataset, DatasetId, NewAnnotatedComment, NewEmail,
-    Source, SourceId,
+use openapi::{
+    apis::configuration::Configuration,
+    models::{AnnotatedComment, Bucket, Dataset, Email, EmailNew, Source},
 };
+// DatasetId is just String in OpenAPI models
+
 use scoped_threadpool::Pool;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -16,7 +17,6 @@ use std::{
 use structopt::StructOpt;
 use upload::UploadPackageArgs;
 use zip::{write::SimpleFileOptions, ZipArchive, ZipWriter};
-
 mod download;
 mod upload;
 
@@ -37,34 +37,34 @@ pub struct CommentBatchKey(usize);
 #[derive(Clone)]
 pub struct AttachmentKey(usize);
 
-pub fn run(args: &PackageArgs, client: Client, pool: &mut Pool) -> Result<()> {
+pub fn run(args: &PackageArgs, config: &Configuration, pool: &mut Pool) -> Result<()> {
     match args {
-        PackageArgs::Download(args) => download::run(args, &client, pool),
-        PackageArgs::Upload(args) => upload::run(args, &client, pool),
+        PackageArgs::Download(args) => download::run(args, config, pool),
+        PackageArgs::Upload(args) => upload::run(args, config, pool),
     }
 }
 
 pub enum PackageContentId<'a> {
     Dataset {
-        dataset_id: &'a DatasetId,
+        dataset_id: &'a str,
     },
     Source {
-        source_id: &'a SourceId,
+        source_id: &'a str,
     },
     Bucket {
-        bucket_id: &'a BucketId,
+        bucket_id: &'a str,
     },
     CommentBatch {
         key: CommentBatchKey,
-        source_id: &'a SourceId,
+        source_id: &'a str,
     },
     EmailBatch {
         key: EmailBatchKey,
-        bucket_id: &'a BucketId,
+        bucket_id: &'a str,
     },
     Document {
-        source_id: &'a SourceId,
-        comment_id: &'a CommentId,
+        source_id: &'a str,
+        comment_id: &'a str,
         key: &'a AttachmentKey,
         extension: Option<String>,
     },
@@ -88,31 +88,31 @@ impl PackageContentId<'_> {
             PackageContentId::Bucket { bucket_id } => {
                 format!(
                     "{BUCKETS_FOLDER_NAME}/{0}.{BUCKET_POSTFIX_AND_EXTENSION}",
-                    bucket_id.0
+                    bucket_id
                 )
             }
             PackageContentId::Dataset { dataset_id } => {
                 format!(
                     "{DATASETS_FOLDER_NAME}/{0}.{DATASET_POSTFIX_AND_EXTENSION}",
-                    dataset_id.0
+                    dataset_id
                 )
             }
             PackageContentId::Source { source_id } => {
                 format!(
                     "{SOURCES_FOLDER_NAME}/{0}.{SOURCE_POSTFIX_AND_EXTENSION}",
-                    source_id.0
+                    source_id
                 )
             }
             PackageContentId::CommentBatch { key, source_id } => {
                 format!(
                     "{COMMENTS_FOLDER_NAME}/{0}.{1}.{COMMENTS_POSTFIX_AND_EXTENSION}",
-                    source_id.0, key.0
+                    source_id, key.0
                 )
             }
             PackageContentId::EmailBatch { key, bucket_id } => {
                 format!(
                     "{EMAILS_FOLDER_NAME}/{0}.{1}.{EMAILS_POSTFIX_AND_EXTENSION}",
-                    bucket_id.0, key.0
+                    bucket_id, key.0
                 )
             }
             PackageContentId::Document {
@@ -124,10 +124,10 @@ impl PackageContentId<'_> {
                 if let Some(extension) = extension {
                     format!(
                         "{DOCUMENTS_FOLDER_NAME}/{0}.{1}.{2}.document.{3}",
-                        source_id.0, comment_id.0, key.0, extension
+                        source_id, comment_id, key.0, extension
                     )
                 } else {
-                    format!("{0}.{1}.{2}.document", source_id.0, comment_id.0, key.0)
+                    format!("{0}.{1}.{2}.document", source_id, comment_id, key.0)
                 }
             }
         }
@@ -135,14 +135,14 @@ impl PackageContentId<'_> {
 
     fn friendly_name(&self) -> String {
         match self {
-            PackageContentId::Dataset { dataset_id } => format!("dataset {}", dataset_id.0),
-            PackageContentId::Source { source_id } => format!("source {}", source_id.0),
-            PackageContentId::Bucket { bucket_id } => format!("bucket {}", bucket_id.0),
+            PackageContentId::Dataset { dataset_id } => format!("dataset {}", dataset_id),
+            PackageContentId::Source { source_id } => format!("source {}", source_id),
+            PackageContentId::Bucket { bucket_id } => format!("bucket {}", bucket_id),
             PackageContentId::CommentBatch { key, source_id } => {
-                format!("comment batch {0} for source {1}", key.0, source_id.0)
+                format!("comment batch {0} for source {1}", key.0, source_id)
             }
             PackageContentId::EmailBatch { key, bucket_id } => {
-                format!("email batch {0} for bucket {1}", key.0, bucket_id.0)
+                format!("email batch {0} for bucket {1}", key.0, bucket_id)
             }
             PackageContentId::Document {
                 source_id,
@@ -158,7 +158,7 @@ impl PackageContentId<'_> {
 
                 format!(
                     "{0}attachment for comment {1}, in source {2} with key {3}",
-                    extension_part, comment_id.0, source_id.0, key.0
+                    extension_part, comment_id, source_id, key.0
                 )
             }
         }
@@ -183,8 +183,8 @@ impl Package {
 
     pub fn read_document(
         &mut self,
-        source_id: &SourceId,
-        comment_id: &CommentId,
+        source_id: &str,
+        comment_id: &str,
         key: &AttachmentKey,
         extension: Option<String>,
     ) -> Result<Vec<u8>> {
@@ -214,50 +214,50 @@ impl Package {
             .collect()
     }
 
-    pub fn get_source_by_id(&mut self, source_id: &SourceId) -> Result<Source> {
+    pub fn get_source_by_id(&mut self, source_id: &str) -> Result<Source> {
         self.read_json_content_by_id(PackageContentId::Source { source_id })
     }
 
-    pub fn get_bucket_by_id(&mut self, bucket_id: &BucketId) -> Result<Bucket> {
+    pub fn get_bucket_by_id(&mut self, bucket_id: &str) -> Result<Bucket> {
         self.read_json_content_by_id(PackageContentId::Bucket { bucket_id })
     }
     pub fn get_email_batch(
         &mut self,
-        bucket_id: &BucketId,
+        bucket_id: &str,
         key: EmailBatchKey,
-    ) -> Result<Vec<NewEmail>> {
+    ) -> Result<Vec<EmailNew>> {
         let content_id = PackageContentId::EmailBatch { key, bucket_id };
 
         self.read_jsonl_content_by_id(content_id)
     }
 
-    pub fn get_email_batch_count_for_bucket(&mut self, bucket_id: &BucketId) -> usize {
+    pub fn get_email_batch_count_for_bucket(&mut self, bucket_id: &str) -> usize {
         self.get_filenames_with_postfix_and_extension(EMAILS_POSTFIX_AND_EXTENSION)
             .iter()
             .filter(|filename| {
                 let path = Path::new(filename);
                 path.file_name()
-                    .is_some_and(|name| name.to_string_lossy().starts_with(&bucket_id.0))
+                    .is_some_and(|name| name.to_string_lossy().starts_with(bucket_id))
             })
             .count()
     }
     pub fn get_comment_batch(
         &mut self,
-        source_id: &SourceId,
+        source_id: &str,
         key: CommentBatchKey,
-    ) -> Result<Vec<NewAnnotatedComment>> {
+    ) -> Result<Vec<AnnotatedComment>> {
         let content_id = PackageContentId::CommentBatch { key, source_id };
 
         self.read_jsonl_content_by_id(content_id)
     }
 
-    pub fn get_comment_batch_count_for_source(&mut self, source_id: &SourceId) -> usize {
+    pub fn get_comment_batch_count_for_source(&mut self, source_id: &str) -> usize {
         self.get_filenames_with_postfix_and_extension(COMMENTS_POSTFIX_AND_EXTENSION)
             .iter()
             .filter(|filename| {
                 let path = Path::new(filename);
                 path.file_name()
-                    .is_some_and(|name| name.to_string_lossy().starts_with(&source_id.0))
+                    .is_some_and(|name| name.to_string_lossy().starts_with(source_id))
             })
             .count()
     }
@@ -378,7 +378,7 @@ impl PackageWriter {
 
     pub fn write_email_batch(
         &mut self,
-        bucket_id: &BucketId,
+        bucket_id: &str,
         key: EmailBatchKey,
         emails: &[Email],
     ) -> Result<()> {
@@ -387,7 +387,7 @@ impl PackageWriter {
 
     pub fn write_comment_batch(
         &mut self,
-        source_id: &SourceId,
+        source_id: &str,
         key: CommentBatchKey,
         comments: &[AnnotatedComment],
     ) -> Result<()> {

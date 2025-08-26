@@ -1,10 +1,14 @@
 use colored::Colorize;
 use log::{error, info, warn};
+use once_cell::sync::Lazy;
 use prettytable::{self, row, Table};
-use reinfer_client::DEFAULT_ENDPOINT;
 use reqwest::Url;
 use std::path::Path;
 use structopt::StructOpt;
+
+// Default endpoint constant (migrated from reinfer_client)
+static DEFAULT_ENDPOINT: Lazy<Url> =
+    Lazy::new(|| Url::parse("https://reinfer.dev").expect("Default URL is well-formed"));
 
 use crate::{
     config::{self, write_reinfer_config, ContextConfig, ReinferConfig},

@@ -1,8 +1,20 @@
-use crate::printer::Printer;
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::{BucketIdentifier, Client, SourceIdentifier, TransformTag, UpdateSource};
 use structopt::StructOpt;
+
+use openapi::{
+    apis::{configuration::Configuration, sources_api::update_source},
+    models,
+};
+
+use crate::printer::Printer;
+use crate::utils::{
+    types::identifiers::{resolve_bucket, resolve_source},
+    types::transform::TransformTag,
+    BucketIdentifier, SourceIdentifier,
+};
+
+// Custom types for CLI arguments
 
 #[derive(Debug, StructOpt)]
 pub struct UpdateSourceArgs {
@@ -35,7 +47,7 @@ pub struct UpdateSourceArgs {
     detach_bucket: bool,
 }
 
-pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Result<()> {
+pub fn update(config: &Configuration, args: &UpdateSourceArgs, printer: &Printer) -> Result<()> {
     let UpdateSourceArgs {
         source,
         title,
@@ -46,46 +58,59 @@ pub fn update(client: &Client, args: &UpdateSourceArgs, printer: &Printer) -> Re
         detach_bucket,
     } = args;
 
-    let existing_source = client
-        .get_source(source.to_owned())
-        .context("Fetching existing source")?;
+    // Get existing source to determine owner/name for update
+    let existing_source = resolve_source(config, source).context("Fetching existing source")?;
 
-    let bucket_id = match bucket.to_owned() {
-        Some(BucketIdentifier::Id(bucket_id)) => Some(bucket_id),
-        Some(full_name @ BucketIdentifier::FullName(_)) => Some(
-            client
-                .get_bucket(full_name)
-                .context("Fetching bucket for id.")?
-                .id,
-        ),
-        None => existing_source.bucket_id.clone(),
+    // Handle bucket ID resolution
+    let bucket_id = match bucket {
+        Some(bucket_identifier) => {
+            let resolved_bucket =
+                resolve_bucket(config, bucket_identifier).context("Failed to resolve bucket")?;
+            Some(Some(resolved_bucket.id))
+        }
+        None => {
+            // Use existing bucket ID if not detaching
+            if *detach_bucket {
+                None
+            } else {
+                existing_source.bucket_id.map(Some)
+            }
+        }
     };
 
-    let bucket_id = if *detach_bucket { None } else { bucket_id };
-
-    let source_full_name = match source.to_owned() {
-        SourceIdentifier::FullName(name) => name,
-        SourceIdentifier::Id(_) => existing_source.full_name(),
+    // Create the source update request
+    let source_update = models::SourceUpdate {
+        _kind: None,    // Don't update the kind
+        language: None, // Don't update the language
+        title: title.clone(),
+        description: description.clone(),
+        should_translate: *should_translate,
+        sensitive_properties: None,
+        bucket_id,
+        email_transform_tag: transform_tag.as_ref().map(|t| t.as_str().to_string()),
+        email_transform_version: None,
     };
 
-    let source = client
-        .update_source(
-            &source_full_name,
-            UpdateSource {
-                title: title.as_deref(),
-                description: description.as_deref(),
-                should_translate: *should_translate,
-                bucket_id,
-                sensitive_properties: None,
-                transform_tag: transform_tag.as_ref(),
-            },
-        )
-        .context("Operation to update a source has failed")?;
+    let update_request = models::UpdateSourceRequest {
+        source: Box::new(source_update),
+    };
+
+    // Call the generated API
+    let response = update_source(
+        config,
+        &existing_source.owner,
+        &existing_source.name,
+        update_request,
+    )
+    .context("Failed to update source")?;
+
+    let updated_source = *response.source;
+
     info!(
-        "Source `{}` [id: {}] updated successfully",
-        source.full_name().0,
-        source.id.0
+        "Source `{}/{}` [id: {}] updated successfully",
+        updated_source.owner, updated_source.name, updated_source.id
     );
-    printer.print_resources(&[source])?;
+
+    printer.print_resources(&[updated_source])?;
     Ok(())
 }

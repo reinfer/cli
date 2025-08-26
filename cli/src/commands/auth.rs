@@ -1,7 +1,8 @@
 use anyhow::{anyhow, Result};
 use structopt::StructOpt;
 
-use reinfer_client::Client;
+use crate::utils::auth::refresh::refresh_user_permissions as refresh_permissions_impl;
+use openapi::apis::configuration::Configuration;
 
 #[derive(Debug, StructOpt)]
 pub enum AuthArgs {
@@ -10,8 +11,8 @@ pub enum AuthArgs {
     RefreshPermissions {},
 }
 
-pub fn refresh_user_permissions(client: &Client, verbose: bool) -> Result<()> {
-    let result = client.refresh_user_permissions()?;
+pub fn refresh_user_permissions(config: &Configuration, verbose: bool) -> Result<()> {
+    let result = refresh_permissions_impl(config)?;
 
     match result.permissions_refreshed {
         Some(true) => {
@@ -22,7 +23,7 @@ pub fn refresh_user_permissions(client: &Client, verbose: bool) -> Result<()> {
             Ok(())
         }
         Some(_) => {
-            log::error!("Failed to refresh permissions. Please login with the following link and try again\n{}", client.base_url());
+            log::error!("Failed to refresh permissions. Please login with the following link and try again\n{}", config.base_path);
             Err(anyhow!("Failed to refresh permissions"))
         }
         None => {
@@ -35,8 +36,8 @@ pub fn refresh_user_permissions(client: &Client, verbose: bool) -> Result<()> {
     }
 }
 
-pub fn run(args: &AuthArgs, client: Client) -> Result<()> {
+pub fn run(args: &AuthArgs, config: &Configuration) -> Result<()> {
     match args {
-        AuthArgs::RefreshPermissions {} => refresh_user_permissions(&client, true),
+        AuthArgs::RefreshPermissions {} => refresh_user_permissions(config, true),
     }
 }

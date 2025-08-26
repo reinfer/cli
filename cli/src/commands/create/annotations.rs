@@ -1,26 +1,47 @@
-use crate::progress::{Options as ProgressOptions, Progress};
-use anyhow::{Context, Result};
-use colored::Colorize;
-use log::info;
-use reinfer_client::{
-    resources::comment::{should_skip_serializing_optional_vec, EitherLabelling, HasAnnotations},
-    Client, CommentId, CommentUid, DatasetFullName, DatasetIdentifier, NewEntities, NewLabelling,
-    NewMoonForm, Source, SourceIdentifier,
-};
-use scoped_threadpool::Pool;
-use serde::{Deserialize, Serialize};
-use std::sync::mpsc::channel;
+//! Commands for creating and uploading comment annotations
+
+// Standard library imports
 use std::{
     fs::File,
     io::{self, BufRead, BufReader},
     path::PathBuf,
+    str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
+        mpsc::channel,
         Arc,
     },
 };
+
+// External crate imports
+use anyhow::{Context, Result};
+use colored::Colorize;
+use log::info;
+use scoped_threadpool::Pool;
+use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 
+// OpenAPI imports
+use openapi::{
+    apis::{configuration::Configuration, datasets_api::update_comment_labelling},
+    models::{
+        EntitiesNew, GroupLabellingsRequest, MoonFormGroupUpdate, Source,
+        UpdateCommentLabellingRequest,
+    },
+};
+
+// Local crate imports
+use crate::{
+    progress::{Options as ProgressOptions, Progress},
+    utils::{
+        conversions::{should_skip_serializing_optional_vec, HasAnnotations},
+        resolve_dataset, resolve_source,
+        types::identifiers::{DatasetIdentifier, SourceIdentifier},
+        DatasetFullName,
+    },
+};
+
+/// Command line arguments for creating annotations
 #[derive(Debug, StructOpt)]
 pub struct CreateAnnotationsArgs {
     #[structopt(short = "f", long = "file", parse(from_os_str))]
@@ -48,16 +69,13 @@ pub struct CreateAnnotationsArgs {
     resume_on_error: bool,
 }
 
-pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) -> Result<()> {
-    let source = client
-        .get_source(args.source.clone())
-        .with_context(|| format!("Unable to get source {}", args.source))?;
-    let source_name = source.full_name();
+/// Create annotations from file or stdin and upload them to a dataset
+pub fn create(config: &Configuration, args: &CreateAnnotationsArgs, pool: &mut Pool) -> Result<()> {
+    let source = resolve_source(config, &args.source)?;
+    let source_name = DatasetFullName::from_str(&format!("{}/{}", source.owner, source.name))?;
 
-    let dataset = client
-        .get_dataset(args.dataset.clone())
-        .with_context(|| format!("Unable to get dataset {}", args.dataset))?;
-    let dataset_name = dataset.full_name();
+    let dataset = resolve_dataset(config, &args.dataset)?;
+    let dataset_name = DatasetFullName::from_str(&format!("{}/{}", dataset.owner, dataset.name))?;
 
     let statistics = match &args.annotations_path {
         Some(annotations_path) => {
@@ -65,9 +83,9 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
                 "Uploading comments from file `{}` to source `{}` [id: {}] and dataset `{}` [id: {}]",
                 annotations_path.display(),
                 source_name.0,
-                source.id.0,
+                source.id,
                 dataset_name.0,
-                dataset.id.0,
+                dataset.id,
             );
             let file = BufReader::new(File::open(annotations_path).with_context(|| {
                 format!("Could not open file `{}`", annotations_path.display())
@@ -86,7 +104,7 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
                 Some(progress_bar(file_metadata.len(), &statistics))
             };
             upload_annotations_from_reader(
-                client,
+                config,
                 &source,
                 file,
                 &statistics,
@@ -104,11 +122,11 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
         None => {
             info!(
                 "Uploading annotations from stdin to source `{}` [id: {}] and dataset `{} [id: {}]",
-                source_name.0, source.id.0, dataset_name.0, dataset.id.0
+                source_name.0, source.id, dataset_name.0, dataset.id
             );
             let statistics = Statistics::new();
             upload_annotations_from_reader(
-                client,
+                config,
                 &source,
                 BufReader::new(io::stdin()),
                 &statistics,
@@ -128,20 +146,31 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
     Ok(())
 }
 
+// ============================================================================
+// Traits
+// ============================================================================
+
+/// Trait for tracking annotation upload statistics
 pub trait AnnotationStatistic {
     fn add_annotation(&self);
     fn add_failed_annotation(&self);
 }
 
+/// Trait for tracking attachment upload statistics
 pub trait AttachmentStatistic {
     fn add_attachment(&self);
     fn add_failed_attachment(&self);
 }
 
+// ============================================================================
+// Batch Upload Functions
+// ============================================================================
+
+/// Upload a batch of annotations to a dataset
 #[allow(clippy::too_many_arguments)]
 pub fn upload_batch_of_annotations(
     annotations_to_upload: &mut Vec<NewAnnotation>,
-    client: &Client,
+    config: &Configuration,
     source: &Source,
     statistics: &(impl AnnotationStatistic + std::marker::Sync),
     dataset_name: &DatasetFullName,
@@ -155,35 +184,24 @@ pub fn upload_batch_of_annotations(
             let error_sender = error_sender.clone();
 
             scope.execute(move || {
-                let comment_uid =
-                    CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0));
+                let comment_uid = format!("{}.{}", source.id, new_comment.comment.id);
 
-                let result = (if new_comment.moon_forms.is_none() {
-                    client.update_labelling(
-                        dataset_name,
-                        &comment_uid,
-                        new_comment
-                            .labelling
-                            .clone()
-                            .map(Into::<Vec<NewLabelling>>::into)
-                            .as_deref(),
-                        new_comment.entities.as_ref(),
-                        None,
-                    )
-                } else {
-                    client.update_labelling(
-                        dataset_name,
-                        &comment_uid,
-                        None,
-                        new_comment.entities.as_ref(),
-                        new_comment.moon_forms.as_deref(),
-                    )
-                })
+                let request = UpdateCommentLabellingRequest {
+                    context: None,
+                    labelling: new_comment.labelling.clone(),
+                    entities: new_comment.entities.clone().map(Box::new),
+                    moon_forms: new_comment.moon_forms.clone(),
+                };
+
+                let result = update_comment_labelling(
+                    config,
+                    dataset_name.owner(),
+                    dataset_name.name(),
+                    &comment_uid,
+                    request,
+                )
                 .with_context(|| {
-                    format!(
-                        "Could not update labelling for comment `{}`",
-                        &comment_uid.0
-                    )
+                    format!("Could not update labelling for comment `{}`", &comment_uid)
                 });
 
                 if let Err(error) = result {
@@ -209,9 +227,10 @@ pub fn upload_batch_of_annotations(
     }
 }
 
+/// Upload annotations from a reader (file or stdin) in batches
 #[allow(clippy::too_many_arguments)]
 fn upload_annotations_from_reader(
-    client: &Client,
+    config: &Configuration,
     source: &Source,
     annotations: impl BufRead,
     statistics: &Statistics,
@@ -230,7 +249,7 @@ fn upload_annotations_from_reader(
             if annotations_to_upload.len() >= batch_size {
                 upload_batch_of_annotations(
                     &mut annotations_to_upload,
-                    client,
+                    config,
                     source,
                     statistics,
                     dataset_name,
@@ -244,7 +263,7 @@ fn upload_annotations_from_reader(
     if !annotations_to_upload.is_empty() {
         upload_batch_of_annotations(
             &mut annotations_to_upload,
-            client,
+            config,
             source,
             statistics,
             dataset_name,
@@ -256,23 +275,27 @@ fn upload_annotations_from_reader(
     Ok(())
 }
 
-/// This struct only contains the minimal amount of data required to be able to upload annotations
-/// via the api, while still matching the structure of the NewComment struct.  This makes the jsonl
-/// files downloaded via `re` compatible with the `re create annotations` command.
+// ============================================================================
+// Data Structures
+// ============================================================================
+
+/// Minimal comment structure containing only the ID needed for annotation uploads
+/// This makes JSONL files downloaded via `re` compatible with the `re create annotations` command
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct CommentIdComment {
-    pub id: CommentId,
+    pub id: String,
 }
 
+/// Structure for annotation data that can be uploaded to the API
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NewAnnotation {
     pub comment: CommentIdComment,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub labelling: Option<EitherLabelling>,
+    pub labelling: Option<Vec<GroupLabellingsRequest>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub entities: Option<NewEntities>,
+    pub entities: Option<EntitiesNew>,
     #[serde(skip_serializing_if = "should_skip_serializing_optional_vec", default)]
-    pub moon_forms: Option<Vec<NewMoonForm>>,
+    pub moon_forms: Option<Vec<MoonFormGroupUpdate>>,
 }
 
 impl HasAnnotations for NewAnnotation {
@@ -283,6 +306,7 @@ impl HasAnnotations for NewAnnotation {
     }
 }
 
+/// Create an iterator that reads and parses annotations from a reader
 fn read_annotations_iter<'a>(
     mut annotations: impl BufRead + 'a,
     statistics: Option<&'a Statistics>,
@@ -315,6 +339,11 @@ fn read_annotations_iter<'a>(
     })
 }
 
+// ============================================================================
+// Statistics Tracking
+// ============================================================================
+
+/// Thread-safe statistics tracking for annotation uploads
 #[derive(Debug)]
 pub struct Statistics {
     bytes_read: AtomicUsize,
@@ -361,6 +390,7 @@ impl Statistics {
     }
 }
 
+/// Generate basic progress statistics for display
 fn basic_statistics(statistics: &Statistics) -> (u64, String) {
     let bytes_read = statistics.bytes_read();
     let num_annotations = statistics.num_annotations();
@@ -383,6 +413,7 @@ fn basic_statistics(statistics: &Statistics) -> (u64, String) {
     )
 }
 
+/// Create a progress bar for annotation upload tracking
 fn progress_bar(total_bytes: u64, statistics: &Arc<Statistics>) -> Progress {
     Progress::new(
         basic_statistics,

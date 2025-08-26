@@ -3,14 +3,17 @@ mod project;
 mod source;
 mod users;
 
+use anyhow::Result;
+use structopt::StructOpt;
+
+use openapi::apis::configuration::Configuration;
+
+use crate::printer::Printer;
+
 use self::{
     dataset::UpdateDatasetArgs, project::UpdateProjectArgs, source::UpdateSourceArgs,
     users::UpdateUsersArgs,
 };
-use crate::printer::Printer;
-use anyhow::Result;
-use reinfer_client::Client;
-use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub enum UpdateArgs {
@@ -31,11 +34,11 @@ pub enum UpdateArgs {
     Users(UpdateUsersArgs),
 }
 
-pub fn run(update_args: &UpdateArgs, client: Client, printer: &Printer) -> Result<()> {
+pub fn run(update_args: &UpdateArgs, config: &Configuration, printer: &Printer) -> Result<()> {
     match update_args {
-        UpdateArgs::Source(source_args) => source::update(&client, source_args, printer),
-        UpdateArgs::Dataset(dataset_args) => dataset::update(&client, dataset_args, printer),
-        UpdateArgs::Project(project_args) => project::update(&client, project_args, printer),
-        UpdateArgs::Users(users_args) => users::update(&client, users_args),
+        UpdateArgs::Source(source_args) => source::update(config, source_args, printer),
+        UpdateArgs::Dataset(dataset_args) => dataset::update(config, dataset_args, printer),
+        UpdateArgs::Project(project_args) => project::update(config, project_args, printer),
+        UpdateArgs::Users(users_args) => users::update(config, users_args),
     }
 }

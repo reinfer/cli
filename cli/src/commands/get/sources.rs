@@ -1,84 +1,131 @@
+use crate::{
+    printer::{PrintableSource, Printer},
+    utils::{resolve_source, SourceIdentifier},
+};
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::{resources::source::StatisticsRequestParams, Client, SourceIdentifier};
 use std::collections::HashMap;
+use std::str::FromStr;
 use structopt::StructOpt;
 
-use crate::printer::{PrintableSource, Printer};
+use openapi::{
+    apis::{
+        buckets_api::get_all_buckets,
+        configuration::Configuration,
+        sources_api::{get_all_sources, get_source_statistics},
+    },
+    models,
+};
 
 #[derive(Debug, StructOpt)]
 pub struct GetSourcesArgs {
-    #[structopt(name = "source")]
     /// If specified, only list this source (name or id)
+    #[structopt(name = "source", parse(try_from_str = SourceIdentifier::from_str))]
     source: Option<SourceIdentifier>,
-
-    #[structopt(long = "stats")]
     /// Whether to include source statistics in response
+    #[structopt(long = "stats")]
     include_stats: bool,
 }
 
-pub fn get(client: &Client, args: &GetSourcesArgs, printer: &Printer) -> Result<()> {
+/// Retrieve sources with optional statistics
+pub fn get(config: &Configuration, args: &GetSourcesArgs, printer: &Printer) -> Result<()> {
     let GetSourcesArgs {
         source,
         include_stats,
     } = args;
 
-    let sources = if let Some(source) = source {
-        vec![client
-            .get_source(source.clone())
-            .context("Operation to list sources has failed.")?]
+    let sources = if let Some(source_identifier) = source {
+        vec![resolve_source(config, source_identifier)?]
     } else {
-        let mut sources = client
-            .get_sources()
-            .context("Operation to list sources has failed.")?;
-        sources.sort_unstable_by(|lhs, rhs| {
-            (&lhs.owner.0, &lhs.name.0).cmp(&(&rhs.owner.0, &rhs.name.0))
-        });
-        sources
+        get_all_sources_sorted(config)?
     };
 
-    let buckets: HashMap<_, _> = client
-        .get_buckets()
-        .context("Operation to list buckets has failed.")?
+    let buckets_by_id = get_buckets_map(config)?;
+    let source_stats = if *include_stats {
+        collect_source_statistics(config, &sources)?
+    } else {
+        HashMap::new()
+    };
+
+    let printable_sources = create_printable_sources(sources, buckets_by_id, source_stats);
+    printer.print_resources(&printable_sources)
+}
+
+/// Retrieve all sources, sorted by owner and name  
+fn get_all_sources_sorted(config: &Configuration) -> Result<Vec<models::Source>> {
+    let mut sources = get_all_sources(config)
+        .context("Failed to list sources")?
+        .sources;
+
+    sources.sort_unstable_by(|a, b| (&a.owner, &a.name).cmp(&(&b.owner, &b.name)));
+    Ok(sources)
+}
+
+/// Get a map of bucket ID to bucket for lookups
+fn get_buckets_map(config: &Configuration) -> Result<HashMap<String, models::Bucket>> {
+    let buckets = get_all_buckets(config)
+        .context("Failed to list buckets")?
+        .buckets;
+
+    Ok(buckets
         .into_iter()
         .map(|bucket| (bucket.id.clone(), bucket))
-        .collect();
+        .collect())
+}
 
-    let mut source_stats: HashMap<_, _> = HashMap::new();
-    if *include_stats {
-        sources.iter().try_for_each(|source| -> Result<()> {
-            info!("Getting statistics for source {}", source.full_name().0);
-            let stats = client
-                .get_source_statistics(
-                    &source.full_name(),
-                    &StatisticsRequestParams {
-                        comment_filter: Default::default(),
-                    },
+/// Collect statistics for all provided sources
+fn collect_source_statistics(
+    config: &Configuration,
+    sources: &[models::Source],
+) -> Result<HashMap<String, models::SourceStatistics>> {
+    let mut source_stats = HashMap::new();
+
+    for source in sources {
+        info!(
+            "Getting statistics for source {}/{}",
+            source.owner, source.name
+        );
+
+        let request = models::GetSourceStatisticsRequest {
+            comment_filter: Some(models::CommentFilter::default()),
+            ..Default::default()
+        };
+
+        let response = get_source_statistics(config, &source.owner, &source.name, request)
+            .with_context(|| {
+                format!(
+                    "Failed to get statistics for source {}/{}",
+                    source.owner, source.name
                 )
-                .context("Could not get statistics for source")?;
+            })?;
 
-            source_stats.insert(source.id.clone(), stats);
-            Ok(())
-        })?;
-    };
+        source_stats.insert(source.id.clone(), *response.statistics);
+    }
 
-    let printable_sources: Vec<PrintableSource> = sources
+    Ok(source_stats)
+}
+
+/// Create printable source objects with optional bucket and statistics
+fn create_printable_sources(
+    sources: Vec<models::Source>,
+    buckets_by_id: HashMap<String, models::Bucket>,
+    source_stats: HashMap<String, models::SourceStatistics>,
+) -> Vec<PrintableSource> {
+    sources
         .into_iter()
         .map(|source| {
             let bucket = source
                 .bucket_id
                 .as_ref()
-                .and_then(|id| buckets.get(id))
+                .and_then(|id| buckets_by_id.get(id))
                 .cloned();
-
             let stats = source_stats.get(&source.id).cloned();
+
             PrintableSource {
                 source,
                 bucket,
                 stats,
             }
         })
-        .collect();
-
-    printer.print_resources(&printable_sources)
+        .collect()
 }

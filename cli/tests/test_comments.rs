@@ -2,8 +2,24 @@ use crate::{TestCli, TestDataset, TestSource};
 use anyhow::anyhow;
 use backoff::{retry, ExponentialBackoff};
 use chrono::DateTime;
+use openapi::models::{AnnotatedComment, Comment, CommentNew};
 use pretty_assertions::assert_eq;
-use reinfer_client::{AnnotatedComment, Comment, NewAnnotatedComment, NewComment};
+use serde::{Deserialize, Serialize};
+
+// Custom struct for new annotated comments (OpenAPI equivalent)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewAnnotatedComment {
+    pub comment: CommentNew,
+    pub labelling: Option<Vec<openapi::models::GroupLabellingsRequest>>,
+    pub entities: Option<openapi::models::EntitiesNew>,
+    pub moon_forms: Option<Vec<openapi::models::MoonFormGroupUpdate>>,
+}
+
+impl NewAnnotatedComment {
+    pub fn has_annotations(&self) -> bool {
+        self.labelling.is_some() || self.entities.is_some() || self.moon_forms.is_some()
+    }
+}
 
 #[test]
 fn test_comments_lifecycle_basic() {
@@ -67,20 +83,26 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
     let mut output_comments: Vec<Comment> = output
         .lines()
         .map(|line| serde_json::from_str(line).expect("invalid comment"))
-        .map(|annotated_comment: AnnotatedComment| annotated_comment.comment)
+        .map(|annotated_comment: AnnotatedComment| *annotated_comment.comment)
         .collect();
     output_comments.sort_by(|a, b| a.id.cmp(&b.id));
 
     let mut input_comments = annotated_comments
         .iter()
         .map(|annotated_comment| annotated_comment.comment.clone())
-        .collect::<Vec<NewComment>>();
+        .collect::<Vec<CommentNew>>();
     input_comments.sort_by(|a, b| a.id.cmp(&b.id));
 
     for (input_comment, output_comment) in input_comments.iter().zip(output_comments.iter()) {
         assert_eq!(input_comment.id, output_comment.id);
-        assert_eq!(input_comment.messages, output_comment.messages);
-        assert_eq!(input_comment.timestamp, output_comment.timestamp);
+        assert_eq!(
+            input_comment.messages.as_ref(),
+            Some(&output_comment.messages)
+        );
+        assert_eq!(
+            input_comment.timestamp.as_ref(),
+            Some(&output_comment.timestamp)
+        );
     }
 
     // Test getting a comment by id to check the content matches
@@ -89,16 +111,28 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
         "get",
         "comment",
         &format!("--source={}", source.identifier()),
-        &test_comment.id.0,
+        &test_comment.id,
     ]);
     let fetched_comment: AnnotatedComment =
         serde_json::from_str(&output).expect("invalid annotated comment fetched");
     assert_eq!(test_comment.id, fetched_comment.comment.id);
-    assert_eq!(test_comment.messages, fetched_comment.comment.messages);
-    assert_eq!(test_comment.timestamp, fetched_comment.comment.timestamp);
     assert_eq!(
-        test_comment.user_properties,
-        fetched_comment.comment.user_properties
+        test_comment.messages.as_ref(),
+        Some(&fetched_comment.comment.messages)
+    );
+    assert_eq!(
+        test_comment.timestamp.as_ref(),
+        Some(&fetched_comment.comment.timestamp)
+    );
+    // The API normalizes None user_properties to an empty HashMap
+    let empty_props = std::collections::HashMap::new();
+    let expected_user_properties = test_comment
+        .user_properties
+        .as_ref()
+        .unwrap_or(&empty_props);
+    assert_eq!(
+        expected_user_properties,
+        &fetched_comment.comment.user_properties
     );
 
     // Deleting one comment reduces the comment count in the source
@@ -106,7 +140,7 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
         "delete",
         "comments",
         &format!("--source={}", source.identifier()),
-        &annotated_comments.first().unwrap().comment.id.0,
+        &annotated_comments.first().unwrap().comment.id,
     ]);
     assert!(output.is_empty());
 
@@ -118,7 +152,7 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
     args.extend(
         annotated_comments
             .iter()
-            .map(|annotated_comment| annotated_comment.comment.id.0.as_str()),
+            .map(|annotated_comment| annotated_comment.comment.id.as_str()),
     );
     let output = cli.run(&args);
     assert!(output.is_empty());
@@ -143,10 +177,10 @@ fn test_delete_comments_in_range() {
 
     let cli = TestCli::get();
     let source = TestSource::new();
-    let dataset1 = TestDataset::new_args(&[&format!("--source={}", source.identifier())]);
 
+    let dataset1 = TestDataset::new_args(&[&format!("--source={}", source.identifier())]);
     // Upload our test data
-    let output = cli.run_with_stdin(
+    let output: String = cli.run_with_stdin(
         [
             "create",
             "comments",
@@ -198,8 +232,11 @@ fn test_delete_comments_in_range() {
         .filter(|comment| {
             // N.B. to / from are inclusive
             !comment.has_annotations()
-                && comment.comment.timestamp <= to_timestamp
-                && comment.comment.timestamp >= from_timestamp
+                && comment.comment.timestamp.as_ref().map_or(false, |ts| {
+                    DateTime::parse_from_rfc3339(ts)
+                        .map(|dt| dt <= to_timestamp && dt >= from_timestamp)
+                        .unwrap_or(false)
+                })
         })
         .count();
 
