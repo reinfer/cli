@@ -10,6 +10,7 @@ use std::{
 };
 
 pub fn init_env_logger(verbose: bool) {
+    // this closure formats logging, choose colour and determines level of verbosity
     let format = |formatter: &mut LogFormatter, record: &LogRecord<'_>| {
         let level = match record.level() {
             LogLevel::Debug => LOG_PREFIX_DEBUG.deref(),

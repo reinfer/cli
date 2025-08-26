@@ -206,6 +206,7 @@ fn check_if_context_is_a_required_field(
     Ok(())
 }
 
+// the if let part checks if args.config is Some(path), if it is, use it, or else, warn and use it
 fn find_configuration(args: &Args) -> Result<PathBuf> {
     let config_path = if let Some(config_path) = args.config.clone() {
         if !config_path.exists() {
