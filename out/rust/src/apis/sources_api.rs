@@ -107,7 +107,7 @@ pub enum UpdateSourceError {
 
 
 /// Create a source
-pub async fn create_source(configuration: &configuration::Configuration, owner: &str, source_name: &str, create_source_request: models::CreateSourceRequest) -> Result<models::CreateSourceResponse, Error<CreateSourceError>> {
+pub fn create_source(configuration: &configuration::Configuration, owner: &str, source_name: &str, create_source_request: models::CreateSourceRequest) -> Result<models::CreateSourceResponse, Error<CreateSourceError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -129,10 +129,10 @@ pub async fn create_source(configuration: &configuration::Configuration, owner: 
     local_var_req_builder = local_var_req_builder.json(&create_source_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -144,7 +144,7 @@ pub async fn create_source(configuration: &configuration::Configuration, owner: 
 }
 
 /// Delete a source
-pub async fn delete_source(configuration: &configuration::Configuration, source_id: &str) -> Result<models::DeleteSourceResponse, Error<DeleteSourceError>> {
+pub fn delete_source(configuration: &configuration::Configuration, source_id: &str) -> Result<models::DeleteSourceResponse, Error<DeleteSourceError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -165,10 +165,10 @@ pub async fn delete_source(configuration: &configuration::Configuration, source_
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -180,7 +180,7 @@ pub async fn delete_source(configuration: &configuration::Configuration, source_
 }
 
 /// Get all sources
-pub async fn get_all_sources(configuration: &configuration::Configuration, ) -> Result<models::GetAllSourcesResponse, Error<GetAllSourcesError>> {
+pub fn get_all_sources(configuration: &configuration::Configuration, ) -> Result<models::GetAllSourcesResponse, Error<GetAllSourcesError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -201,10 +201,10 @@ pub async fn get_all_sources(configuration: &configuration::Configuration, ) -> 
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -216,7 +216,7 @@ pub async fn get_all_sources(configuration: &configuration::Configuration, ) -> 
 }
 
 /// Get all sources in a project
-pub async fn get_all_sources_in_project(configuration: &configuration::Configuration, owner: &str) -> Result<models::GetAllSourcesInProjectResponse, Error<GetAllSourcesInProjectError>> {
+pub fn get_all_sources_in_project(configuration: &configuration::Configuration, owner: &str) -> Result<models::GetAllSourcesInProjectResponse, Error<GetAllSourcesInProjectError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -237,10 +237,10 @@ pub async fn get_all_sources_in_project(configuration: &configuration::Configura
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -252,7 +252,7 @@ pub async fn get_all_sources_in_project(configuration: &configuration::Configura
 }
 
 /// Get info about email transform
-pub async fn get_email_transform_tag_info(configuration: &configuration::Configuration, transform_tag: &str) -> Result<models::GetEmailTransformTagInfoResponse, Error<GetEmailTransformTagInfoError>> {
+pub fn get_email_transform_tag_info(configuration: &configuration::Configuration, transform_tag: &str) -> Result<models::GetEmailTransformTagInfoResponse, Error<GetEmailTransformTagInfoError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -273,10 +273,10 @@ pub async fn get_email_transform_tag_info(configuration: &configuration::Configu
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -288,7 +288,7 @@ pub async fn get_email_transform_tag_info(configuration: &configuration::Configu
 }
 
 /// Get a source by project and name
-pub async fn get_source(configuration: &configuration::Configuration, owner: &str, source_name: &str) -> Result<models::GetSourceResponse, Error<GetSourceError>> {
+pub fn get_source(configuration: &configuration::Configuration, owner: &str, source_name: &str) -> Result<models::GetSourceResponse, Error<GetSourceError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -309,10 +309,10 @@ pub async fn get_source(configuration: &configuration::Configuration, owner: &st
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -324,7 +324,7 @@ pub async fn get_source(configuration: &configuration::Configuration, owner: &st
 }
 
 /// Get a source by ID
-pub async fn get_source_by_id(configuration: &configuration::Configuration, source_id: &str) -> Result<models::GetSourceByIdResponse, Error<GetSourceByIdError>> {
+pub fn get_source_by_id(configuration: &configuration::Configuration, source_id: &str) -> Result<models::GetSourceByIdResponse, Error<GetSourceByIdError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -345,10 +345,10 @@ pub async fn get_source_by_id(configuration: &configuration::Configuration, sour
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -360,7 +360,7 @@ pub async fn get_source_by_id(configuration: &configuration::Configuration, sour
 }
 
 /// Get source statistics
-pub async fn get_source_statistics(configuration: &configuration::Configuration, owner: &str, source_name: &str, get_source_statistics_request: models::GetSourceStatisticsRequest) -> Result<models::GetSourceStatisticsResponse, Error<GetSourceStatisticsError>> {
+pub fn get_source_statistics(configuration: &configuration::Configuration, owner: &str, source_name: &str, get_source_statistics_request: models::GetSourceStatisticsRequest) -> Result<models::GetSourceStatisticsResponse, Error<GetSourceStatisticsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -382,10 +382,10 @@ pub async fn get_source_statistics(configuration: &configuration::Configuration,
     local_var_req_builder = local_var_req_builder.json(&get_source_statistics_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -397,7 +397,7 @@ pub async fn get_source_statistics(configuration: &configuration::Configuration,
 }
 
 /// Get threads by source
-pub async fn get_threads_by_source(configuration: &configuration::Configuration, owner: &str, source_name: &str) -> Result<models::GetThreadsBySourceResponse, Error<GetThreadsBySourceError>> {
+pub fn get_threads_by_source(configuration: &configuration::Configuration, owner: &str, source_name: &str) -> Result<models::GetThreadsBySourceResponse, Error<GetThreadsBySourceError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -418,10 +418,10 @@ pub async fn get_threads_by_source(configuration: &configuration::Configuration,
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -433,7 +433,7 @@ pub async fn get_threads_by_source(configuration: &configuration::Configuration,
 }
 
 /// Update a source
-pub async fn update_source(configuration: &configuration::Configuration, owner: &str, source_name: &str, update_source_request: models::UpdateSourceRequest) -> Result<models::UpdateSourceResponse, Error<UpdateSourceError>> {
+pub fn update_source(configuration: &configuration::Configuration, owner: &str, source_name: &str, update_source_request: models::UpdateSourceRequest) -> Result<models::UpdateSourceResponse, Error<UpdateSourceError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -455,10 +455,10 @@ pub async fn update_source(configuration: &configuration::Configuration, owner: 
     local_var_req_builder = local_var_req_builder.json(&update_source_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

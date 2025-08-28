@@ -89,7 +89,7 @@ pub enum UpdateProjectError {
 
 
 /// Create a project
-pub async fn create_project(configuration: &configuration::Configuration, name: &str, create_project_request: models::CreateProjectRequest) -> Result<models::CreateProjectResponse, Error<CreateProjectError>> {
+pub fn create_project(configuration: &configuration::Configuration, name: &str, create_project_request: models::CreateProjectRequest) -> Result<models::CreateProjectResponse, Error<CreateProjectError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -111,10 +111,10 @@ pub async fn create_project(configuration: &configuration::Configuration, name: 
     local_var_req_builder = local_var_req_builder.json(&create_project_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -126,7 +126,7 @@ pub async fn create_project(configuration: &configuration::Configuration, name: 
 }
 
 /// Create a project with provisioned resources
-pub async fn create_project_setup(configuration: &configuration::Configuration, name: &str, create_project_setup_request: models::CreateProjectSetupRequest) -> Result<models::CreateProjectSetupResponse, Error<CreateProjectSetupError>> {
+pub fn create_project_setup(configuration: &configuration::Configuration, name: &str, create_project_setup_request: models::CreateProjectSetupRequest) -> Result<models::CreateProjectSetupResponse, Error<CreateProjectSetupError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -148,10 +148,10 @@ pub async fn create_project_setup(configuration: &configuration::Configuration, 
     local_var_req_builder = local_var_req_builder.json(&create_project_setup_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -163,7 +163,7 @@ pub async fn create_project_setup(configuration: &configuration::Configuration, 
 }
 
 /// Delete a project
-pub async fn delete_project(configuration: &configuration::Configuration, name: &str, force: Option<bool>) -> Result<models::DeleteProjectResponse, Error<DeleteProjectError>> {
+pub fn delete_project(configuration: &configuration::Configuration, name: &str, force: Option<bool>) -> Result<models::DeleteProjectResponse, Error<DeleteProjectError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -187,10 +187,10 @@ pub async fn delete_project(configuration: &configuration::Configuration, name: 
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -202,7 +202,7 @@ pub async fn delete_project(configuration: &configuration::Configuration, name: 
 }
 
 /// Get all projects
-pub async fn get_all_projects(configuration: &configuration::Configuration, cm_only: Option<bool>) -> Result<models::GetAllProjectsResponse, Error<GetAllProjectsError>> {
+pub fn get_all_projects(configuration: &configuration::Configuration, cm_only: Option<bool>) -> Result<models::GetAllProjectsResponse, Error<GetAllProjectsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -226,10 +226,10 @@ pub async fn get_all_projects(configuration: &configuration::Configuration, cm_o
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -241,7 +241,7 @@ pub async fn get_all_projects(configuration: &configuration::Configuration, cm_o
 }
 
 /// Get all projects
-pub async fn get_all_projects_v1(configuration: &configuration::Configuration, ) -> Result<models::GetAllProjectsV1Response, Error<GetAllProjectsV1Error>> {
+pub fn get_all_projects_v1(configuration: &configuration::Configuration, ) -> Result<models::GetAllProjectsV1Response, Error<GetAllProjectsV1Error>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -262,10 +262,10 @@ pub async fn get_all_projects_v1(configuration: &configuration::Configuration, )
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -277,7 +277,7 @@ pub async fn get_all_projects_v1(configuration: &configuration::Configuration, )
 }
 
 /// Get a project by name
-pub async fn get_project(configuration: &configuration::Configuration, name: &str) -> Result<models::GetProjectResponse, Error<GetProjectError>> {
+pub fn get_project(configuration: &configuration::Configuration, name: &str) -> Result<models::GetProjectResponse, Error<GetProjectError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -298,10 +298,10 @@ pub async fn get_project(configuration: &configuration::Configuration, name: &st
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -313,7 +313,7 @@ pub async fn get_project(configuration: &configuration::Configuration, name: &st
 }
 
 /// Get resource counts for a Project
-pub async fn get_project_resource_counts(configuration: &configuration::Configuration, name: &str) -> Result<models::GetProjectResourceCountsResponse, Error<GetProjectResourceCountsError>> {
+pub fn get_project_resource_counts(configuration: &configuration::Configuration, name: &str) -> Result<models::GetProjectResourceCountsResponse, Error<GetProjectResourceCountsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -334,10 +334,10 @@ pub async fn get_project_resource_counts(configuration: &configuration::Configur
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -349,7 +349,7 @@ pub async fn get_project_resource_counts(configuration: &configuration::Configur
 }
 
 /// Update a project
-pub async fn update_project(configuration: &configuration::Configuration, name: &str, update_project_request: models::UpdateProjectRequest) -> Result<models::UpdateProjectResponse, Error<UpdateProjectError>> {
+pub fn update_project(configuration: &configuration::Configuration, name: &str, update_project_request: models::UpdateProjectRequest) -> Result<models::UpdateProjectResponse, Error<UpdateProjectError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -371,10 +371,10 @@ pub async fn update_project(configuration: &configuration::Configuration, name: 
     local_var_req_builder = local_var_req_builder.json(&update_project_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

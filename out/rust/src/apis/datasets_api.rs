@@ -179,7 +179,7 @@ pub enum UpdateDatasetError {
 
 
 /// Create a dataset
-pub async fn create_dataset(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, create_dataset_request: models::CreateDatasetRequest) -> Result<models::CreateDatasetResponse, Error<CreateDatasetError>> {
+pub fn create_dataset(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, create_dataset_request: models::CreateDatasetRequest) -> Result<models::CreateDatasetResponse, Error<CreateDatasetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -201,10 +201,10 @@ pub async fn create_dataset(configuration: &configuration::Configuration, owner:
     local_var_req_builder = local_var_req_builder.json(&create_dataset_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -216,7 +216,7 @@ pub async fn create_dataset(configuration: &configuration::Configuration, owner:
 }
 
 /// Delete a dataset by id
-pub async fn delete_dataset_by_id(configuration: &configuration::Configuration, dataset_id: &str) -> Result<models::DeleteDatasetByIdResponse, Error<DeleteDatasetByIdError>> {
+pub fn delete_dataset_by_id(configuration: &configuration::Configuration, dataset_id: &str) -> Result<models::DeleteDatasetByIdResponse, Error<DeleteDatasetByIdError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -237,10 +237,10 @@ pub async fn delete_dataset_by_id(configuration: &configuration::Configuration, 
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -252,7 +252,7 @@ pub async fn delete_dataset_by_id(configuration: &configuration::Configuration, 
 }
 
 /// Delete a dataset
-pub async fn delete_dataset_v1(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::DeleteDatasetResponse, Error<DeleteDatasetV1Error>> {
+pub fn delete_dataset_v1(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::DeleteDatasetResponse, Error<DeleteDatasetV1Error>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -273,10 +273,10 @@ pub async fn delete_dataset_v1(configuration: &configuration::Configuration, own
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -288,7 +288,7 @@ pub async fn delete_dataset_v1(configuration: &configuration::Configuration, own
 }
 
 /// Export dataset
-pub async fn export_dataset(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, export_dataset_request: models::ExportDatasetRequest) -> Result<models::ExportDatasetResponse, Error<ExportDatasetError>> {
+pub fn export_dataset(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, export_dataset_request: models::ExportDatasetRequest) -> Result<models::ExportDatasetResponse, Error<ExportDatasetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -310,10 +310,10 @@ pub async fn export_dataset(configuration: &configuration::Configuration, owner:
     local_var_req_builder = local_var_req_builder.json(&export_dataset_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -325,7 +325,7 @@ pub async fn export_dataset(configuration: &configuration::Configuration, owner:
 }
 
 /// Get all datasets
-pub async fn get_all_datasets(configuration: &configuration::Configuration, ) -> Result<models::GetAllDatasetsResponse, Error<GetAllDatasetsError>> {
+pub fn get_all_datasets(configuration: &configuration::Configuration, ) -> Result<models::GetAllDatasetsResponse, Error<GetAllDatasetsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -346,10 +346,10 @@ pub async fn get_all_datasets(configuration: &configuration::Configuration, ) ->
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -361,7 +361,7 @@ pub async fn get_all_datasets(configuration: &configuration::Configuration, ) ->
 }
 
 /// Get all datasets in a project
-pub async fn get_all_datasets_in_project(configuration: &configuration::Configuration, owner: &str) -> Result<models::GetAllDatasetsInProjectResponse, Error<GetAllDatasetsInProjectError>> {
+pub fn get_all_datasets_in_project(configuration: &configuration::Configuration, owner: &str) -> Result<models::GetAllDatasetsInProjectResponse, Error<GetAllDatasetsInProjectError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -382,10 +382,10 @@ pub async fn get_all_datasets_in_project(configuration: &configuration::Configur
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -397,7 +397,7 @@ pub async fn get_all_datasets_in_project(configuration: &configuration::Configur
 }
 
 /// Get comparison for two filtered groups of verbatims
-pub async fn get_comparison(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, get_comparison_request: models::GetComparisonRequest) -> Result<models::GetComparisonResponse, Error<GetComparisonError>> {
+pub fn get_comparison(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, get_comparison_request: models::GetComparisonRequest) -> Result<models::GetComparisonResponse, Error<GetComparisonError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -419,10 +419,10 @@ pub async fn get_comparison(configuration: &configuration::Configuration, owner:
     local_var_req_builder = local_var_req_builder.json(&get_comparison_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -434,7 +434,7 @@ pub async fn get_comparison(configuration: &configuration::Configuration, owner:
 }
 
 /// Get a dataset by project and name
-pub async fn get_dataset(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetDatasetResponse, Error<GetDatasetError>> {
+pub fn get_dataset(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetDatasetResponse, Error<GetDatasetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -455,10 +455,10 @@ pub async fn get_dataset(configuration: &configuration::Configuration, owner: &s
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -470,7 +470,7 @@ pub async fn get_dataset(configuration: &configuration::Configuration, owner: &s
 }
 
 /// Get dataset statistics
-pub async fn get_dataset_statistics(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, get_dataset_statistics_request: models::GetDatasetStatisticsRequest) -> Result<models::GetDatasetStatisticsResponse, Error<GetDatasetStatisticsError>> {
+pub fn get_dataset_statistics(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, get_dataset_statistics_request: models::GetDatasetStatisticsRequest) -> Result<models::GetDatasetStatisticsResponse, Error<GetDatasetStatisticsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -492,10 +492,10 @@ pub async fn get_dataset_statistics(configuration: &configuration::Configuration
     local_var_req_builder = local_var_req_builder.json(&get_dataset_statistics_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -507,7 +507,7 @@ pub async fn get_dataset_statistics(configuration: &configuration::Configuration
 }
 
 /// Get dataset status
-pub async fn get_dataset_status(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetDatasetStatusResponse, Error<GetDatasetStatusError>> {
+pub fn get_dataset_status(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetDatasetStatusResponse, Error<GetDatasetStatusError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -528,10 +528,10 @@ pub async fn get_dataset_status(configuration: &configuration::Configuration, ow
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -543,7 +543,7 @@ pub async fn get_dataset_status(configuration: &configuration::Configuration, ow
 }
 
 /// Get dataset summary
-pub async fn get_dataset_summary(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, get_dataset_summary_request: models::GetDatasetSummaryRequest) -> Result<models::GetDatasetSummaryResponse, Error<GetDatasetSummaryError>> {
+pub fn get_dataset_summary(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, get_dataset_summary_request: models::GetDatasetSummaryRequest) -> Result<models::GetDatasetSummaryResponse, Error<GetDatasetSummaryError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -565,10 +565,10 @@ pub async fn get_dataset_summary(configuration: &configuration::Configuration, o
     local_var_req_builder = local_var_req_builder.json(&get_dataset_summary_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -580,7 +580,7 @@ pub async fn get_dataset_summary(configuration: &configuration::Configuration, o
 }
 
 /// Get user property summary for a dataset
-pub async fn get_dataset_user_properties_summary(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetDatasetUserPropertiesSummaryResponse, Error<GetDatasetUserPropertiesSummaryError>> {
+pub fn get_dataset_user_properties_summary(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetDatasetUserPropertiesSummaryResponse, Error<GetDatasetUserPropertiesSummaryError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -601,10 +601,10 @@ pub async fn get_dataset_user_properties_summary(configuration: &configuration::
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -616,7 +616,7 @@ pub async fn get_dataset_user_properties_summary(configuration: &configuration::
 }
 
 /// Gets labellings in a dataset for a given set of comment         ids. Note: Calling this endpoint with `compute_moon_predictions` will         be significantly slower.         
-pub async fn get_labellings(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetLabellingsResponse, Error<GetLabellingsError>> {
+pub fn get_labellings(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetLabellingsResponse, Error<GetLabellingsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -637,10 +637,10 @@ pub async fn get_labellings(configuration: &configuration::Configuration, owner:
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -652,7 +652,7 @@ pub async fn get_labellings(configuration: &configuration::Configuration, owner:
 }
 
 /// Query user property values for a dataset
-pub async fn query_dataset_user_property_values(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, query_dataset_user_property_values_request: models::QueryDatasetUserPropertyValuesRequest) -> Result<models::QueryDatasetUserPropertyValuesResponse, Error<QueryDatasetUserPropertyValuesError>> {
+pub fn query_dataset_user_property_values(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, query_dataset_user_property_values_request: models::QueryDatasetUserPropertyValuesRequest) -> Result<models::QueryDatasetUserPropertyValuesResponse, Error<QueryDatasetUserPropertyValuesError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -674,10 +674,10 @@ pub async fn query_dataset_user_property_values(configuration: &configuration::C
     local_var_req_builder = local_var_req_builder.json(&query_dataset_user_property_values_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -689,7 +689,7 @@ pub async fn query_dataset_user_property_values(configuration: &configuration::C
 }
 
 /// Reset annotations to the previous pinned model
-pub async fn reset_annotations_to_previous_pinned_model(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, reset_annotations_to_previous_pinned_model_request: models::ResetAnnotationsToPreviousPinnedModelRequest) -> Result<models::ResetAnnotationsToPreviousPinnedModelResponse, Error<ResetAnnotationsToPreviousPinnedModelError>> {
+pub fn reset_annotations_to_previous_pinned_model(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, reset_annotations_to_previous_pinned_model_request: models::ResetAnnotationsToPreviousPinnedModelRequest) -> Result<models::ResetAnnotationsToPreviousPinnedModelResponse, Error<ResetAnnotationsToPreviousPinnedModelError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -711,10 +711,10 @@ pub async fn reset_annotations_to_previous_pinned_model(configuration: &configur
     local_var_req_builder = local_var_req_builder.json(&reset_annotations_to_previous_pinned_model_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -726,7 +726,7 @@ pub async fn reset_annotations_to_previous_pinned_model(configuration: &configur
 }
 
 /// Sync annotations
-pub async fn sync_annotations(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, sync_annotations_request: models::SyncAnnotationsRequest) -> Result<models::SyncAnnotationsResponse, Error<SyncAnnotationsError>> {
+pub fn sync_annotations(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, sync_annotations_request: models::SyncAnnotationsRequest) -> Result<models::SyncAnnotationsResponse, Error<SyncAnnotationsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -748,10 +748,10 @@ pub async fn sync_annotations(configuration: &configuration::Configuration, owne
     local_var_req_builder = local_var_req_builder.json(&sync_annotations_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -763,7 +763,7 @@ pub async fn sync_annotations(configuration: &configuration::Configuration, owne
 }
 
 /// Update the labelling of a comment
-pub async fn update_comment_labelling(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, labelling_id: &str, update_comment_labelling_request: models::UpdateCommentLabellingRequest) -> Result<models::UpdateCommentLabellingResponse, Error<UpdateCommentLabellingError>> {
+pub fn update_comment_labelling(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, labelling_id: &str, update_comment_labelling_request: models::UpdateCommentLabellingRequest) -> Result<models::UpdateCommentLabellingResponse, Error<UpdateCommentLabellingError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -785,10 +785,10 @@ pub async fn update_comment_labelling(configuration: &configuration::Configurati
     local_var_req_builder = local_var_req_builder.json(&update_comment_labelling_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -800,7 +800,7 @@ pub async fn update_comment_labelling(configuration: &configuration::Configurati
 }
 
 /// Update a dataset
-pub async fn update_dataset(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, update_dataset_request: models::UpdateDatasetRequest) -> Result<models::UpdateDatasetResponse, Error<UpdateDatasetError>> {
+pub fn update_dataset(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, update_dataset_request: models::UpdateDatasetRequest) -> Result<models::UpdateDatasetResponse, Error<UpdateDatasetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -822,10 +822,10 @@ pub async fn update_dataset(configuration: &configuration::Configuration, owner:
     local_var_req_builder = local_var_req_builder.json(&update_dataset_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

@@ -53,7 +53,7 @@ pub enum UploadIxpDocumentError {
 
 
 /// Get IXP consumability information for the tenant
-pub async fn get_ixp_consumability(configuration: &configuration::Configuration, ) -> Result<models::GetIxpConsumabilityInfoResponse, Error<GetIxpConsumabilityError>> {
+pub fn get_ixp_consumability(configuration: &configuration::Configuration, ) -> Result<models::GetIxpConsumabilityInfoResponse, Error<GetIxpConsumabilityError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -74,10 +74,10 @@ pub async fn get_ixp_consumability(configuration: &configuration::Configuration,
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -89,7 +89,7 @@ pub async fn get_ixp_consumability(configuration: &configuration::Configuration,
 }
 
 /// Get all pinned IXP models in a Project
-pub async fn get_ixp_models(configuration: &configuration::Configuration, project_uuid: &str) -> Result<models::GetAllIxpModelsInProjectResponse, Error<GetIxpModelsError>> {
+pub fn get_ixp_models(configuration: &configuration::Configuration, project_uuid: &str) -> Result<models::GetAllIxpModelsInProjectResponse, Error<GetIxpModelsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -110,10 +110,10 @@ pub async fn get_ixp_models(configuration: &configuration::Configuration, projec
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -125,7 +125,7 @@ pub async fn get_ixp_models(configuration: &configuration::Configuration, projec
 }
 
 /// Get IXP Document Predictions
-pub async fn get_ixp_predictions(configuration: &configuration::Configuration, project_uuid: &str, model_version: &str, document_id: &str) -> Result<models::IxpPredictExtractionsResponse, Error<GetIxpPredictionsError>> {
+pub fn get_ixp_predictions(configuration: &configuration::Configuration, project_uuid: &str, model_version: &str, document_id: &str) -> Result<models::IxpPredictExtractionsResponse, Error<GetIxpPredictionsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -146,10 +146,10 @@ pub async fn get_ixp_predictions(configuration: &configuration::Configuration, p
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -161,7 +161,7 @@ pub async fn get_ixp_predictions(configuration: &configuration::Configuration, p
 }
 
 /// Upload IXP Document for Predictions
-pub async fn upload_ixp_document(configuration: &configuration::Configuration, project_uuid: &str, model_version: &str, file: Option<std::path::PathBuf>) -> Result<models::IxpUploadDocumentResponse, Error<UploadIxpDocumentError>> {
+pub fn upload_ixp_document(configuration: &configuration::Configuration, project_uuid: &str, model_version: &str, file: Option<std::path::PathBuf>) -> Result<models::IxpUploadDocumentResponse, Error<UploadIxpDocumentError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -180,15 +180,17 @@ pub async fn upload_ixp_document(configuration: &configuration::Configuration, p
         };
         local_var_req_builder = local_var_req_builder.header("authorization", local_var_value);
     };
-    let mut local_var_form = reqwest::multipart::Form::new();
-    // TODO: support file upload for 'file' parameter
+    let mut local_var_form = reqwest::blocking::multipart::Form::new();
+    if let Some(local_var_param_value) = file {
+        local_var_form = local_var_form.file("file", local_var_param_value)?;
+    }
     local_var_req_builder = local_var_req_builder.multipart(local_var_form);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

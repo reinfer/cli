@@ -15,6 +15,10 @@ use reqwest::{
     header::{self, HeaderMap, HeaderValue},
     IntoUrl, Proxy, Result as ReqwestResult,
 };
+use openapi::apis::configuration::Configuration;
+use openapi::apis::sources_api;
+use openapi::models;
+
 use resources::{
     attachments::UploadAttachmentResponse,
     auth::{RefreshUserPermissionsRequest, RefreshUserPermissionsResponse},
@@ -281,11 +285,27 @@ impl Client {
         &self.endpoints.base
     }
 
+    fn make_cfg(&self) -> Configuration {
+        let mut cfg = Configuration::default();
+        cfg.base_path = self.endpoints.base.to_string();
+        cfg.client = self.http_client.clone();
+        cfg
+    }
+
     /// List all visible sources.
     pub fn get_sources(&self) -> Result<Vec<Source>> {
-        Ok(self
-            .get::<_, GetAvailableSourcesResponse>(self.endpoints.sources.clone())?
-            .sources)
+        let cfg = self.make_cfg();
+
+        let resp = sources_api::get_all_sources(&cfg).map_err(Into::into)?;
+
+
+        let out = resp
+            .sources
+            .into_iter()
+            .map(Source::from)
+            .collect();
+
+        Ok(out)
     }
 
     /// Get a source by either id or name.

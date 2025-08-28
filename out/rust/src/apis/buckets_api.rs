@@ -152,7 +152,7 @@ pub enum UpdateBucketError {
 
 
 /// Create a bucket
-pub async fn create_bucket(configuration: &configuration::Configuration, owner: &str, bucket_name: &str, create_bucket_request: models::CreateBucketRequest) -> Result<models::CreateBucketResponse, Error<CreateBucketError>> {
+pub fn create_bucket(configuration: &configuration::Configuration, owner: &str, bucket_name: &str, create_bucket_request: models::CreateBucketRequest) -> Result<models::CreateBucketResponse, Error<CreateBucketError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -174,10 +174,10 @@ pub async fn create_bucket(configuration: &configuration::Configuration, owner: 
     local_var_req_builder = local_var_req_builder.json(&create_bucket_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -189,7 +189,7 @@ pub async fn create_bucket(configuration: &configuration::Configuration, owner: 
 }
 
 /// Delete a bucket
-pub async fn delete_bucket(configuration: &configuration::Configuration, raw_bucket_id: &str) -> Result<models::DeleteBucketResponse, Error<DeleteBucketError>> {
+pub fn delete_bucket(configuration: &configuration::Configuration, raw_bucket_id: &str) -> Result<models::DeleteBucketResponse, Error<DeleteBucketError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -210,10 +210,10 @@ pub async fn delete_bucket(configuration: &configuration::Configuration, raw_buc
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -225,7 +225,7 @@ pub async fn delete_bucket(configuration: &configuration::Configuration, raw_buc
 }
 
 /// Delete a keyed sync state by bucket Id.
-pub async fn delete_keyed_sync_state(configuration: &configuration::Configuration, raw_bucket_id: &str, sync_state_key: &str) -> Result<models::DeleteKeyedSyncStateResponse, Error<DeleteKeyedSyncStateError>> {
+pub fn delete_keyed_sync_state(configuration: &configuration::Configuration, raw_bucket_id: &str, sync_state_key: &str) -> Result<models::DeleteKeyedSyncStateResponse, Error<DeleteKeyedSyncStateError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -246,10 +246,10 @@ pub async fn delete_keyed_sync_state(configuration: &configuration::Configuratio
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -261,7 +261,7 @@ pub async fn delete_keyed_sync_state(configuration: &configuration::Configuratio
 }
 
 /// Get all buckets
-pub async fn get_all_buckets(configuration: &configuration::Configuration, ) -> Result<models::GetAllBucketsResponse, Error<GetAllBucketsError>> {
+pub fn get_all_buckets(configuration: &configuration::Configuration, ) -> Result<models::GetAllBucketsResponse, Error<GetAllBucketsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -282,10 +282,10 @@ pub async fn get_all_buckets(configuration: &configuration::Configuration, ) -> 
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -297,7 +297,7 @@ pub async fn get_all_buckets(configuration: &configuration::Configuration, ) -> 
 }
 
 /// Get a bucket
-pub async fn get_bucket(configuration: &configuration::Configuration, owner: &str, bucket_name: &str) -> Result<models::GetBucketResponse, Error<GetBucketError>> {
+pub fn get_bucket(configuration: &configuration::Configuration, owner: &str, bucket_name: &str) -> Result<models::GetBucketResponse, Error<GetBucketError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -318,10 +318,10 @@ pub async fn get_bucket(configuration: &configuration::Configuration, owner: &st
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -333,7 +333,7 @@ pub async fn get_bucket(configuration: &configuration::Configuration, owner: &st
 }
 
 /// Get a bucket by ID
-pub async fn get_bucket_by_id(configuration: &configuration::Configuration, bucket_id: &str) -> Result<models::GetBucketByIdResponse, Error<GetBucketByIdError>> {
+pub fn get_bucket_by_id(configuration: &configuration::Configuration, bucket_id: &str) -> Result<models::GetBucketByIdResponse, Error<GetBucketByIdError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -354,10 +354,10 @@ pub async fn get_bucket_by_id(configuration: &configuration::Configuration, buck
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -369,7 +369,7 @@ pub async fn get_bucket_by_id(configuration: &configuration::Configuration, buck
 }
 
 /// Get bucket statistics
-pub async fn get_bucket_statistics(configuration: &configuration::Configuration, owner: &str, bucket_name: &str) -> Result<models::GetBucketStatisticsResponse, Error<GetBucketStatisticsError>> {
+pub fn get_bucket_statistics(configuration: &configuration::Configuration, owner: &str, bucket_name: &str) -> Result<models::GetBucketStatisticsResponse, Error<GetBucketStatisticsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -390,10 +390,10 @@ pub async fn get_bucket_statistics(configuration: &configuration::Configuration,
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -405,7 +405,7 @@ pub async fn get_bucket_statistics(configuration: &configuration::Configuration,
 }
 
 /// Get bucket sync state
-pub async fn get_bucket_sync_state(configuration: &configuration::Configuration, owner: &str, bucket_name: &str) -> Result<models::GetBucketSyncStateResponse, Error<GetBucketSyncStateError>> {
+pub fn get_bucket_sync_state(configuration: &configuration::Configuration, owner: &str, bucket_name: &str) -> Result<models::GetBucketSyncStateResponse, Error<GetBucketSyncStateError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -426,10 +426,10 @@ pub async fn get_bucket_sync_state(configuration: &configuration::Configuration,
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -441,7 +441,7 @@ pub async fn get_bucket_sync_state(configuration: &configuration::Configuration,
 }
 
 /// Get buckets by owner
-pub async fn get_buckets_by_owner(configuration: &configuration::Configuration, owner: &str) -> Result<models::GetBucketsByOwnerResponse, Error<GetBucketsByOwnerError>> {
+pub fn get_buckets_by_owner(configuration: &configuration::Configuration, owner: &str) -> Result<models::GetBucketsByOwnerResponse, Error<GetBucketsByOwnerError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -462,10 +462,10 @@ pub async fn get_buckets_by_owner(configuration: &configuration::Configuration, 
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -477,7 +477,7 @@ pub async fn get_buckets_by_owner(configuration: &configuration::Configuration, 
 }
 
 /// Get a keyed sync state by bucket Id.
-pub async fn get_keyed_sync_state(configuration: &configuration::Configuration, raw_bucket_id: &str, sync_state_key: &str) -> Result<models::GetKeyedSyncStateResponse, Error<GetKeyedSyncStateError>> {
+pub fn get_keyed_sync_state(configuration: &configuration::Configuration, raw_bucket_id: &str, sync_state_key: &str) -> Result<models::GetKeyedSyncStateResponse, Error<GetKeyedSyncStateError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -498,10 +498,10 @@ pub async fn get_keyed_sync_state(configuration: &configuration::Configuration, 
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -513,7 +513,7 @@ pub async fn get_keyed_sync_state(configuration: &configuration::Configuration, 
 }
 
 /// List keyed sync states for a bucket.
-pub async fn list_keyed_sync_states(configuration: &configuration::Configuration, raw_bucket_id: &str) -> Result<models::ListKeyedSyncStatesResponse, Error<ListKeyedSyncStatesError>> {
+pub fn list_keyed_sync_states(configuration: &configuration::Configuration, raw_bucket_id: &str) -> Result<models::ListKeyedSyncStatesResponse, Error<ListKeyedSyncStatesError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -534,10 +534,10 @@ pub async fn list_keyed_sync_states(configuration: &configuration::Configuration
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -549,7 +549,7 @@ pub async fn list_keyed_sync_states(configuration: &configuration::Configuration
 }
 
 /// Query keyed sync state ids for a bucket.
-pub async fn query_keyed_sync_state_ids(configuration: &configuration::Configuration, raw_bucket_id: &str, query_keyed_sync_state_ids_request: models::QueryKeyedSyncStateIdsRequest) -> Result<models::QueryKeyedSyncStateIdsResponse, Error<QueryKeyedSyncStateIdsError>> {
+pub fn query_keyed_sync_state_ids(configuration: &configuration::Configuration, raw_bucket_id: &str, query_keyed_sync_state_ids_request: models::QueryKeyedSyncStateIdsRequest) -> Result<models::QueryKeyedSyncStateIdsResponse, Error<QueryKeyedSyncStateIdsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -571,10 +571,10 @@ pub async fn query_keyed_sync_state_ids(configuration: &configuration::Configura
     local_var_req_builder = local_var_req_builder.json(&query_keyed_sync_state_ids_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -586,7 +586,7 @@ pub async fn query_keyed_sync_state_ids(configuration: &configuration::Configura
 }
 
 /// Store bucket sync state
-pub async fn store_bucket_sync_state(configuration: &configuration::Configuration, owner: &str, bucket_name: &str, store_bucket_sync_state_request: models::StoreBucketSyncStateRequest) -> Result<models::StoreBucketSyncStateResponse, Error<StoreBucketSyncStateError>> {
+pub fn store_bucket_sync_state(configuration: &configuration::Configuration, owner: &str, bucket_name: &str, store_bucket_sync_state_request: models::StoreBucketSyncStateRequest) -> Result<models::StoreBucketSyncStateResponse, Error<StoreBucketSyncStateError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -608,10 +608,10 @@ pub async fn store_bucket_sync_state(configuration: &configuration::Configuratio
     local_var_req_builder = local_var_req_builder.json(&store_bucket_sync_state_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -623,7 +623,7 @@ pub async fn store_bucket_sync_state(configuration: &configuration::Configuratio
 }
 
 /// Store a keyed sync state by bucket Id.
-pub async fn store_keyed_sync_state(configuration: &configuration::Configuration, raw_bucket_id: &str, sync_state_key: &str, store_keyed_sync_state_request: models::StoreKeyedSyncStateRequest) -> Result<models::StoreKeyedSyncStateResponse, Error<StoreKeyedSyncStateError>> {
+pub fn store_keyed_sync_state(configuration: &configuration::Configuration, raw_bucket_id: &str, sync_state_key: &str, store_keyed_sync_state_request: models::StoreKeyedSyncStateRequest) -> Result<models::StoreKeyedSyncStateResponse, Error<StoreKeyedSyncStateError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -645,10 +645,10 @@ pub async fn store_keyed_sync_state(configuration: &configuration::Configuration
     local_var_req_builder = local_var_req_builder.json(&store_keyed_sync_state_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -660,7 +660,7 @@ pub async fn store_keyed_sync_state(configuration: &configuration::Configuration
 }
 
 /// Update a bucket
-pub async fn update_bucket(configuration: &configuration::Configuration, owner: &str, bucket_name: &str, update_bucket_request: models::UpdateBucketRequest) -> Result<models::UpdateBucketResponse, Error<UpdateBucketError>> {
+pub fn update_bucket(configuration: &configuration::Configuration, owner: &str, bucket_name: &str, update_bucket_request: models::UpdateBucketRequest) -> Result<models::UpdateBucketResponse, Error<UpdateBucketError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -682,10 +682,10 @@ pub async fn update_bucket(configuration: &configuration::Configuration, owner: 
     local_var_req_builder = local_var_req_builder.json(&update_bucket_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

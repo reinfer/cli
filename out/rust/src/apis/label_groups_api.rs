@@ -53,7 +53,7 @@ pub enum GetLabelGroupError {
 
 
 /// Create a label group
-pub async fn create_label_group(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str, create_label_group_request: models::CreateLabelGroupRequest) -> Result<models::CreateLabelGroupResponse, Error<CreateLabelGroupError>> {
+pub fn create_label_group(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str, create_label_group_request: models::CreateLabelGroupRequest) -> Result<models::CreateLabelGroupResponse, Error<CreateLabelGroupError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -75,10 +75,10 @@ pub async fn create_label_group(configuration: &configuration::Configuration, ow
     local_var_req_builder = local_var_req_builder.json(&create_label_group_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -90,7 +90,7 @@ pub async fn create_label_group(configuration: &configuration::Configuration, ow
 }
 
 /// Delete a label group
-pub async fn delete_label_group(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str) -> Result<models::DeleteLabelGroupResponse, Error<DeleteLabelGroupError>> {
+pub fn delete_label_group(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str) -> Result<models::DeleteLabelGroupResponse, Error<DeleteLabelGroupError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -111,10 +111,10 @@ pub async fn delete_label_group(configuration: &configuration::Configuration, ow
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -126,7 +126,7 @@ pub async fn delete_label_group(configuration: &configuration::Configuration, ow
 }
 
 /// Get all label groups
-pub async fn get_all_label_groups(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetAllLabelGroupsResponse, Error<GetAllLabelGroupsError>> {
+pub fn get_all_label_groups(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetAllLabelGroupsResponse, Error<GetAllLabelGroupsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -147,10 +147,10 @@ pub async fn get_all_label_groups(configuration: &configuration::Configuration, 
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -162,7 +162,7 @@ pub async fn get_all_label_groups(configuration: &configuration::Configuration, 
 }
 
 /// Get a label group
-pub async fn get_label_group(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str) -> Result<models::GetLabelGroupResponse, Error<GetLabelGroupError>> {
+pub fn get_label_group(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str) -> Result<models::GetLabelGroupResponse, Error<GetLabelGroupError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -183,10 +183,10 @@ pub async fn get_label_group(configuration: &configuration::Configuration, owner
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

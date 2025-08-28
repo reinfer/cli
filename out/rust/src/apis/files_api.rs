@@ -26,7 +26,7 @@ pub enum UploadFilesError {
 
 
 /// Upload files
-pub async fn upload_files(configuration: &configuration::Configuration, body: std::path::PathBuf) -> Result<models::UploadFilesResponse, Error<UploadFilesError>> {
+pub fn upload_files(configuration: &configuration::Configuration, body: std::path::PathBuf) -> Result<models::UploadFilesResponse, Error<UploadFilesError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -48,10 +48,10 @@ pub async fn upload_files(configuration: &configuration::Configuration, body: st
     local_var_req_builder = local_var_req_builder.json(&body);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

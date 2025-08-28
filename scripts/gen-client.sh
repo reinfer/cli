@@ -37,6 +37,7 @@ docker run --rm \
   "$GEN_IMG" generate \
     -i "/spec/$SPEC_FILE" \
     -g rust \
-    -o "/work/$OUT_DIR"
+    -o "/work/$OUT_DIR" \
+    --additional-properties=library=reqwest,supportAsync=false
 
 echo "✔ Done → $OUT_DIR"

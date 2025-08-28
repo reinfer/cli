@@ -107,7 +107,7 @@ pub enum UpdateUserError {
 
 
 /// Add a support tenant
-pub async fn add_support_tenant(configuration: &configuration::Configuration, add_support_tenant_request: models::AddSupportTenantRequest) -> Result<models::AddSupportTenantResponse, Error<AddSupportTenantError>> {
+pub fn add_support_tenant(configuration: &configuration::Configuration, add_support_tenant_request: models::AddSupportTenantRequest) -> Result<models::AddSupportTenantResponse, Error<AddSupportTenantError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -129,10 +129,10 @@ pub async fn add_support_tenant(configuration: &configuration::Configuration, ad
     local_var_req_builder = local_var_req_builder.json(&add_support_tenant_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -144,7 +144,7 @@ pub async fn add_support_tenant(configuration: &configuration::Configuration, ad
 }
 
 /// Create a user
-pub async fn create_user(configuration: &configuration::Configuration, create_user_request: models::CreateUserRequest) -> Result<models::CreateUserResponse, Error<CreateUserError>> {
+pub fn create_user(configuration: &configuration::Configuration, create_user_request: models::CreateUserRequest) -> Result<models::CreateUserResponse, Error<CreateUserError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -166,10 +166,10 @@ pub async fn create_user(configuration: &configuration::Configuration, create_us
     local_var_req_builder = local_var_req_builder.json(&create_user_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -181,7 +181,7 @@ pub async fn create_user(configuration: &configuration::Configuration, create_us
 }
 
 /// Delete a user
-pub async fn delete_user(configuration: &configuration::Configuration, user_id: &str) -> Result<models::DeleteUserResponse, Error<DeleteUserError>> {
+pub fn delete_user(configuration: &configuration::Configuration, user_id: &str) -> Result<models::DeleteUserResponse, Error<DeleteUserError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -202,10 +202,10 @@ pub async fn delete_user(configuration: &configuration::Configuration, user_id: 
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -217,7 +217,7 @@ pub async fn delete_user(configuration: &configuration::Configuration, user_id: 
 }
 
 /// Get the reduced permissions for a user
-pub async fn get_reduced_permissions(configuration: &configuration::Configuration, get_reduced_permissions_request: models::GetReducedPermissionsRequest) -> Result<models::GetReducedPermissionsResponse, Error<GetReducedPermissionsError>> {
+pub fn get_reduced_permissions(configuration: &configuration::Configuration, get_reduced_permissions_request: models::GetReducedPermissionsRequest) -> Result<models::GetReducedPermissionsResponse, Error<GetReducedPermissionsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -239,10 +239,10 @@ pub async fn get_reduced_permissions(configuration: &configuration::Configuratio
     local_var_req_builder = local_var_req_builder.json(&get_reduced_permissions_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -254,7 +254,7 @@ pub async fn get_reduced_permissions(configuration: &configuration::Configuratio
 }
 
 /// Get a user by id
-pub async fn get_user_by_id(configuration: &configuration::Configuration, user_id: &str) -> Result<models::GetUserByIdResponse, Error<GetUserByIdError>> {
+pub fn get_user_by_id(configuration: &configuration::Configuration, user_id: &str) -> Result<models::GetUserByIdResponse, Error<GetUserByIdError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -275,10 +275,10 @@ pub async fn get_user_by_id(configuration: &configuration::Configuration, user_i
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -290,7 +290,7 @@ pub async fn get_user_by_id(configuration: &configuration::Configuration, user_i
 }
 
 /// Get all users
-pub async fn get_users(configuration: &configuration::Configuration, ) -> Result<models::GetUsersResponse, Error<GetUsersError>> {
+pub fn get_users(configuration: &configuration::Configuration, ) -> Result<models::GetUsersResponse, Error<GetUsersError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -311,10 +311,10 @@ pub async fn get_users(configuration: &configuration::Configuration, ) -> Result
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -326,7 +326,7 @@ pub async fn get_users(configuration: &configuration::Configuration, ) -> Result
 }
 
 /// Get all users.
-pub async fn get_users_v1(configuration: &configuration::Configuration, ) -> Result<models::GetUsersV1Response, Error<GetUsersV1Error>> {
+pub fn get_users_v1(configuration: &configuration::Configuration, ) -> Result<models::GetUsersV1Response, Error<GetUsersV1Error>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -347,10 +347,10 @@ pub async fn get_users_v1(configuration: &configuration::Configuration, ) -> Res
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -362,7 +362,7 @@ pub async fn get_users_v1(configuration: &configuration::Configuration, ) -> Res
 }
 
 /// Remove a support tenant
-pub async fn remove_support_tenant(configuration: &configuration::Configuration, remove_support_tenant_request: models::RemoveSupportTenantRequest) -> Result<models::RemoveSupportTenantResponse, Error<RemoveSupportTenantError>> {
+pub fn remove_support_tenant(configuration: &configuration::Configuration, remove_support_tenant_request: models::RemoveSupportTenantRequest) -> Result<models::RemoveSupportTenantResponse, Error<RemoveSupportTenantError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -384,10 +384,10 @@ pub async fn remove_support_tenant(configuration: &configuration::Configuration,
     local_var_req_builder = local_var_req_builder.json(&remove_support_tenant_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -399,7 +399,7 @@ pub async fn remove_support_tenant(configuration: &configuration::Configuration,
 }
 
 /// Send a welcome email
-pub async fn send_welcome_email(configuration: &configuration::Configuration, user_id: &str) -> Result<models::SendWelcomeEmailResponse, Error<SendWelcomeEmailError>> {
+pub fn send_welcome_email(configuration: &configuration::Configuration, user_id: &str) -> Result<models::SendWelcomeEmailResponse, Error<SendWelcomeEmailError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -420,10 +420,10 @@ pub async fn send_welcome_email(configuration: &configuration::Configuration, us
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -435,7 +435,7 @@ pub async fn send_welcome_email(configuration: &configuration::Configuration, us
 }
 
 /// Update a user
-pub async fn update_user(configuration: &configuration::Configuration, user_id: &str, update_user_request: models::UpdateUserRequest) -> Result<models::UpdateUserResponse, Error<UpdateUserError>> {
+pub fn update_user(configuration: &configuration::Configuration, user_id: &str, update_user_request: models::UpdateUserRequest) -> Result<models::UpdateUserResponse, Error<UpdateUserError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -457,10 +457,10 @@ pub async fn update_user(configuration: &configuration::Configuration, user_id: 
     local_var_req_builder = local_var_req_builder.json(&update_user_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

@@ -89,7 +89,7 @@ pub enum UploadEmailAttachmentError {
 
 
 /// Get an attachment's content.
-pub async fn get_attachment(configuration: &configuration::Configuration, attachment_reference: &str) -> Result<std::path::PathBuf, Error<GetAttachmentError>> {
+pub fn get_attachment(configuration: &configuration::Configuration, attachment_reference: &str) -> Result<std::path::PathBuf, Error<GetAttachmentError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -110,10 +110,10 @@ pub async fn get_attachment(configuration: &configuration::Configuration, attach
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -125,7 +125,7 @@ pub async fn get_attachment(configuration: &configuration::Configuration, attach
 }
 
 /// Get metadata
-pub async fn get_document_metadata(configuration: &configuration::Configuration, attachment_reference: &str) -> Result<models::GetDocumentMetadataResponse, Error<GetDocumentMetadataError>> {
+pub fn get_document_metadata(configuration: &configuration::Configuration, attachment_reference: &str) -> Result<models::GetDocumentMetadataResponse, Error<GetDocumentMetadataError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -146,10 +146,10 @@ pub async fn get_document_metadata(configuration: &configuration::Configuration,
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -161,7 +161,7 @@ pub async fn get_document_metadata(configuration: &configuration::Configuration,
 }
 
 /// Get document search selections
-pub async fn get_document_search(configuration: &configuration::Configuration, attachment_reference: &str, query: &str) -> Result<models::GetDocumentSearchResponse, Error<GetDocumentSearchError>> {
+pub fn get_document_search(configuration: &configuration::Configuration, attachment_reference: &str, query: &str) -> Result<models::GetDocumentSearchResponse, Error<GetDocumentSearchError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -183,10 +183,10 @@ pub async fn get_document_search(configuration: &configuration::Configuration, a
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -198,7 +198,7 @@ pub async fn get_document_search(configuration: &configuration::Configuration, a
 }
 
 /// Get page image
-pub async fn get_page_image(configuration: &configuration::Configuration, attachment_reference: &str, page_index: &str) -> Result<std::path::PathBuf, Error<GetPageImageError>> {
+pub fn get_page_image(configuration: &configuration::Configuration, attachment_reference: &str, page_index: &str) -> Result<std::path::PathBuf, Error<GetPageImageError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -219,10 +219,10 @@ pub async fn get_page_image(configuration: &configuration::Configuration, attach
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -234,7 +234,7 @@ pub async fn get_page_image(configuration: &configuration::Configuration, attach
 }
 
 /// Get ocr selections
-pub async fn get_page_selections(configuration: &configuration::Configuration, attachment_reference: &str, page_index: &str) -> Result<models::GetPageSelectionsResponse, Error<GetPageSelectionsError>> {
+pub fn get_page_selections(configuration: &configuration::Configuration, attachment_reference: &str, page_index: &str) -> Result<models::GetPageSelectionsResponse, Error<GetPageSelectionsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -255,10 +255,10 @@ pub async fn get_page_selections(configuration: &configuration::Configuration, a
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -270,7 +270,7 @@ pub async fn get_page_selections(configuration: &configuration::Configuration, a
 }
 
 /// Get page thumbnail
-pub async fn get_page_thumbnail(configuration: &configuration::Configuration, attachment_reference: &str, page_index: &str) -> Result<std::path::PathBuf, Error<GetPageThumbnailError>> {
+pub fn get_page_thumbnail(configuration: &configuration::Configuration, attachment_reference: &str, page_index: &str) -> Result<std::path::PathBuf, Error<GetPageThumbnailError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -291,10 +291,10 @@ pub async fn get_page_thumbnail(configuration: &configuration::Configuration, at
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -306,7 +306,7 @@ pub async fn get_page_thumbnail(configuration: &configuration::Configuration, at
 }
 
 /// Upload an attachment for a comment.
-pub async fn upload_comment_attachment(configuration: &configuration::Configuration, source_id: &str, comment_id: &str, attachment_index: &str, file: Option<std::path::PathBuf>) -> Result<models::UploadAttachmentResponse, Error<UploadCommentAttachmentError>> {
+pub fn upload_comment_attachment(configuration: &configuration::Configuration, source_id: &str, comment_id: &str, attachment_index: &str, file: Option<std::path::PathBuf>) -> Result<models::UploadAttachmentResponse, Error<UploadCommentAttachmentError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -325,15 +325,17 @@ pub async fn upload_comment_attachment(configuration: &configuration::Configurat
         };
         local_var_req_builder = local_var_req_builder.header("authorization", local_var_value);
     };
-    let mut local_var_form = reqwest::multipart::Form::new();
-    // TODO: support file upload for 'file' parameter
+    let mut local_var_form = reqwest::blocking::multipart::Form::new();
+    if let Some(local_var_param_value) = file {
+        local_var_form = local_var_form.file("file", local_var_param_value)?;
+    }
     local_var_req_builder = local_var_req_builder.multipart(local_var_form);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -345,7 +347,7 @@ pub async fn upload_comment_attachment(configuration: &configuration::Configurat
 }
 
 /// Upload an attachment for a email.
-pub async fn upload_email_attachment(configuration: &configuration::Configuration, bucket_id: &str, email_id: &str, attachment_index: &str, file: Option<std::path::PathBuf>) -> Result<models::UploadAttachmentResponse, Error<UploadEmailAttachmentError>> {
+pub fn upload_email_attachment(configuration: &configuration::Configuration, bucket_id: &str, email_id: &str, attachment_index: &str, file: Option<std::path::PathBuf>) -> Result<models::UploadAttachmentResponse, Error<UploadEmailAttachmentError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -364,15 +366,17 @@ pub async fn upload_email_attachment(configuration: &configuration::Configuratio
         };
         local_var_req_builder = local_var_req_builder.header("authorization", local_var_value);
     };
-    let mut local_var_form = reqwest::multipart::Form::new();
-    // TODO: support file upload for 'file' parameter
+    let mut local_var_form = reqwest::blocking::multipart::Form::new();
+    if let Some(local_var_param_value) = file {
+        local_var_form = local_var_form.file("file", local_var_param_value)?;
+    }
     local_var_req_builder = local_var_req_builder.multipart(local_var_form);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

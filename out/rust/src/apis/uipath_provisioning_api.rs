@@ -53,7 +53,7 @@ pub enum UipathProvisionUpdateError {
 
 
 /// Create resources for a Uipath tenant
-pub async fn uipath_provision_create(configuration: &configuration::Configuration, ui_path_provision_create_request: models::UiPathProvisionCreateRequest) -> Result<models::UiPathProvisionCreateResponse, Error<UipathProvisionCreateError>> {
+pub fn uipath_provision_create(configuration: &configuration::Configuration, ui_path_provision_create_request: models::UiPathProvisionCreateRequest) -> Result<models::UiPathProvisionCreateResponse, Error<UipathProvisionCreateError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -75,10 +75,10 @@ pub async fn uipath_provision_create(configuration: &configuration::Configuratio
     local_var_req_builder = local_var_req_builder.json(&ui_path_provision_create_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -90,7 +90,7 @@ pub async fn uipath_provision_create(configuration: &configuration::Configuratio
 }
 
 /// Delete resources for a Uipath tenant
-pub async fn uipath_provision_delete(configuration: &configuration::Configuration, service_type: &str, tenant_id: &str, ui_path_provision_delete_request: models::UiPathProvisionDeleteRequest) -> Result<models::UiPathProvisionDeleteResponse, Error<UipathProvisionDeleteError>> {
+pub fn uipath_provision_delete(configuration: &configuration::Configuration, service_type: &str, tenant_id: &str, ui_path_provision_delete_request: models::UiPathProvisionDeleteRequest) -> Result<models::UiPathProvisionDeleteResponse, Error<UipathProvisionDeleteError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -112,10 +112,10 @@ pub async fn uipath_provision_delete(configuration: &configuration::Configuratio
     local_var_req_builder = local_var_req_builder.json(&ui_path_provision_delete_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -127,7 +127,7 @@ pub async fn uipath_provision_delete(configuration: &configuration::Configuratio
 }
 
 /// Restore resources for a Uipath tenant
-pub async fn uipath_provision_restore(configuration: &configuration::Configuration, service_type: &str, tenant_id: &str, ui_path_provision_restore_request: models::UiPathProvisionRestoreRequest) -> Result<models::UiPathProvisionRestoreResponse, Error<UipathProvisionRestoreError>> {
+pub fn uipath_provision_restore(configuration: &configuration::Configuration, service_type: &str, tenant_id: &str, ui_path_provision_restore_request: models::UiPathProvisionRestoreRequest) -> Result<models::UiPathProvisionRestoreResponse, Error<UipathProvisionRestoreError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -149,10 +149,10 @@ pub async fn uipath_provision_restore(configuration: &configuration::Configurati
     local_var_req_builder = local_var_req_builder.json(&ui_path_provision_restore_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -164,7 +164,7 @@ pub async fn uipath_provision_restore(configuration: &configuration::Configurati
 }
 
 /// Update resources for a Uipath tenant
-pub async fn uipath_provision_update(configuration: &configuration::Configuration, service_type: &str, tenant_id: &str, ui_path_provision_update_request: models::UiPathProvisionUpdateRequest) -> Result<models::UiPathProvisionUpdateResponse, Error<UipathProvisionUpdateError>> {
+pub fn uipath_provision_update(configuration: &configuration::Configuration, service_type: &str, tenant_id: &str, ui_path_provision_update_request: models::UiPathProvisionUpdateRequest) -> Result<models::UiPathProvisionUpdateResponse, Error<UipathProvisionUpdateError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -186,10 +186,10 @@ pub async fn uipath_provision_update(configuration: &configuration::Configuratio
     local_var_req_builder = local_var_req_builder.json(&ui_path_provision_update_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

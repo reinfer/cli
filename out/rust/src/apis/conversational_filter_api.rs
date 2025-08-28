@@ -26,7 +26,7 @@ pub enum QueryConversationalFilterError {
 
 
 /// Query comments in a dataset with an LLM
-pub async fn query_conversational_filter(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, conversational_filter_request: models::ConversationalFilterRequest) -> Result<models::ConversationalFilterResponse, Error<QueryConversationalFilterError>> {
+pub fn query_conversational_filter(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, conversational_filter_request: models::ConversationalFilterRequest) -> Result<models::ConversationalFilterResponse, Error<QueryConversationalFilterError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -48,10 +48,10 @@ pub async fn query_conversational_filter(configuration: &configuration::Configur
     local_var_req_builder = local_var_req_builder.json(&conversational_filter_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

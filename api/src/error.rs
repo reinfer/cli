@@ -2,6 +2,9 @@ use std::path::PathBuf;
 
 use reqwest::StatusCode;
 
+use openapi::apis::Error as OAError;
+use openapi::apis::ResponseContent;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
@@ -90,4 +93,37 @@ pub enum Error {
         message: String,
         source: Box<dyn std::error::Error + Send + Sync + 'static>,
     },
+}
+
+
+
+impl<T> From<OAError<T>> for Error {
+    fn from(e: OAError<T>) -> Self {
+        match e {
+            // Network/HTTP-layer error before we even get a response
+            OAError::Reqwest(err) => Error::ReqwestError {
+                message: err.to_string(),
+                source: err,
+            },
+
+            // JSON (de)serialisation error
+            OAError::Serde(err) => Error::Unknown {
+                message: format!("JSON error: {err}"),
+                source: Box::new(err),
+            },
+
+            // File/IO error
+            OAError::Io(err) => Error::Unknown {
+                message: format!("I/O error: {err}"),
+                source: Box::new(err),
+            },
+
+            OAError::ResponseError(ResponseContent { status, content, .. }) => {
+                Error::Api {
+                    status_code: status,
+                    message: content,
+                }
+            }
+        }
+    }
 }

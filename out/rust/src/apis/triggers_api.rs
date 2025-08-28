@@ -107,7 +107,7 @@ pub enum UpdateTriggerError {
 
 
 /// Advance a trigger
-pub async fn advance_trigger(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str, advance_trigger_request: models::AdvanceTriggerRequest) -> Result<models::AdvanceTriggerResponse, Error<AdvanceTriggerError>> {
+pub fn advance_trigger(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str, advance_trigger_request: models::AdvanceTriggerRequest) -> Result<models::AdvanceTriggerResponse, Error<AdvanceTriggerError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -129,10 +129,10 @@ pub async fn advance_trigger(configuration: &configuration::Configuration, owner
     local_var_req_builder = local_var_req_builder.json(&advance_trigger_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -144,7 +144,7 @@ pub async fn advance_trigger(configuration: &configuration::Configuration, owner
 }
 
 /// Create a trigger
-pub async fn create_trigger(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, create_trigger_request: models::CreateTriggerRequest) -> Result<models::CreateTriggerResponse, Error<CreateTriggerError>> {
+pub fn create_trigger(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, create_trigger_request: models::CreateTriggerRequest) -> Result<models::CreateTriggerResponse, Error<CreateTriggerError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -166,10 +166,10 @@ pub async fn create_trigger(configuration: &configuration::Configuration, owner:
     local_var_req_builder = local_var_req_builder.json(&create_trigger_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -181,7 +181,7 @@ pub async fn create_trigger(configuration: &configuration::Configuration, owner:
 }
 
 /// Delete a trigger
-pub async fn delete_trigger(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str) -> Result<models::DeleteTriggerResponse, Error<DeleteTriggerError>> {
+pub fn delete_trigger(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str) -> Result<models::DeleteTriggerResponse, Error<DeleteTriggerError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -202,10 +202,10 @@ pub async fn delete_trigger(configuration: &configuration::Configuration, owner:
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -217,7 +217,7 @@ pub async fn delete_trigger(configuration: &configuration::Configuration, owner:
 }
 
 /// Delete trigger exception
-pub async fn delete_trigger_exception(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str) -> Result<models::DeleteStreamExceptionResponse, Error<DeleteTriggerExceptionError>> {
+pub fn delete_trigger_exception(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str) -> Result<models::DeleteStreamExceptionResponse, Error<DeleteTriggerExceptionError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -238,10 +238,10 @@ pub async fn delete_trigger_exception(configuration: &configuration::Configurati
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -253,7 +253,7 @@ pub async fn delete_trigger_exception(configuration: &configuration::Configurati
 }
 
 /// Get the available triggers for a dataset
-pub async fn get_all_triggers_in_dataset(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetAllTriggersInDatasetResponse, Error<GetAllTriggersInDatasetError>> {
+pub fn get_all_triggers_in_dataset(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetAllTriggersInDatasetResponse, Error<GetAllTriggersInDatasetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -274,10 +274,10 @@ pub async fn get_all_triggers_in_dataset(configuration: &configuration::Configur
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -289,7 +289,7 @@ pub async fn get_all_triggers_in_dataset(configuration: &configuration::Configur
 }
 
 /// Get a trigger
-pub async fn get_trigger(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str) -> Result<models::GetTriggerResponse, Error<GetTriggerError>> {
+pub fn get_trigger(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str) -> Result<models::GetTriggerResponse, Error<GetTriggerError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -310,10 +310,10 @@ pub async fn get_trigger(configuration: &configuration::Configuration, owner: &s
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -325,7 +325,7 @@ pub async fn get_trigger(configuration: &configuration::Configuration, owner: &s
 }
 
 /// This operation polls a trigger and fetches any new messages
-pub async fn poll_trigger(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str, poll_trigger_request: models::PollTriggerRequest) -> Result<models::PollTriggerResponse, Error<PollTriggerError>> {
+pub fn poll_trigger(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str, poll_trigger_request: models::PollTriggerRequest) -> Result<models::PollTriggerResponse, Error<PollTriggerError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -347,10 +347,10 @@ pub async fn poll_trigger(configuration: &configuration::Configuration, owner: &
     local_var_req_builder = local_var_req_builder.json(&poll_trigger_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -362,7 +362,7 @@ pub async fn poll_trigger(configuration: &configuration::Configuration, owner: &
 }
 
 /// Reset a trigger
-pub async fn reset_trigger(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str, reset_trigger_request: models::ResetTriggerRequest) -> Result<models::ResetTriggerResponse, Error<ResetTriggerError>> {
+pub fn reset_trigger(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str, reset_trigger_request: models::ResetTriggerRequest) -> Result<models::ResetTriggerResponse, Error<ResetTriggerError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -384,10 +384,10 @@ pub async fn reset_trigger(configuration: &configuration::Configuration, owner: 
     local_var_req_builder = local_var_req_builder.json(&reset_trigger_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -399,7 +399,7 @@ pub async fn reset_trigger(configuration: &configuration::Configuration, owner: 
 }
 
 /// Store trigger exception
-pub async fn store_trigger_exception(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str, store_exception_request: models::StoreExceptionRequest) -> Result<models::StoreExceptionResponse, Error<StoreTriggerExceptionError>> {
+pub fn store_trigger_exception(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str, store_exception_request: models::StoreExceptionRequest) -> Result<models::StoreExceptionResponse, Error<StoreTriggerExceptionError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -421,10 +421,10 @@ pub async fn store_trigger_exception(configuration: &configuration::Configuratio
     local_var_req_builder = local_var_req_builder.json(&store_exception_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -436,7 +436,7 @@ pub async fn store_trigger_exception(configuration: &configuration::Configuratio
 }
 
 /// Update a trigger
-pub async fn update_trigger(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str, update_trigger_request: models::UpdateTriggerRequest) -> Result<models::UpdateTriggerResponse, Error<UpdateTriggerError>> {
+pub fn update_trigger(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, trigger_name: &str, update_trigger_request: models::UpdateTriggerRequest) -> Result<models::UpdateTriggerResponse, Error<UpdateTriggerError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -458,10 +458,10 @@ pub async fn update_trigger(configuration: &configuration::Configuration, owner:
     local_var_req_builder = local_var_req_builder.json(&update_trigger_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

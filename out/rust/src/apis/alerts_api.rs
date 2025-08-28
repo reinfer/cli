@@ -125,7 +125,7 @@ pub enum UpdateIssueStatusError {
 
 
 /// Get issues for an alert
-pub async fn alert_issues(configuration: &configuration::Configuration, owner: &str, raw_alert_name: &str) -> Result<models::AlertIssuesResponse, Error<AlertIssuesError>> {
+pub fn alert_issues(configuration: &configuration::Configuration, owner: &str, raw_alert_name: &str) -> Result<models::AlertIssuesResponse, Error<AlertIssuesError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -146,10 +146,10 @@ pub async fn alert_issues(configuration: &configuration::Configuration, owner: &
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -161,7 +161,7 @@ pub async fn alert_issues(configuration: &configuration::Configuration, owner: &
 }
 
 /// Create an alert
-pub async fn create_alert(configuration: &configuration::Configuration, owner: &str, raw_alert_name: &str, create_alert_request: models::CreateAlertRequest) -> Result<models::CreateAlertResponse, Error<CreateAlertError>> {
+pub fn create_alert(configuration: &configuration::Configuration, owner: &str, raw_alert_name: &str, create_alert_request: models::CreateAlertRequest) -> Result<models::CreateAlertResponse, Error<CreateAlertError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -183,10 +183,10 @@ pub async fn create_alert(configuration: &configuration::Configuration, owner: &
     local_var_req_builder = local_var_req_builder.json(&create_alert_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -198,7 +198,7 @@ pub async fn create_alert(configuration: &configuration::Configuration, owner: &
 }
 
 /// Delete a alert
-pub async fn delete_alert(configuration: &configuration::Configuration, raw_alert_id: &str) -> Result<models::DeleteAlertResponse, Error<DeleteAlertError>> {
+pub fn delete_alert(configuration: &configuration::Configuration, raw_alert_id: &str) -> Result<models::DeleteAlertResponse, Error<DeleteAlertError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -219,10 +219,10 @@ pub async fn delete_alert(configuration: &configuration::Configuration, raw_aler
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -234,7 +234,7 @@ pub async fn delete_alert(configuration: &configuration::Configuration, raw_aler
 }
 
 /// Unsubscribes the user from an alert
-pub async fn delete_alert_subscription(configuration: &configuration::Configuration, raw_alert_id: &str) -> Result<models::DeleteAlertSubscriptionReponse, Error<DeleteAlertSubscriptionError>> {
+pub fn delete_alert_subscription(configuration: &configuration::Configuration, raw_alert_id: &str) -> Result<models::DeleteAlertSubscriptionReponse, Error<DeleteAlertSubscriptionError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -255,10 +255,10 @@ pub async fn delete_alert_subscription(configuration: &configuration::Configurat
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -270,7 +270,7 @@ pub async fn delete_alert_subscription(configuration: &configuration::Configurat
 }
 
 /// Get a alert by project and name
-pub async fn get_alert(configuration: &configuration::Configuration, owner: &str, raw_alert_name: &str) -> Result<models::GetAlertResponse, Error<GetAlertError>> {
+pub fn get_alert(configuration: &configuration::Configuration, owner: &str, raw_alert_name: &str) -> Result<models::GetAlertResponse, Error<GetAlertError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -291,10 +291,10 @@ pub async fn get_alert(configuration: &configuration::Configuration, owner: &str
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -306,7 +306,7 @@ pub async fn get_alert(configuration: &configuration::Configuration, owner: &str
 }
 
 /// Get all alerts that the user is subscribed to
-pub async fn get_alert_subscriptions(configuration: &configuration::Configuration, ) -> Result<models::GetAlertSubscriptionsResponse, Error<GetAlertSubscriptionsError>> {
+pub fn get_alert_subscriptions(configuration: &configuration::Configuration, ) -> Result<models::GetAlertSubscriptionsResponse, Error<GetAlertSubscriptionsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -327,10 +327,10 @@ pub async fn get_alert_subscriptions(configuration: &configuration::Configuratio
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -342,7 +342,7 @@ pub async fn get_alert_subscriptions(configuration: &configuration::Configuratio
 }
 
 /// Get all alerts for a user
-pub async fn get_all_alerts(configuration: &configuration::Configuration, ) -> Result<models::GetAllAlertsResponse, Error<GetAllAlertsError>> {
+pub fn get_all_alerts(configuration: &configuration::Configuration, ) -> Result<models::GetAllAlertsResponse, Error<GetAllAlertsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -363,10 +363,10 @@ pub async fn get_all_alerts(configuration: &configuration::Configuration, ) -> R
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -378,7 +378,7 @@ pub async fn get_all_alerts(configuration: &configuration::Configuration, ) -> R
 }
 
 /// Get an issue
-pub async fn get_issue(configuration: &configuration::Configuration, hex_issue_id: &str) -> Result<models::GetIssueResponse, Error<GetIssueError>> {
+pub fn get_issue(configuration: &configuration::Configuration, hex_issue_id: &str) -> Result<models::GetIssueResponse, Error<GetIssueError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -399,10 +399,10 @@ pub async fn get_issue(configuration: &configuration::Configuration, hex_issue_i
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -414,7 +414,7 @@ pub async fn get_issue(configuration: &configuration::Configuration, hex_issue_i
 }
 
 /// Preview an alert
-pub async fn preview_alert(configuration: &configuration::Configuration, owner: &str, raw_alert_name: &str, preview_alert_request: models::PreviewAlertRequest) -> Result<models::PreviewAlertResponse, Error<PreviewAlertError>> {
+pub fn preview_alert(configuration: &configuration::Configuration, owner: &str, raw_alert_name: &str, preview_alert_request: models::PreviewAlertRequest) -> Result<models::PreviewAlertResponse, Error<PreviewAlertError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -436,10 +436,10 @@ pub async fn preview_alert(configuration: &configuration::Configuration, owner: 
     local_var_req_builder = local_var_req_builder.json(&preview_alert_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -451,7 +451,7 @@ pub async fn preview_alert(configuration: &configuration::Configuration, owner: 
 }
 
 /// Query issues for the current user
-pub async fn query_issues(configuration: &configuration::Configuration, query_issues_request: models::QueryIssuesRequest) -> Result<models::QueryIssuesResponse, Error<QueryIssuesError>> {
+pub fn query_issues(configuration: &configuration::Configuration, query_issues_request: models::QueryIssuesRequest) -> Result<models::QueryIssuesResponse, Error<QueryIssuesError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -473,10 +473,10 @@ pub async fn query_issues(configuration: &configuration::Configuration, query_is
     local_var_req_builder = local_var_req_builder.json(&query_issues_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -488,7 +488,7 @@ pub async fn query_issues(configuration: &configuration::Configuration, query_is
 }
 
 /// Update a alert
-pub async fn update_alert(configuration: &configuration::Configuration, owner: &str, raw_alert_name: &str, update_alert_request: models::UpdateAlertRequest) -> Result<models::UpdateAlertResponse, Error<UpdateAlertError>> {
+pub fn update_alert(configuration: &configuration::Configuration, owner: &str, raw_alert_name: &str, update_alert_request: models::UpdateAlertRequest) -> Result<models::UpdateAlertResponse, Error<UpdateAlertError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -510,10 +510,10 @@ pub async fn update_alert(configuration: &configuration::Configuration, owner: &
     local_var_req_builder = local_var_req_builder.json(&update_alert_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -525,7 +525,7 @@ pub async fn update_alert(configuration: &configuration::Configuration, owner: &
 }
 
 /// Update the status of the issue
-pub async fn update_issue_status(configuration: &configuration::Configuration, hex_issue_id: &str, update_issue_status_request: models::UpdateIssueStatusRequest) -> Result<models::UpdateIssueStatusResponse, Error<UpdateIssueStatusError>> {
+pub fn update_issue_status(configuration: &configuration::Configuration, hex_issue_id: &str, update_issue_status_request: models::UpdateIssueStatusRequest) -> Result<models::UpdateIssueStatusResponse, Error<UpdateIssueStatusError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -547,10 +547,10 @@ pub async fn update_issue_status(configuration: &configuration::Configuration, h
     local_var_req_builder = local_var_req_builder.json(&update_issue_status_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

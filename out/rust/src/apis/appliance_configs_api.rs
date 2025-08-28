@@ -35,7 +35,7 @@ pub enum UpdateApplianceConfigError {
 
 
 /// Get an appliance config
-pub async fn get_appliance_config(configuration: &configuration::Configuration, owner: &str, config_key: &str) -> Result<std::path::PathBuf, Error<GetApplianceConfigError>> {
+pub fn get_appliance_config(configuration: &configuration::Configuration, owner: &str, config_key: &str) -> Result<std::path::PathBuf, Error<GetApplianceConfigError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -56,10 +56,10 @@ pub async fn get_appliance_config(configuration: &configuration::Configuration, 
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -71,7 +71,7 @@ pub async fn get_appliance_config(configuration: &configuration::Configuration, 
 }
 
 /// Update an appliance config
-pub async fn update_appliance_config(configuration: &configuration::Configuration, owner: &str, config_key: &str, body: std::path::PathBuf) -> Result<models::UpdateApplianceConfigResponse, Error<UpdateApplianceConfigError>> {
+pub fn update_appliance_config(configuration: &configuration::Configuration, owner: &str, config_key: &str, body: std::path::PathBuf) -> Result<models::UpdateApplianceConfigResponse, Error<UpdateApplianceConfigError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -93,10 +93,10 @@ pub async fn update_appliance_config(configuration: &configuration::Configuratio
     local_var_req_builder = local_var_req_builder.json(&body);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

@@ -53,7 +53,7 @@ pub enum UploadEmailAttachmentError {
 
 
 /// Add emails to bucket
-pub async fn add_emails_to_bucket(configuration: &configuration::Configuration, owner: &str, bucket_name: &str, add_emails_to_bucket_request: models::AddEmailsToBucketRequest) -> Result<models::AddEmailsToBucketResponse, Error<AddEmailsToBucketError>> {
+pub fn add_emails_to_bucket(configuration: &configuration::Configuration, owner: &str, bucket_name: &str, add_emails_to_bucket_request: models::AddEmailsToBucketRequest) -> Result<models::AddEmailsToBucketResponse, Error<AddEmailsToBucketError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -75,10 +75,10 @@ pub async fn add_emails_to_bucket(configuration: &configuration::Configuration, 
     local_var_req_builder = local_var_req_builder.json(&add_emails_to_bucket_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -90,7 +90,7 @@ pub async fn add_emails_to_bucket(configuration: &configuration::Configuration, 
 }
 
 /// Get emails from a bucket
-pub async fn get_bucket_emails(configuration: &configuration::Configuration, owner: &str, bucket_name: &str, get_bucket_emails_request: models::GetBucketEmailsRequest) -> Result<models::GetBucketEmailsResponse, Error<GetBucketEmailsError>> {
+pub fn get_bucket_emails(configuration: &configuration::Configuration, owner: &str, bucket_name: &str, get_bucket_emails_request: models::GetBucketEmailsRequest) -> Result<models::GetBucketEmailsResponse, Error<GetBucketEmailsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -112,10 +112,10 @@ pub async fn get_bucket_emails(configuration: &configuration::Configuration, own
     local_var_req_builder = local_var_req_builder.json(&get_bucket_emails_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -127,7 +127,7 @@ pub async fn get_bucket_emails(configuration: &configuration::Configuration, own
 }
 
 /// Get email from bucket
-pub async fn get_email_from_bucket_by_id(configuration: &configuration::Configuration, owner: &str, bucket_name: &str) -> Result<models::GetEmailFromBucketByIdResponse, Error<GetEmailFromBucketByIdError>> {
+pub fn get_email_from_bucket_by_id(configuration: &configuration::Configuration, owner: &str, bucket_name: &str) -> Result<models::GetEmailFromBucketByIdResponse, Error<GetEmailFromBucketByIdError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -148,10 +148,10 @@ pub async fn get_email_from_bucket_by_id(configuration: &configuration::Configur
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -163,7 +163,7 @@ pub async fn get_email_from_bucket_by_id(configuration: &configuration::Configur
 }
 
 /// Upload an attachment for a email.
-pub async fn upload_email_attachment(configuration: &configuration::Configuration, bucket_id: &str, email_id: &str, attachment_index: &str, file: Option<std::path::PathBuf>) -> Result<models::UploadAttachmentResponse, Error<UploadEmailAttachmentError>> {
+pub fn upload_email_attachment(configuration: &configuration::Configuration, bucket_id: &str, email_id: &str, attachment_index: &str, file: Option<std::path::PathBuf>) -> Result<models::UploadAttachmentResponse, Error<UploadEmailAttachmentError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -182,15 +182,17 @@ pub async fn upload_email_attachment(configuration: &configuration::Configuratio
         };
         local_var_req_builder = local_var_req_builder.header("authorization", local_var_value);
     };
-    let mut local_var_form = reqwest::multipart::Form::new();
-    // TODO: support file upload for 'file' parameter
+    let mut local_var_form = reqwest::blocking::multipart::Form::new();
+    if let Some(local_var_param_value) = file {
+        local_var_form = local_var_form.file("file", local_var_param_value)?;
+    }
     local_var_req_builder = local_var_req_builder.multipart(local_var_form);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

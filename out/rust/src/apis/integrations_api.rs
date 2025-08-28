@@ -116,7 +116,7 @@ pub enum ValidateExchangeCredentialsError {
 
 
 /// Create a integration
-pub async fn create_integration(configuration: &configuration::Configuration, owner: &str, integration_name: &str, create_integration_request: models::CreateIntegrationRequest) -> Result<models::CreateIntegrationResponse, Error<CreateIntegrationError>> {
+pub fn create_integration(configuration: &configuration::Configuration, owner: &str, integration_name: &str, create_integration_request: models::CreateIntegrationRequest) -> Result<models::CreateIntegrationResponse, Error<CreateIntegrationError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -138,10 +138,10 @@ pub async fn create_integration(configuration: &configuration::Configuration, ow
     local_var_req_builder = local_var_req_builder.json(&create_integration_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -153,7 +153,7 @@ pub async fn create_integration(configuration: &configuration::Configuration, ow
 }
 
 /// Delete a integration
-pub async fn delete_integration(configuration: &configuration::Configuration, integration_id: &str) -> Result<models::DeleteIntegrationResponse, Error<DeleteIntegrationError>> {
+pub fn delete_integration(configuration: &configuration::Configuration, integration_id: &str) -> Result<models::DeleteIntegrationResponse, Error<DeleteIntegrationError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -174,10 +174,10 @@ pub async fn delete_integration(configuration: &configuration::Configuration, in
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -189,7 +189,7 @@ pub async fn delete_integration(configuration: &configuration::Configuration, in
 }
 
 /// Get all integrations
-pub async fn get_all_integrations(configuration: &configuration::Configuration, ) -> Result<models::GetAllIntegrationsResponse, Error<GetAllIntegrationsError>> {
+pub fn get_all_integrations(configuration: &configuration::Configuration, ) -> Result<models::GetAllIntegrationsResponse, Error<GetAllIntegrationsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -210,10 +210,10 @@ pub async fn get_all_integrations(configuration: &configuration::Configuration, 
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -225,7 +225,7 @@ pub async fn get_all_integrations(configuration: &configuration::Configuration, 
 }
 
 /// Get all integrations in a project
-pub async fn get_all_integrations_in_project(configuration: &configuration::Configuration, owner: &str) -> Result<models::GetAllIntegrationsInProjectResponse, Error<GetAllIntegrationsInProjectError>> {
+pub fn get_all_integrations_in_project(configuration: &configuration::Configuration, owner: &str) -> Result<models::GetAllIntegrationsInProjectResponse, Error<GetAllIntegrationsInProjectError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -246,10 +246,10 @@ pub async fn get_all_integrations_in_project(configuration: &configuration::Conf
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -261,7 +261,7 @@ pub async fn get_all_integrations_in_project(configuration: &configuration::Conf
 }
 
 /// Get a integration by project and name
-pub async fn get_integration(configuration: &configuration::Configuration, owner: &str, integration_name: &str) -> Result<models::GetIntegrationResponse, Error<GetIntegrationError>> {
+pub fn get_integration(configuration: &configuration::Configuration, owner: &str, integration_name: &str) -> Result<models::GetIntegrationResponse, Error<GetIntegrationError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -282,10 +282,10 @@ pub async fn get_integration(configuration: &configuration::Configuration, owner
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -297,7 +297,7 @@ pub async fn get_integration(configuration: &configuration::Configuration, owner
 }
 
 /// Get a integration by ID
-pub async fn get_integration_by_id(configuration: &configuration::Configuration, integration_id: &str) -> Result<models::GetIntegrationByIdResponse, Error<GetIntegrationByIdError>> {
+pub fn get_integration_by_id(configuration: &configuration::Configuration, integration_id: &str) -> Result<models::GetIntegrationByIdResponse, Error<GetIntegrationByIdError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -318,10 +318,10 @@ pub async fn get_integration_by_id(configuration: &configuration::Configuration,
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -333,7 +333,7 @@ pub async fn get_integration_by_id(configuration: &configuration::Configuration,
 }
 
 /// Get integration sync errors
-pub async fn get_integration_errors(configuration: &configuration::Configuration, owner: &str, integration_name: &str) -> Result<models::GetIntegrationErrorsResponse, Error<GetIntegrationErrorsError>> {
+pub fn get_integration_errors(configuration: &configuration::Configuration, owner: &str, integration_name: &str) -> Result<models::GetIntegrationErrorsResponse, Error<GetIntegrationErrorsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -354,10 +354,10 @@ pub async fn get_integration_errors(configuration: &configuration::Configuration
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -369,7 +369,7 @@ pub async fn get_integration_errors(configuration: &configuration::Configuration
 }
 
 /// OAuth2 `authenticate` endpoint
-pub async fn integrations_o_auth2_authenticate(configuration: &configuration::Configuration, owner: &str, integration_name: &str) -> Result<models::IntegrationsOAuth2AuthenticateResponse, Error<IntegrationsOAuth2AuthenticateError>> {
+pub fn integrations_o_auth2_authenticate(configuration: &configuration::Configuration, owner: &str, integration_name: &str) -> Result<models::IntegrationsOAuth2AuthenticateResponse, Error<IntegrationsOAuth2AuthenticateError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -390,10 +390,10 @@ pub async fn integrations_o_auth2_authenticate(configuration: &configuration::Co
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -405,7 +405,7 @@ pub async fn integrations_o_auth2_authenticate(configuration: &configuration::Co
 }
 
 /// Salesforce OAuth2 `callback` endpoint
-pub async fn o_auth2_salesforce_callback(configuration: &configuration::Configuration, o_auth2_salesforce_callback_request: models::OAuth2SalesforceCallbackRequest) -> Result<models::OAuth2SalesforceCallbackResponse, Error<OAuth2SalesforceCallbackError>> {
+pub fn o_auth2_salesforce_callback(configuration: &configuration::Configuration, o_auth2_salesforce_callback_request: models::OAuth2SalesforceCallbackRequest) -> Result<models::OAuth2SalesforceCallbackResponse, Error<OAuth2SalesforceCallbackError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -427,10 +427,10 @@ pub async fn o_auth2_salesforce_callback(configuration: &configuration::Configur
     local_var_req_builder = local_var_req_builder.json(&o_auth2_salesforce_callback_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -442,7 +442,7 @@ pub async fn o_auth2_salesforce_callback(configuration: &configuration::Configur
 }
 
 /// Update a integration
-pub async fn update_integration(configuration: &configuration::Configuration, owner: &str, integration_name: &str, update_integration_request: models::UpdateIntegrationRequest) -> Result<models::UpdateIntegrationResponse, Error<UpdateIntegrationError>> {
+pub fn update_integration(configuration: &configuration::Configuration, owner: &str, integration_name: &str, update_integration_request: models::UpdateIntegrationRequest) -> Result<models::UpdateIntegrationResponse, Error<UpdateIntegrationError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -464,10 +464,10 @@ pub async fn update_integration(configuration: &configuration::Configuration, ow
     local_var_req_builder = local_var_req_builder.json(&update_integration_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -479,7 +479,7 @@ pub async fn update_integration(configuration: &configuration::Configuration, ow
 }
 
 /// Validate the provided Exchange credentials with the remote server.
-pub async fn validate_exchange_credentials(configuration: &configuration::Configuration, validate_exchange_credentials_request: models::ValidateExchangeCredentialsRequest) -> Result<models::ValidateExchangeCredentialsResponse, Error<ValidateExchangeCredentialsError>> {
+pub fn validate_exchange_credentials(configuration: &configuration::Configuration, validate_exchange_credentials_request: models::ValidateExchangeCredentialsRequest) -> Result<models::ValidateExchangeCredentialsResponse, Error<ValidateExchangeCredentialsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -501,10 +501,10 @@ pub async fn validate_exchange_credentials(configuration: &configuration::Config
     local_var_req_builder = local_var_req_builder.json(&validate_exchange_credentials_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

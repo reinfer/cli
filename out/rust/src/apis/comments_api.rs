@@ -125,7 +125,7 @@ pub enum UploadCommentAttachmentError {
 
 
 /// Add a batch of comments. To overwrite existing comments, you need to specify the latest `context` field.
-pub async fn add_comments(configuration: &configuration::Configuration, owner: &str, source_name: &str, add_comments_request: models::AddCommentsRequest) -> Result<models::AddCommentsResponse, Error<AddCommentsError>> {
+pub fn add_comments(configuration: &configuration::Configuration, owner: &str, source_name: &str, add_comments_request: models::AddCommentsRequest) -> Result<models::AddCommentsResponse, Error<AddCommentsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -147,10 +147,10 @@ pub async fn add_comments(configuration: &configuration::Configuration, owner: &
     local_var_req_builder = local_var_req_builder.json(&add_comments_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -162,7 +162,7 @@ pub async fn add_comments(configuration: &configuration::Configuration, owner: &
 }
 
 /// Delete a comment by ID
-pub async fn delete_comment(configuration: &configuration::Configuration, owner: &str, source_name: &str) -> Result<models::DeleteCommentResponse, Error<DeleteCommentError>> {
+pub fn delete_comment(configuration: &configuration::Configuration, owner: &str, source_name: &str) -> Result<models::DeleteCommentResponse, Error<DeleteCommentError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -183,10 +183,10 @@ pub async fn delete_comment(configuration: &configuration::Configuration, owner:
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -198,7 +198,7 @@ pub async fn delete_comment(configuration: &configuration::Configuration, owner:
 }
 
 /// Get a comment by ID
-pub async fn get_comment(configuration: &configuration::Configuration, owner: &str, source_name: &str, comment_id: &str, include_markup: Option<bool>) -> Result<models::GetCommentResponse, Error<GetCommentError>> {
+pub fn get_comment(configuration: &configuration::Configuration, owner: &str, source_name: &str, comment_id: &str, include_markup: Option<bool>) -> Result<models::GetCommentResponse, Error<GetCommentError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -222,10 +222,10 @@ pub async fn get_comment(configuration: &configuration::Configuration, owner: &s
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -237,7 +237,7 @@ pub async fn get_comment(configuration: &configuration::Configuration, owner: &s
 }
 
 /// Get the audio for a comment
-pub async fn get_comment_audio(configuration: &configuration::Configuration, source_id: &str, comment_id: &str) -> Result<std::path::PathBuf, Error<GetCommentAudioError>> {
+pub fn get_comment_audio(configuration: &configuration::Configuration, source_id: &str, comment_id: &str) -> Result<std::path::PathBuf, Error<GetCommentAudioError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -258,10 +258,10 @@ pub async fn get_comment_audio(configuration: &configuration::Configuration, sou
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -273,7 +273,7 @@ pub async fn get_comment_audio(configuration: &configuration::Configuration, sou
 }
 
 /// Get comments from a source
-pub async fn get_source_comments(configuration: &configuration::Configuration, owner: &str, source_name: &str) -> Result<models::GetSourceCommentsResponse, Error<GetSourceCommentsError>> {
+pub fn get_source_comments(configuration: &configuration::Configuration, owner: &str, source_name: &str) -> Result<models::GetSourceCommentsResponse, Error<GetSourceCommentsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -294,10 +294,10 @@ pub async fn get_source_comments(configuration: &configuration::Configuration, o
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -309,7 +309,7 @@ pub async fn get_source_comments(configuration: &configuration::Configuration, o
 }
 
 /// Query comments in a dataset
-pub async fn query_comments(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, query_comments_request: models::QueryCommentsRequest) -> Result<models::QueryCommentsResponse, Error<QueryCommentsError>> {
+pub fn query_comments(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, query_comments_request: models::QueryCommentsRequest) -> Result<models::QueryCommentsResponse, Error<QueryCommentsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -331,10 +331,10 @@ pub async fn query_comments(configuration: &configuration::Configuration, owner:
     local_var_req_builder = local_var_req_builder.json(&query_comments_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -346,7 +346,7 @@ pub async fn query_comments(configuration: &configuration::Configuration, owner:
 }
 
 /// Set the audio for a comment
-pub async fn set_comment_audio(configuration: &configuration::Configuration, raw_source_id: &str, raw_comment_id: &str, body: std::path::PathBuf) -> Result<models::SetCommentAudioResponse, Error<SetCommentAudioError>> {
+pub fn set_comment_audio(configuration: &configuration::Configuration, raw_source_id: &str, raw_comment_id: &str, body: std::path::PathBuf) -> Result<models::SetCommentAudioResponse, Error<SetCommentAudioError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -368,10 +368,10 @@ pub async fn set_comment_audio(configuration: &configuration::Configuration, raw
     local_var_req_builder = local_var_req_builder.json(&body);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -383,7 +383,7 @@ pub async fn set_comment_audio(configuration: &configuration::Configuration, raw
 }
 
 /// Sniff a CSV file
-pub async fn sniff_csv(configuration: &configuration::Configuration, body: std::path::PathBuf) -> Result<models::SniffCsvResponse, Error<SniffCsvError>> {
+pub fn sniff_csv(configuration: &configuration::Configuration, body: std::path::PathBuf) -> Result<models::SniffCsvResponse, Error<SniffCsvError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -405,10 +405,10 @@ pub async fn sniff_csv(configuration: &configuration::Configuration, body: std::
     local_var_req_builder = local_var_req_builder.json(&body);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -420,7 +420,7 @@ pub async fn sniff_csv(configuration: &configuration::Configuration, body: std::
 }
 
 /// Sync a batch of comments. Any comments with the same IDs in the source will be overwritten.
-pub async fn sync_comments(configuration: &configuration::Configuration, owner: &str, source_name: &str, sync_comments_request: models::SyncCommentsRequest) -> Result<models::SyncCommentsResponse, Error<SyncCommentsError>> {
+pub fn sync_comments(configuration: &configuration::Configuration, owner: &str, source_name: &str, sync_comments_request: models::SyncCommentsRequest) -> Result<models::SyncCommentsResponse, Error<SyncCommentsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -442,10 +442,10 @@ pub async fn sync_comments(configuration: &configuration::Configuration, owner: 
     local_var_req_builder = local_var_req_builder.json(&sync_comments_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -457,7 +457,7 @@ pub async fn sync_comments(configuration: &configuration::Configuration, owner: 
 }
 
 /// Sync comments from a CSV file
-pub async fn sync_comments_from_csv(configuration: &configuration::Configuration, owner: &str, source_name: &str, body: std::path::PathBuf) -> Result<models::SyncCommentsFromCsvResponse, Error<SyncCommentsFromCsvError>> {
+pub fn sync_comments_from_csv(configuration: &configuration::Configuration, owner: &str, source_name: &str, body: std::path::PathBuf) -> Result<models::SyncCommentsFromCsvResponse, Error<SyncCommentsFromCsvError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -479,10 +479,10 @@ pub async fn sync_comments_from_csv(configuration: &configuration::Configuration
     local_var_req_builder = local_var_req_builder.json(&body);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -494,7 +494,7 @@ pub async fn sync_comments_from_csv(configuration: &configuration::Configuration
 }
 
 /// Sync a batch of raw emails. Any comments with the same IDs in the source will be overwritten.
-pub async fn sync_raw_emails(configuration: &configuration::Configuration, owner: &str, source_name: &str, sync_raw_emails_request: models::SyncRawEmailsRequest) -> Result<models::SyncRawEmailsResponse, Error<SyncRawEmailsError>> {
+pub fn sync_raw_emails(configuration: &configuration::Configuration, owner: &str, source_name: &str, sync_raw_emails_request: models::SyncRawEmailsRequest) -> Result<models::SyncRawEmailsResponse, Error<SyncRawEmailsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -516,10 +516,10 @@ pub async fn sync_raw_emails(configuration: &configuration::Configuration, owner
     local_var_req_builder = local_var_req_builder.json(&sync_raw_emails_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -531,7 +531,7 @@ pub async fn sync_raw_emails(configuration: &configuration::Configuration, owner
 }
 
 /// Upload an attachment for a comment.
-pub async fn upload_comment_attachment(configuration: &configuration::Configuration, source_id: &str, comment_id: &str, attachment_index: &str, file: Option<std::path::PathBuf>) -> Result<models::UploadAttachmentResponse, Error<UploadCommentAttachmentError>> {
+pub fn upload_comment_attachment(configuration: &configuration::Configuration, source_id: &str, comment_id: &str, attachment_index: &str, file: Option<std::path::PathBuf>) -> Result<models::UploadAttachmentResponse, Error<UploadCommentAttachmentError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -550,15 +550,17 @@ pub async fn upload_comment_attachment(configuration: &configuration::Configurat
         };
         local_var_req_builder = local_var_req_builder.header("authorization", local_var_value);
     };
-    let mut local_var_form = reqwest::multipart::Form::new();
-    // TODO: support file upload for 'file' parameter
+    let mut local_var_form = reqwest::blocking::multipart::Form::new();
+    if let Some(local_var_param_value) = file {
+        local_var_form = local_var_form.file("file", local_var_param_value)?;
+    }
     local_var_req_builder = local_var_req_builder.multipart(local_var_form);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

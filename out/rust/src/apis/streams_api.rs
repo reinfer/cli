@@ -134,7 +134,7 @@ pub enum UpdateStreamError {
 
 
 /// Advance stream
-pub async fn advance_stream(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, advance_stream_request: models::AdvanceStreamRequest) -> Result<models::AdvanceStreamResponse, Error<AdvanceStreamError>> {
+pub fn advance_stream(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, advance_stream_request: models::AdvanceStreamRequest) -> Result<models::AdvanceStreamResponse, Error<AdvanceStreamError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -156,10 +156,10 @@ pub async fn advance_stream(configuration: &configuration::Configuration, owner:
     local_var_req_builder = local_var_req_builder.json(&advance_stream_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -171,7 +171,7 @@ pub async fn advance_stream(configuration: &configuration::Configuration, owner:
 }
 
 /// Create stream
-pub async fn create_stream(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, create_stream_request: models::CreateStreamRequest) -> Result<models::CreateStreamResponse, Error<CreateStreamError>> {
+pub fn create_stream(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, create_stream_request: models::CreateStreamRequest) -> Result<models::CreateStreamResponse, Error<CreateStreamError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -193,10 +193,10 @@ pub async fn create_stream(configuration: &configuration::Configuration, owner: 
     local_var_req_builder = local_var_req_builder.json(&create_stream_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -208,7 +208,7 @@ pub async fn create_stream(configuration: &configuration::Configuration, owner: 
 }
 
 /// Delete exception
-pub async fn delete_exception(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str) -> Result<models::DeleteStreamExceptionResponse, Error<DeleteExceptionError>> {
+pub fn delete_exception(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str) -> Result<models::DeleteStreamExceptionResponse, Error<DeleteExceptionError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -229,10 +229,10 @@ pub async fn delete_exception(configuration: &configuration::Configuration, owne
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -244,7 +244,7 @@ pub async fn delete_exception(configuration: &configuration::Configuration, owne
 }
 
 /// Delete stream
-pub async fn delete_stream(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str) -> Result<models::DeleteStreamResponse, Error<DeleteStreamError>> {
+pub fn delete_stream(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str) -> Result<models::DeleteStreamResponse, Error<DeleteStreamError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -265,10 +265,10 @@ pub async fn delete_stream(configuration: &configuration::Configuration, owner: 
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -280,7 +280,7 @@ pub async fn delete_stream(configuration: &configuration::Configuration, owner: 
 }
 
 /// Fetch from GX stream
-pub async fn fetch_from_gx_stream(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, fetch_from_gx_stream_request: models::FetchFromGxStreamRequest) -> Result<models::FetchFromGxStreamResponse, Error<FetchFromGxStreamError>> {
+pub fn fetch_from_gx_stream(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, fetch_from_gx_stream_request: models::FetchFromGxStreamRequest) -> Result<models::FetchFromGxStreamResponse, Error<FetchFromGxStreamError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -302,10 +302,10 @@ pub async fn fetch_from_gx_stream(configuration: &configuration::Configuration, 
     local_var_req_builder = local_var_req_builder.json(&fetch_from_gx_stream_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -317,7 +317,7 @@ pub async fn fetch_from_gx_stream(configuration: &configuration::Configuration, 
 }
 
 /// Fetch from stream
-pub async fn fetch_from_stream(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, fetch_from_stream_request: models::FetchFromStreamRequest) -> Result<models::FetchFromStreamResponse, Error<FetchFromStreamError>> {
+pub fn fetch_from_stream(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, fetch_from_stream_request: models::FetchFromStreamRequest) -> Result<models::FetchFromStreamResponse, Error<FetchFromStreamError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -339,10 +339,10 @@ pub async fn fetch_from_stream(configuration: &configuration::Configuration, own
     local_var_req_builder = local_var_req_builder.json(&fetch_from_stream_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -354,7 +354,7 @@ pub async fn fetch_from_stream(configuration: &configuration::Configuration, own
 }
 
 /// Get all streams
-pub async fn get_all_streams(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetAllStreamsResponse, Error<GetAllStreamsError>> {
+pub fn get_all_streams(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetAllStreamsResponse, Error<GetAllStreamsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -375,10 +375,10 @@ pub async fn get_all_streams(configuration: &configuration::Configuration, owner
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -390,7 +390,7 @@ pub async fn get_all_streams(configuration: &configuration::Configuration, owner
 }
 
 /// Get stream by name
-pub async fn get_stream_by_name(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str) -> Result<models::GetStreamByNameResponse, Error<GetStreamByNameError>> {
+pub fn get_stream_by_name(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str) -> Result<models::GetStreamByNameResponse, Error<GetStreamByNameError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -411,10 +411,10 @@ pub async fn get_stream_by_name(configuration: &configuration::Configuration, ow
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -426,7 +426,7 @@ pub async fn get_stream_by_name(configuration: &configuration::Configuration, ow
 }
 
 /// Returns the next batch of comments from a stream together with their predictions, if the trigger has a model associated with it.  This route can be called multiple times and it will return the same results until it's explicitly advances using one of the continuations from the response.
-pub async fn get_stream_results(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, max_results: Option<i32>, max_filtered: Option<i32>) -> Result<models::GetStreamResultsResponse, Error<GetStreamResultsError>> {
+pub fn get_stream_results(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, max_results: Option<i32>, max_filtered: Option<i32>) -> Result<models::GetStreamResultsResponse, Error<GetStreamResultsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -453,10 +453,10 @@ pub async fn get_stream_results(configuration: &configuration::Configuration, ow
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -468,7 +468,7 @@ pub async fn get_stream_results(configuration: &configuration::Configuration, ow
 }
 
 /// Returns the next batch of comments from a stream together with their predictions, if the trigger has a model associated with it.  This route can be called multiple times and it will return the same results until it's explicitly advances using one of the continuations from the response. Now deprecated, please use `v1` route intead
-pub async fn get_stream_results_preview(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, max_results: Option<i32>, max_filtered: Option<i32>) -> Result<models::GetStreamResultsResponse, Error<GetStreamResultsPreviewError>> {
+pub fn get_stream_results_preview(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, max_results: Option<i32>, max_filtered: Option<i32>) -> Result<models::GetStreamResultsResponse, Error<GetStreamResultsPreviewError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -495,10 +495,10 @@ pub async fn get_stream_results_preview(configuration: &configuration::Configura
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -510,7 +510,7 @@ pub async fn get_stream_results_preview(configuration: &configuration::Configura
 }
 
 /// Reset stream
-pub async fn reset_stream(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, reset_stream_request: models::ResetStreamRequest) -> Result<models::ResetStreamResponse, Error<ResetStreamError>> {
+pub fn reset_stream(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, reset_stream_request: models::ResetStreamRequest) -> Result<models::ResetStreamResponse, Error<ResetStreamError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -532,10 +532,10 @@ pub async fn reset_stream(configuration: &configuration::Configuration, owner: &
     local_var_req_builder = local_var_req_builder.json(&reset_stream_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -547,7 +547,7 @@ pub async fn reset_stream(configuration: &configuration::Configuration, owner: &
 }
 
 /// Store exception
-pub async fn store_exception(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, store_exception_request: models::StoreExceptionRequest) -> Result<models::StoreExceptionResponse, Error<StoreExceptionError>> {
+pub fn store_exception(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, store_exception_request: models::StoreExceptionRequest) -> Result<models::StoreExceptionResponse, Error<StoreExceptionError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -569,10 +569,10 @@ pub async fn store_exception(configuration: &configuration::Configuration, owner
     local_var_req_builder = local_var_req_builder.json(&store_exception_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -584,7 +584,7 @@ pub async fn store_exception(configuration: &configuration::Configuration, owner
 }
 
 /// Update stream
-pub async fn update_stream(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, create_stream_request: models::CreateStreamRequest) -> Result<models::CreateStreamResponse, Error<UpdateStreamError>> {
+pub fn update_stream(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, stream_name: &str, create_stream_request: models::CreateStreamRequest) -> Result<models::CreateStreamResponse, Error<UpdateStreamError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -606,10 +606,10 @@ pub async fn update_stream(configuration: &configuration::Configuration, owner: 
     local_var_req_builder = local_var_req_builder.json(&create_stream_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

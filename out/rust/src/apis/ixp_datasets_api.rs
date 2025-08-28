@@ -35,7 +35,7 @@ pub enum DeleteIxpDatasetError {
 
 
 /// Create a new IXP dataset
-pub async fn create_ixp_dataset(configuration: &configuration::Configuration, create_ixp_dataset_request: models::CreateIxpDatasetRequest) -> Result<models::CreateIxpDatasetResponse, Error<CreateIxpDatasetError>> {
+pub fn create_ixp_dataset(configuration: &configuration::Configuration, create_ixp_dataset_request: models::CreateIxpDatasetRequest) -> Result<models::CreateIxpDatasetResponse, Error<CreateIxpDatasetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -57,10 +57,10 @@ pub async fn create_ixp_dataset(configuration: &configuration::Configuration, cr
     local_var_req_builder = local_var_req_builder.json(&create_ixp_dataset_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -72,7 +72,7 @@ pub async fn create_ixp_dataset(configuration: &configuration::Configuration, cr
 }
 
 /// Delete an IXP dataset
-pub async fn delete_ixp_dataset(configuration: &configuration::Configuration, dataset_id: &str) -> Result<models::DeleteIxpDatasetResponse, Error<DeleteIxpDatasetError>> {
+pub fn delete_ixp_dataset(configuration: &configuration::Configuration, dataset_id: &str) -> Result<models::DeleteIxpDatasetResponse, Error<DeleteIxpDatasetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -93,10 +93,10 @@ pub async fn delete_ixp_dataset(configuration: &configuration::Configuration, da
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

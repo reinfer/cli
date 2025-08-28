@@ -53,7 +53,7 @@ pub enum GetPageThumbnailError {
 
 
 /// Get metadata
-pub async fn get_document_metadata(configuration: &configuration::Configuration, attachment_reference: &str) -> Result<models::GetDocumentMetadataResponse, Error<GetDocumentMetadataError>> {
+pub fn get_document_metadata(configuration: &configuration::Configuration, attachment_reference: &str) -> Result<models::GetDocumentMetadataResponse, Error<GetDocumentMetadataError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -74,10 +74,10 @@ pub async fn get_document_metadata(configuration: &configuration::Configuration,
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -89,7 +89,7 @@ pub async fn get_document_metadata(configuration: &configuration::Configuration,
 }
 
 /// Get page image
-pub async fn get_page_image(configuration: &configuration::Configuration, attachment_reference: &str, page_index: &str) -> Result<std::path::PathBuf, Error<GetPageImageError>> {
+pub fn get_page_image(configuration: &configuration::Configuration, attachment_reference: &str, page_index: &str) -> Result<std::path::PathBuf, Error<GetPageImageError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -110,10 +110,10 @@ pub async fn get_page_image(configuration: &configuration::Configuration, attach
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -125,7 +125,7 @@ pub async fn get_page_image(configuration: &configuration::Configuration, attach
 }
 
 /// Get ocr selections
-pub async fn get_page_selections(configuration: &configuration::Configuration, attachment_reference: &str, page_index: &str) -> Result<models::GetPageSelectionsResponse, Error<GetPageSelectionsError>> {
+pub fn get_page_selections(configuration: &configuration::Configuration, attachment_reference: &str, page_index: &str) -> Result<models::GetPageSelectionsResponse, Error<GetPageSelectionsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -146,10 +146,10 @@ pub async fn get_page_selections(configuration: &configuration::Configuration, a
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -161,7 +161,7 @@ pub async fn get_page_selections(configuration: &configuration::Configuration, a
 }
 
 /// Get page thumbnail
-pub async fn get_page_thumbnail(configuration: &configuration::Configuration, attachment_reference: &str, page_index: &str) -> Result<std::path::PathBuf, Error<GetPageThumbnailError>> {
+pub fn get_page_thumbnail(configuration: &configuration::Configuration, attachment_reference: &str, page_index: &str) -> Result<std::path::PathBuf, Error<GetPageThumbnailError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -182,10 +182,10 @@ pub async fn get_page_thumbnail(configuration: &configuration::Configuration, at
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

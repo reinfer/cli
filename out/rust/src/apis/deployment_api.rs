@@ -35,7 +35,7 @@ pub enum GetSubdomainError {
 
 
 /// Get the fully qualified login url for an email address.
-pub async fn get_qualified_login_url(configuration: &configuration::Configuration, get_qualified_login_url_request: models::GetQualifiedLoginUrlRequest) -> Result<models::GetQualifiedLoginUrlResponse, Error<GetQualifiedLoginUrlError>> {
+pub fn get_qualified_login_url(configuration: &configuration::Configuration, get_qualified_login_url_request: models::GetQualifiedLoginUrlRequest) -> Result<models::GetQualifiedLoginUrlResponse, Error<GetQualifiedLoginUrlError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -57,10 +57,10 @@ pub async fn get_qualified_login_url(configuration: &configuration::Configuratio
     local_var_req_builder = local_var_req_builder.json(&get_qualified_login_url_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -72,7 +72,7 @@ pub async fn get_qualified_login_url(configuration: &configuration::Configuratio
 }
 
 /// Whether the request was made from a tenant subdomain.
-pub async fn get_subdomain(configuration: &configuration::Configuration, ) -> Result<models::GetSubdomainResponse, Error<GetSubdomainError>> {
+pub fn get_subdomain(configuration: &configuration::Configuration, ) -> Result<models::GetSubdomainResponse, Error<GetSubdomainError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -93,10 +93,10 @@ pub async fn get_subdomain(configuration: &configuration::Configuration, ) -> Re
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

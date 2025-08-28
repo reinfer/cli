@@ -71,7 +71,7 @@ pub enum UpdateLabelDefError {
 
 
 /// Label Group Bulk Create
-pub async fn create_label_defs_bulk(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str, create_or_update_label_defs_bulk_request: models::CreateOrUpdateLabelDefsBulkRequest) -> Result<models::CreateLabelDefsBulkResponse, Error<CreateLabelDefsBulkError>> {
+pub fn create_label_defs_bulk(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str, create_or_update_label_defs_bulk_request: models::CreateOrUpdateLabelDefsBulkRequest) -> Result<models::CreateLabelDefsBulkResponse, Error<CreateLabelDefsBulkError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -93,10 +93,10 @@ pub async fn create_label_defs_bulk(configuration: &configuration::Configuration
     local_var_req_builder = local_var_req_builder.json(&create_or_update_label_defs_bulk_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -108,7 +108,7 @@ pub async fn create_label_defs_bulk(configuration: &configuration::Configuration
 }
 
 /// Delete Label Def
-pub async fn delete_label_def(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str, label_name: &str) -> Result<models::DeleteLabelDefResponse, Error<DeleteLabelDefError>> {
+pub fn delete_label_def(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str, label_name: &str) -> Result<models::DeleteLabelDefResponse, Error<DeleteLabelDefError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -130,10 +130,10 @@ pub async fn delete_label_def(configuration: &configuration::Configuration, owne
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -145,7 +145,7 @@ pub async fn delete_label_def(configuration: &configuration::Configuration, owne
 }
 
 /// Get the history for a field group by name
-pub async fn get_field_group_history(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str, label_name: &str, older_than_version: Option<i32>) -> Result<models::GetFieldGroupHistoryResponse, Error<GetFieldGroupHistoryError>> {
+pub fn get_field_group_history(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str, label_name: &str, older_than_version: Option<i32>) -> Result<models::GetFieldGroupHistoryResponse, Error<GetFieldGroupHistoryError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -169,10 +169,10 @@ pub async fn get_field_group_history(configuration: &configuration::Configuratio
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -184,7 +184,7 @@ pub async fn get_field_group_history(configuration: &configuration::Configuratio
 }
 
 /// Get the history for a specific field within a field group
-pub async fn get_field_history(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str, label_name: &str, field_id: &str, older_than_version: Option<i32>) -> Result<models::GetFieldHistoryResponse, Error<GetFieldHistoryError>> {
+pub fn get_field_history(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str, label_name: &str, field_id: &str, older_than_version: Option<i32>) -> Result<models::GetFieldHistoryResponse, Error<GetFieldHistoryError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -208,10 +208,10 @@ pub async fn get_field_history(configuration: &configuration::Configuration, own
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -223,7 +223,7 @@ pub async fn get_field_history(configuration: &configuration::Configuration, own
 }
 
 /// Get Label Def
-pub async fn get_label_def(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str, label_name: &str) -> Result<models::GetLabelDefResponse, Error<GetLabelDefError>> {
+pub fn get_label_def(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str, label_name: &str) -> Result<models::GetLabelDefResponse, Error<GetLabelDefError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -245,10 +245,10 @@ pub async fn get_label_def(configuration: &configuration::Configuration, owner: 
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -260,7 +260,7 @@ pub async fn get_label_def(configuration: &configuration::Configuration, owner: 
 }
 
 /// Update label def
-pub async fn update_label_def(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str, label_name: &str, label_def_update_request: models::LabelDefUpdateRequest) -> Result<models::UpdateLabelDefResponse, Error<UpdateLabelDefError>> {
+pub fn update_label_def(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, label_group_name: &str, label_name: &str, label_def_update_request: models::LabelDefUpdateRequest) -> Result<models::UpdateLabelDefResponse, Error<UpdateLabelDefError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -283,10 +283,10 @@ pub async fn update_label_def(configuration: &configuration::Configuration, owne
     local_var_req_builder = local_var_req_builder.json(&label_def_update_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

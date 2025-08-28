@@ -71,7 +71,7 @@ pub enum UpdateDashboardError {
 
 
 /// Create a new dashboard
-pub async fn create_dashboard(configuration: &configuration::Configuration, owner: &str, dashboard_name: &str, create_dashboard_request: models::CreateDashboardRequest) -> Result<models::CreateDashboardResponse, Error<CreateDashboardError>> {
+pub fn create_dashboard(configuration: &configuration::Configuration, owner: &str, dashboard_name: &str, create_dashboard_request: models::CreateDashboardRequest) -> Result<models::CreateDashboardResponse, Error<CreateDashboardError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -93,10 +93,10 @@ pub async fn create_dashboard(configuration: &configuration::Configuration, owne
     local_var_req_builder = local_var_req_builder.json(&create_dashboard_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -108,7 +108,7 @@ pub async fn create_dashboard(configuration: &configuration::Configuration, owne
 }
 
 /// Delete a dashboard
-pub async fn delete_dashboard(configuration: &configuration::Configuration, owner: &str, dashboard_name: &str) -> Result<models::DeleteDashboardResponse, Error<DeleteDashboardError>> {
+pub fn delete_dashboard(configuration: &configuration::Configuration, owner: &str, dashboard_name: &str) -> Result<models::DeleteDashboardResponse, Error<DeleteDashboardError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -129,10 +129,10 @@ pub async fn delete_dashboard(configuration: &configuration::Configuration, owne
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -144,7 +144,7 @@ pub async fn delete_dashboard(configuration: &configuration::Configuration, owne
 }
 
 /// Get a dashboard by project and name
-pub async fn get_dashboard(configuration: &configuration::Configuration, owner: &str, dashboard_name: &str) -> Result<models::GetDashboardResponse, Error<GetDashboardError>> {
+pub fn get_dashboard(configuration: &configuration::Configuration, owner: &str, dashboard_name: &str) -> Result<models::GetDashboardResponse, Error<GetDashboardError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -165,10 +165,10 @@ pub async fn get_dashboard(configuration: &configuration::Configuration, owner: 
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -180,7 +180,7 @@ pub async fn get_dashboard(configuration: &configuration::Configuration, owner: 
 }
 
 /// Get all dashboards in dataset
-pub async fn get_dashboards_in_dataset(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetAllDashboardsInDatasetResponse, Error<GetDashboardsInDatasetError>> {
+pub fn get_dashboards_in_dataset(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetAllDashboardsInDatasetResponse, Error<GetDashboardsInDatasetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -201,10 +201,10 @@ pub async fn get_dashboards_in_dataset(configuration: &configuration::Configurat
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -216,7 +216,7 @@ pub async fn get_dashboards_in_dataset(configuration: &configuration::Configurat
 }
 
 /// Get all dashboards in project
-pub async fn get_dashboards_in_project(configuration: &configuration::Configuration, owner: &str) -> Result<models::GetAllDashboardsInProjectResponse, Error<GetDashboardsInProjectError>> {
+pub fn get_dashboards_in_project(configuration: &configuration::Configuration, owner: &str) -> Result<models::GetAllDashboardsInProjectResponse, Error<GetDashboardsInProjectError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -237,10 +237,10 @@ pub async fn get_dashboards_in_project(configuration: &configuration::Configurat
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -252,7 +252,7 @@ pub async fn get_dashboards_in_project(configuration: &configuration::Configurat
 }
 
 /// Get a dashboard by project and name
-pub async fn update_dashboard(configuration: &configuration::Configuration, owner: &str, dashboard_name: &str, update_dashboard_request: models::UpdateDashboardRequest) -> Result<models::UpdateDashboardResponse, Error<UpdateDashboardError>> {
+pub fn update_dashboard(configuration: &configuration::Configuration, owner: &str, dashboard_name: &str, update_dashboard_request: models::UpdateDashboardRequest) -> Result<models::UpdateDashboardResponse, Error<UpdateDashboardError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -274,10 +274,10 @@ pub async fn update_dashboard(configuration: &configuration::Configuration, owne
     local_var_req_builder = local_var_req_builder.json(&update_dashboard_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

@@ -26,7 +26,7 @@ pub enum CreatePageViewError {
 
 
 /// Create a pageview
-pub async fn create_page_view(configuration: &configuration::Configuration, create_page_view_request: models::CreatePageViewRequest) -> Result<models::CreatePageViewResponse, Error<CreatePageViewError>> {
+pub fn create_page_view(configuration: &configuration::Configuration, create_page_view_request: models::CreatePageViewRequest) -> Result<models::CreatePageViewResponse, Error<CreatePageViewError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -48,10 +48,10 @@ pub async fn create_page_view(configuration: &configuration::Configuration, crea
     local_var_req_builder = local_var_req_builder.json(&create_page_view_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

@@ -26,7 +26,7 @@ pub enum GetDeprecatedUserModelsError {
 
 
 /// Get all deprecated user models
-pub async fn get_deprecated_user_models(configuration: &configuration::Configuration, ) -> Result<models::GetDeprecatedUserModelsResponse, Error<GetDeprecatedUserModelsError>> {
+pub fn get_deprecated_user_models(configuration: &configuration::Configuration, ) -> Result<models::GetDeprecatedUserModelsResponse, Error<GetDeprecatedUserModelsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -47,10 +47,10 @@ pub async fn get_deprecated_user_models(configuration: &configuration::Configura
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

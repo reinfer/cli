@@ -35,7 +35,7 @@ pub enum UploadDocumentError {
 
 
 /// Get an unstructured document.
-pub async fn get_document(configuration: &configuration::Configuration, source_id: &str, comment_id: &str) -> Result<std::path::PathBuf, Error<GetDocumentError>> {
+pub fn get_document(configuration: &configuration::Configuration, source_id: &str, comment_id: &str) -> Result<std::path::PathBuf, Error<GetDocumentError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -56,10 +56,10 @@ pub async fn get_document(configuration: &configuration::Configuration, source_i
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -71,7 +71,7 @@ pub async fn get_document(configuration: &configuration::Configuration, source_i
 }
 
 /// Upload an unstructured document.
-pub async fn upload_document(configuration: &configuration::Configuration, source_id: &str, file: Option<std::path::PathBuf>) -> Result<models::UploadDocumentResponse, Error<UploadDocumentError>> {
+pub fn upload_document(configuration: &configuration::Configuration, source_id: &str, file: Option<std::path::PathBuf>) -> Result<models::UploadDocumentResponse, Error<UploadDocumentError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -90,15 +90,17 @@ pub async fn upload_document(configuration: &configuration::Configuration, sourc
         };
         local_var_req_builder = local_var_req_builder.header("authorization", local_var_value);
     };
-    let mut local_var_form = reqwest::multipart::Form::new();
-    // TODO: support file upload for 'file' parameter
+    let mut local_var_form = reqwest::blocking::multipart::Form::new();
+    if let Some(local_var_param_value) = file {
+        local_var_form = local_var_form.file("file", local_var_param_value)?;
+    }
     local_var_req_builder = local_var_req_builder.multipart(local_var_form);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

@@ -179,7 +179,7 @@ pub enum UpdateModelTagError {
 
 
 /// Delete a model tag
-pub async fn delete_model_tag(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, tag_name: &str) -> Result<models::DeleteModelTagResponse, Error<DeleteModelTagError>> {
+pub fn delete_model_tag(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, tag_name: &str) -> Result<models::DeleteModelTagResponse, Error<DeleteModelTagError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -200,10 +200,10 @@ pub async fn delete_model_tag(configuration: &configuration::Configuration, owne
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -215,7 +215,7 @@ pub async fn delete_model_tag(configuration: &configuration::Configuration, owne
 }
 
 /// Get all the models for a dataset
-pub async fn get_all_models_in_dataset(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, get_all_models_in_dataset_request: models::GetAllModelsInDatasetRequest) -> Result<models::GetAllModelsInDatasetResponse, Error<GetAllModelsInDatasetError>> {
+pub fn get_all_models_in_dataset(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, get_all_models_in_dataset_request: models::GetAllModelsInDatasetRequest) -> Result<models::GetAllModelsInDatasetResponse, Error<GetAllModelsInDatasetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -237,10 +237,10 @@ pub async fn get_all_models_in_dataset(configuration: &configuration::Configurat
     local_var_req_builder = local_var_req_builder.json(&get_all_models_in_dataset_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -252,7 +252,7 @@ pub async fn get_all_models_in_dataset(configuration: &configuration::Configurat
 }
 
 /// Get predictions for a list of comments
-pub async fn get_comment_predictions(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, get_comment_predictions_request: models::GetCommentPredictionsRequest) -> Result<models::GetCommentPredictionsResponse, Error<GetCommentPredictionsError>> {
+pub fn get_comment_predictions(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, get_comment_predictions_request: models::GetCommentPredictionsRequest) -> Result<models::GetCommentPredictionsResponse, Error<GetCommentPredictionsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -274,10 +274,10 @@ pub async fn get_comment_predictions(configuration: &configuration::Configuratio
     local_var_req_builder = local_var_req_builder.json(&get_comment_predictions_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -289,7 +289,7 @@ pub async fn get_comment_predictions(configuration: &configuration::Configuratio
 }
 
 /// Get label validation for a dataset
-pub async fn get_label_validation(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, get_label_validation_request: models::GetLabelValidationRequest, beta: Option<bool>) -> Result<models::GetLabelValidationResponse, Error<GetLabelValidationError>> {
+pub fn get_label_validation(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, get_label_validation_request: models::GetLabelValidationRequest, beta: Option<bool>) -> Result<models::GetLabelValidationResponse, Error<GetLabelValidationError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -314,10 +314,10 @@ pub async fn get_label_validation(configuration: &configuration::Configuration, 
     local_var_req_builder = local_var_req_builder.json(&get_label_validation_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -329,7 +329,7 @@ pub async fn get_label_validation(configuration: &configuration::Configuration, 
 }
 
 /// Get model tags
-pub async fn get_model_tags(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetModelTagsResponse, Error<GetModelTagsError>> {
+pub fn get_model_tags(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetModelTagsResponse, Error<GetModelTagsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -350,10 +350,10 @@ pub async fn get_model_tags(configuration: &configuration::Configuration, owner:
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -365,7 +365,7 @@ pub async fn get_model_tags(configuration: &configuration::Configuration, owner:
 }
 
 /// Get ordered comment uids for training action
-pub async fn get_training_action_ordered_comment_uids(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, training_action_id: &str) -> Result<models::GetTrainingActionsCommentUidsResponse, Error<GetTrainingActionOrderedCommentUidsError>> {
+pub fn get_training_action_ordered_comment_uids(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, training_action_id: &str) -> Result<models::GetTrainingActionsCommentUidsResponse, Error<GetTrainingActionOrderedCommentUidsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -386,10 +386,10 @@ pub async fn get_training_action_ordered_comment_uids(configuration: &configurat
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -401,7 +401,7 @@ pub async fn get_training_action_ordered_comment_uids(configuration: &configurat
 }
 
 /// Get ordered training actions for labels
-pub async fn get_training_actions_labels(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, beta: Option<bool>) -> Result<models::GetTrainingActionsLabelsResponse, Error<GetTrainingActionsLabelsError>> {
+pub fn get_training_actions_labels(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, beta: Option<bool>) -> Result<models::GetTrainingActionsLabelsResponse, Error<GetTrainingActionsLabelsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -425,10 +425,10 @@ pub async fn get_training_actions_labels(configuration: &configuration::Configur
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -440,7 +440,7 @@ pub async fn get_training_actions_labels(configuration: &configuration::Configur
 }
 
 /// Get validation for a dataset
-pub async fn get_validation(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, beta: Option<bool>) -> Result<models::GetValidationResponse, Error<GetValidationError>> {
+pub fn get_validation(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, beta: Option<bool>) -> Result<models::GetValidationResponse, Error<GetValidationError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -464,10 +464,10 @@ pub async fn get_validation(configuration: &configuration::Configuration, owner:
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -479,7 +479,7 @@ pub async fn get_validation(configuration: &configuration::Configuration, owner:
 }
 
 /// Get validation for a dataset
-pub async fn get_validation_v1(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str) -> Result<models::GetValidationV1Response, Error<GetValidationV1Error>> {
+pub fn get_validation_v1(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str) -> Result<models::GetValidationV1Response, Error<GetValidationV1Error>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -500,10 +500,10 @@ pub async fn get_validation_v1(configuration: &configuration::Configuration, own
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -515,7 +515,7 @@ pub async fn get_validation_v1(configuration: &configuration::Configuration, own
 }
 
 /// Pin a model
-pub async fn pin_model(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str) -> Result<models::PinModelResponse, Error<PinModelError>> {
+pub fn pin_model(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str) -> Result<models::PinModelResponse, Error<PinModelError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -536,10 +536,10 @@ pub async fn pin_model(configuration: &configuration::Configuration, owner: &str
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -551,7 +551,7 @@ pub async fn pin_model(configuration: &configuration::Configuration, owner: &str
 }
 
 /// Get predictions from a specific version of a pinned model
-pub async fn predict(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, predict_request: models::PredictRequest) -> Result<models::PredictResponse, Error<PredictError>> {
+pub fn predict(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, predict_request: models::PredictRequest) -> Result<models::PredictResponse, Error<PredictError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -573,10 +573,10 @@ pub async fn predict(configuration: &configuration::Configuration, owner: &str, 
     local_var_req_builder = local_var_req_builder.json(&predict_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -588,7 +588,7 @@ pub async fn predict(configuration: &configuration::Configuration, owner: &str, 
 }
 
 /// Get extraction predictions from a specific version of a pinned model
-pub async fn predict_extractions(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, predict_extractions_request: models::PredictExtractionsRequest) -> Result<models::PredictExtractionsResponse, Error<PredictExtractionsError>> {
+pub fn predict_extractions(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, predict_extractions_request: models::PredictExtractionsRequest) -> Result<models::PredictExtractionsResponse, Error<PredictExtractionsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -610,10 +610,10 @@ pub async fn predict_extractions(configuration: &configuration::Configuration, o
     local_var_req_builder = local_var_req_builder.json(&predict_extractions_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -625,7 +625,7 @@ pub async fn predict_extractions(configuration: &configuration::Configuration, o
 }
 
 /// Get predictions from the latest model
-pub async fn predict_latest(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, predict_latest_request: models::PredictLatestRequest) -> Result<models::PredictLatestResponse, Error<PredictLatestError>> {
+pub fn predict_latest(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, predict_latest_request: models::PredictLatestRequest) -> Result<models::PredictLatestResponse, Error<PredictLatestError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -647,10 +647,10 @@ pub async fn predict_latest(configuration: &configuration::Configuration, owner:
     local_var_req_builder = local_var_req_builder.json(&predict_latest_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -662,7 +662,7 @@ pub async fn predict_latest(configuration: &configuration::Configuration, owner:
 }
 
 /// Get predictions on raw emails from a specific model version
-pub async fn predict_raw_emails(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, predict_raw_emails_request: models::PredictRawEmailsRequest) -> Result<models::PredictRawEmailsResponse, Error<PredictRawEmailsError>> {
+pub fn predict_raw_emails(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, predict_raw_emails_request: models::PredictRawEmailsRequest) -> Result<models::PredictRawEmailsResponse, Error<PredictRawEmailsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -684,10 +684,10 @@ pub async fn predict_raw_emails(configuration: &configuration::Configuration, ow
     local_var_req_builder = local_var_req_builder.json(&predict_raw_emails_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -699,7 +699,7 @@ pub async fn predict_raw_emails(configuration: &configuration::Configuration, ow
 }
 
 /// Put a training comment as seen, and perhaps with annotation
-pub async fn put_training_comment_seen(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, training_action_id: &str, comment_uid: &str, put_comment_as_seen_request: models::PutCommentAsSeenRequest) -> Result<models::PutCommentAsSeenResponse, Error<PutTrainingCommentSeenError>> {
+pub fn put_training_comment_seen(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, training_action_id: &str, comment_uid: &str, put_comment_as_seen_request: models::PutCommentAsSeenRequest) -> Result<models::PutCommentAsSeenResponse, Error<PutTrainingCommentSeenError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -721,10 +721,10 @@ pub async fn put_training_comment_seen(configuration: &configuration::Configurat
     local_var_req_builder = local_var_req_builder.json(&put_comment_as_seen_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -736,7 +736,7 @@ pub async fn put_training_comment_seen(configuration: &configuration::Configurat
 }
 
 /// Unpin a model
-pub async fn unpin_model(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str) -> Result<models::UnpinModelResponse, Error<UnpinModelError>> {
+pub fn unpin_model(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str) -> Result<models::UnpinModelResponse, Error<UnpinModelError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -757,10 +757,10 @@ pub async fn unpin_model(configuration: &configuration::Configuration, owner: &s
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -772,7 +772,7 @@ pub async fn unpin_model(configuration: &configuration::Configuration, owner: &s
 }
 
 /// Update a model
-pub async fn update_model(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, update_model_request: models::UpdateModelRequest) -> Result<models::UpdateModelResponse, Error<UpdateModelError>> {
+pub fn update_model(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, model_version: &str, update_model_request: models::UpdateModelRequest) -> Result<models::UpdateModelResponse, Error<UpdateModelError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -794,10 +794,10 @@ pub async fn update_model(configuration: &configuration::Configuration, owner: &
     local_var_req_builder = local_var_req_builder.json(&update_model_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -809,7 +809,7 @@ pub async fn update_model(configuration: &configuration::Configuration, owner: &
 }
 
 /// Update a model tag
-pub async fn update_model_tag(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, tag_name: &str, update_model_tag_request: models::UpdateModelTagRequest) -> Result<models::UpdateModelTagResponse, Error<UpdateModelTagError>> {
+pub fn update_model_tag(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, tag_name: &str, update_model_tag_request: models::UpdateModelTagRequest) -> Result<models::UpdateModelTagResponse, Error<UpdateModelTagError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -831,10 +831,10 @@ pub async fn update_model_tag(configuration: &configuration::Configuration, owne
     local_var_req_builder = local_var_req_builder.json(&update_model_tag_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

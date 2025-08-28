@@ -62,7 +62,7 @@ pub enum SetTenantQuotaError {
 
 
 /// Get all quotas for a given tenant
-pub async fn get_quotas_for_tenant(configuration: &configuration::Configuration, target_tenant_id: &str) -> Result<models::GetQuotasForTenantResponse, Error<GetQuotasForTenantError>> {
+pub fn get_quotas_for_tenant(configuration: &configuration::Configuration, target_tenant_id: &str) -> Result<models::GetQuotasForTenantResponse, Error<GetQuotasForTenantError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -83,10 +83,10 @@ pub async fn get_quotas_for_tenant(configuration: &configuration::Configuration,
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -98,7 +98,7 @@ pub async fn get_quotas_for_tenant(configuration: &configuration::Configuration,
 }
 
 /// Get all quotas in current tenant
-pub async fn get_tenant_quota(configuration: &configuration::Configuration, ) -> Result<models::GetTenantQuotaResponse, Error<GetTenantQuotaError>> {
+pub fn get_tenant_quota(configuration: &configuration::Configuration, ) -> Result<models::GetTenantQuotaResponse, Error<GetTenantQuotaError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -119,10 +119,10 @@ pub async fn get_tenant_quota(configuration: &configuration::Configuration, ) ->
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -134,7 +134,7 @@ pub async fn get_tenant_quota(configuration: &configuration::Configuration, ) ->
 }
 
 /// Reset a tenant quota to its default value
-pub async fn reset_tenant_quota(configuration: &configuration::Configuration, target_tenant_id: &str, quota_kind: &str) -> Result<models::ResetTenantQuotaResponse, Error<ResetTenantQuotaError>> {
+pub fn reset_tenant_quota(configuration: &configuration::Configuration, target_tenant_id: &str, quota_kind: &str) -> Result<models::ResetTenantQuotaResponse, Error<ResetTenantQuotaError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -155,10 +155,10 @@ pub async fn reset_tenant_quota(configuration: &configuration::Configuration, ta
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -170,7 +170,7 @@ pub async fn reset_tenant_quota(configuration: &configuration::Configuration, ta
 }
 
 /// Set the value of a tenant quota
-pub async fn set_quota_for_tenant(configuration: &configuration::Configuration, target_tenant_id: &str, quota_kind: &str, set_quota_for_tenant_request: models::SetQuotaForTenantRequest) -> Result<models::SetQuotaForTenantResponse, Error<SetQuotaForTenantError>> {
+pub fn set_quota_for_tenant(configuration: &configuration::Configuration, target_tenant_id: &str, quota_kind: &str, set_quota_for_tenant_request: models::SetQuotaForTenantRequest) -> Result<models::SetQuotaForTenantResponse, Error<SetQuotaForTenantError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -192,10 +192,10 @@ pub async fn set_quota_for_tenant(configuration: &configuration::Configuration, 
     local_var_req_builder = local_var_req_builder.json(&set_quota_for_tenant_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -207,7 +207,7 @@ pub async fn set_quota_for_tenant(configuration: &configuration::Configuration, 
 }
 
 /// Set the quota on the current tenant
-pub async fn set_tenant_quota(configuration: &configuration::Configuration, quota_kind: &str, set_tenant_quota_request: models::SetTenantQuotaRequest) -> Result<models::SetTenantQuotaResponse, Error<SetTenantQuotaError>> {
+pub fn set_tenant_quota(configuration: &configuration::Configuration, quota_kind: &str, set_tenant_quota_request: models::SetTenantQuotaRequest) -> Result<models::SetTenantQuotaResponse, Error<SetTenantQuotaError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -229,10 +229,10 @@ pub async fn set_tenant_quota(configuration: &configuration::Configuration, quot
     local_var_req_builder = local_var_req_builder.json(&set_tenant_quota_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)

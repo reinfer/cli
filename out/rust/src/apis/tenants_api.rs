@@ -152,7 +152,7 @@ pub enum UpdateTenantEntityDefIdsError {
 
 
 /// Create a new tenant
-pub async fn create_tenant(configuration: &configuration::Configuration, name: &str, create_tenant_request: models::CreateTenantRequest) -> Result<models::CreateTenantResponse, Error<CreateTenantError>> {
+pub fn create_tenant(configuration: &configuration::Configuration, name: &str, create_tenant_request: models::CreateTenantRequest) -> Result<models::CreateTenantResponse, Error<CreateTenantError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -174,10 +174,10 @@ pub async fn create_tenant(configuration: &configuration::Configuration, name: &
     local_var_req_builder = local_var_req_builder.json(&create_tenant_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -189,7 +189,7 @@ pub async fn create_tenant(configuration: &configuration::Configuration, name: &
 }
 
 /// Delete a tenant by name
-pub async fn delete_tenant(configuration: &configuration::Configuration, name: &str) -> Result<models::DeleteTenantResponse, Error<DeleteTenantError>> {
+pub fn delete_tenant(configuration: &configuration::Configuration, name: &str) -> Result<models::DeleteTenantResponse, Error<DeleteTenantError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -210,10 +210,10 @@ pub async fn delete_tenant(configuration: &configuration::Configuration, name: &
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -225,7 +225,7 @@ pub async fn delete_tenant(configuration: &configuration::Configuration, name: &
 }
 
 /// Clear default project permissions for a tenant
-pub async fn delete_tenant_default_project_permissions(configuration: &configuration::Configuration, name: &str) -> Result<models::DeleteTenantDefaultProjectPermissionsResponse, Error<DeleteTenantDefaultProjectPermissionsError>> {
+pub fn delete_tenant_default_project_permissions(configuration: &configuration::Configuration, name: &str) -> Result<models::DeleteTenantDefaultProjectPermissionsResponse, Error<DeleteTenantDefaultProjectPermissionsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -246,10 +246,10 @@ pub async fn delete_tenant_default_project_permissions(configuration: &configura
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -261,7 +261,7 @@ pub async fn delete_tenant_default_project_permissions(configuration: &configura
 }
 
 /// Get a single tenant by name
-pub async fn get_tenant(configuration: &configuration::Configuration, name: &str) -> Result<models::SingleTenantsResponse, Error<GetTenantError>> {
+pub fn get_tenant(configuration: &configuration::Configuration, name: &str) -> Result<models::SingleTenantsResponse, Error<GetTenantError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -282,10 +282,10 @@ pub async fn get_tenant(configuration: &configuration::Configuration, name: &str
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -297,7 +297,7 @@ pub async fn get_tenant(configuration: &configuration::Configuration, name: &str
 }
 
 /// Get client subnets for a tenant
-pub async fn get_tenant_client_subnets(configuration: &configuration::Configuration, name: &str) -> Result<models::GetTenantClientSubnetsResponse, Error<GetTenantClientSubnetsError>> {
+pub fn get_tenant_client_subnets(configuration: &configuration::Configuration, name: &str) -> Result<models::GetTenantClientSubnetsResponse, Error<GetTenantClientSubnetsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -318,10 +318,10 @@ pub async fn get_tenant_client_subnets(configuration: &configuration::Configurat
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -333,7 +333,7 @@ pub async fn get_tenant_client_subnets(configuration: &configuration::Configurat
 }
 
 /// Get default project permissions for a tenant
-pub async fn get_tenant_default_project_permissions(configuration: &configuration::Configuration, name: &str) -> Result<models::GetTenantDefaultProjectPermissionsResponse, Error<GetTenantDefaultProjectPermissionsError>> {
+pub fn get_tenant_default_project_permissions(configuration: &configuration::Configuration, name: &str) -> Result<models::GetTenantDefaultProjectPermissionsResponse, Error<GetTenantDefaultProjectPermissionsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -354,10 +354,10 @@ pub async fn get_tenant_default_project_permissions(configuration: &configuratio
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -369,7 +369,7 @@ pub async fn get_tenant_default_project_permissions(configuration: &configuratio
 }
 
 /// Get domains for a tenant
-pub async fn get_tenant_domains(configuration: &configuration::Configuration, name: &str) -> Result<models::GetTenantDomainsResponse, Error<GetTenantDomainsError>> {
+pub fn get_tenant_domains(configuration: &configuration::Configuration, name: &str) -> Result<models::GetTenantDomainsResponse, Error<GetTenantDomainsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -390,10 +390,10 @@ pub async fn get_tenant_domains(configuration: &configuration::Configuration, na
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -405,7 +405,7 @@ pub async fn get_tenant_domains(configuration: &configuration::Configuration, na
 }
 
 /// Get entity_def_ids for a tenant
-pub async fn get_tenant_entity_def_ids(configuration: &configuration::Configuration, name: &str) -> Result<models::GetTenantEntityDefIdsResponse, Error<GetTenantEntityDefIdsError>> {
+pub fn get_tenant_entity_def_ids(configuration: &configuration::Configuration, name: &str) -> Result<models::GetTenantEntityDefIdsResponse, Error<GetTenantEntityDefIdsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -426,10 +426,10 @@ pub async fn get_tenant_entity_def_ids(configuration: &configuration::Configurat
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -441,7 +441,7 @@ pub async fn get_tenant_entity_def_ids(configuration: &configuration::Configurat
 }
 
 /// Get tenants
-pub async fn get_tenants(configuration: &configuration::Configuration, ) -> Result<models::GetTenantsResponse, Error<GetTenantsError>> {
+pub fn get_tenants(configuration: &configuration::Configuration, ) -> Result<models::GetTenantsResponse, Error<GetTenantsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -462,10 +462,10 @@ pub async fn get_tenants(configuration: &configuration::Configuration, ) -> Resu
     };
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -477,7 +477,7 @@ pub async fn get_tenants(configuration: &configuration::Configuration, ) -> Resu
 }
 
 /// Sets the enabled or disabled state for a tenant
-pub async fn set_tenant_state(configuration: &configuration::Configuration, name: &str, set_tenant_state_request: models::SetTenantStateRequest) -> Result<models::SetTenantStateResponse, Error<SetTenantStateError>> {
+pub fn set_tenant_state(configuration: &configuration::Configuration, name: &str, set_tenant_state_request: models::SetTenantStateRequest) -> Result<models::SetTenantStateResponse, Error<SetTenantStateError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -499,10 +499,10 @@ pub async fn set_tenant_state(configuration: &configuration::Configuration, name
     local_var_req_builder = local_var_req_builder.json(&set_tenant_state_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -514,7 +514,7 @@ pub async fn set_tenant_state(configuration: &configuration::Configuration, name
 }
 
 /// Update a tenant
-pub async fn update_tenant(configuration: &configuration::Configuration, name: &str, update_tenant_request: models::UpdateTenantRequest) -> Result<models::UpdateTenantResponse, Error<UpdateTenantError>> {
+pub fn update_tenant(configuration: &configuration::Configuration, name: &str, update_tenant_request: models::UpdateTenantRequest) -> Result<models::UpdateTenantResponse, Error<UpdateTenantError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -536,10 +536,10 @@ pub async fn update_tenant(configuration: &configuration::Configuration, name: &
     local_var_req_builder = local_var_req_builder.json(&update_tenant_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -551,7 +551,7 @@ pub async fn update_tenant(configuration: &configuration::Configuration, name: &
 }
 
 /// Update client subnets for a tenant
-pub async fn update_tenant_client_subnets(configuration: &configuration::Configuration, name: &str, update_tenant_client_subnets_request: models::UpdateTenantClientSubnetsRequest) -> Result<models::UpdateTenantClientSubnetsResponse, Error<UpdateTenantClientSubnetsError>> {
+pub fn update_tenant_client_subnets(configuration: &configuration::Configuration, name: &str, update_tenant_client_subnets_request: models::UpdateTenantClientSubnetsRequest) -> Result<models::UpdateTenantClientSubnetsResponse, Error<UpdateTenantClientSubnetsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -573,10 +573,10 @@ pub async fn update_tenant_client_subnets(configuration: &configuration::Configu
     local_var_req_builder = local_var_req_builder.json(&update_tenant_client_subnets_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -588,7 +588,7 @@ pub async fn update_tenant_client_subnets(configuration: &configuration::Configu
 }
 
 /// Update default project permissions for a tenant
-pub async fn update_tenant_default_project_permissions(configuration: &configuration::Configuration, name: &str, update_tenant_default_project_permissions_request: models::UpdateTenantDefaultProjectPermissionsRequest) -> Result<models::UpdateTenantDefaultProjectPermissionsResponse, Error<UpdateTenantDefaultProjectPermissionsError>> {
+pub fn update_tenant_default_project_permissions(configuration: &configuration::Configuration, name: &str, update_tenant_default_project_permissions_request: models::UpdateTenantDefaultProjectPermissionsRequest) -> Result<models::UpdateTenantDefaultProjectPermissionsResponse, Error<UpdateTenantDefaultProjectPermissionsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -610,10 +610,10 @@ pub async fn update_tenant_default_project_permissions(configuration: &configura
     local_var_req_builder = local_var_req_builder.json(&update_tenant_default_project_permissions_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -625,7 +625,7 @@ pub async fn update_tenant_default_project_permissions(configuration: &configura
 }
 
 /// Update domains for a tenant
-pub async fn update_tenant_domains(configuration: &configuration::Configuration, name: &str, update_tenant_domains_request: models::UpdateTenantDomainsRequest) -> Result<models::UpdateTenantDomainsResponse, Error<UpdateTenantDomainsError>> {
+pub fn update_tenant_domains(configuration: &configuration::Configuration, name: &str, update_tenant_domains_request: models::UpdateTenantDomainsRequest) -> Result<models::UpdateTenantDomainsResponse, Error<UpdateTenantDomainsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -647,10 +647,10 @@ pub async fn update_tenant_domains(configuration: &configuration::Configuration,
     local_var_req_builder = local_var_req_builder.json(&update_tenant_domains_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
@@ -662,7 +662,7 @@ pub async fn update_tenant_domains(configuration: &configuration::Configuration,
 }
 
 /// Update entity_def_ids for a tenant
-pub async fn update_tenant_entity_def_ids(configuration: &configuration::Configuration, name: &str, update_tenant_entity_def_ids_request: models::UpdateTenantEntityDefIdsRequest) -> Result<models::UpdateTenantEntityDefIdsResponse, Error<UpdateTenantEntityDefIdsError>> {
+pub fn update_tenant_entity_def_ids(configuration: &configuration::Configuration, name: &str, update_tenant_entity_def_ids_request: models::UpdateTenantEntityDefIdsRequest) -> Result<models::UpdateTenantEntityDefIdsResponse, Error<UpdateTenantEntityDefIdsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -684,10 +684,10 @@ pub async fn update_tenant_entity_def_ids(configuration: &configuration::Configu
     local_var_req_builder = local_var_req_builder.json(&update_tenant_entity_def_ids_request);
 
     let local_var_req = local_var_req_builder.build()?;
-    let local_var_resp = local_var_client.execute(local_var_req).await?;
+    let local_var_resp = local_var_client.execute(local_var_req)?;
 
     let local_var_status = local_var_resp.status();
-    let local_var_content = local_var_resp.text().await?;
+    let local_var_content = local_var_resp.text()?;
 
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
