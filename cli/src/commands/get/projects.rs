@@ -1,5 +1,11 @@
 use anyhow::{Context, Result};
-use reinfer_client::{Client, ProjectName};
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        projects_api::{get_project, get_projects},
+    },
+    models::ProjectName,
+};
 use structopt::StructOpt;
 
 use crate::printer::Printer;
@@ -11,17 +17,17 @@ pub struct GetProjectsArgs {
     project: Option<ProjectName>,
 }
 
-pub fn get(client: &Client, args: &GetProjectsArgs, printer: &Printer) -> Result<()> {
+pub fn get(config: &Configuration, args: &GetProjectsArgs, printer: &Printer) -> Result<()> {
     let GetProjectsArgs { project } = args;
     let projects = if let Some(project) = project {
-        vec![client
-            .get_project(project)
-            .context("Operation to list projects has failed.")?]
+        vec![get_project(config, &project.0)
+            .context("Operation to list projects has failed.")?
+            .project]
     } else {
-        let mut projects = client
-            .get_projects()
-            .context("Operation to list projects has failed.")?;
-        projects.sort_unstable_by(|lhs, rhs| lhs.name.0.cmp(&rhs.name.0));
+        let mut projects = get_projects(config)
+            .context("Operation to list projects has failed.")?
+            .projects;
+        projects.sort_unstable_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
         projects
     };
     printer.print_resources(&projects)

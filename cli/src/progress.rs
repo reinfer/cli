@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use crate::utils::LOG_PREFIX_INFO;
+use crate::utils::utils::LOG_PREFIX_INFO;
 
 pub type ProgressMessage = (u64, String);
 

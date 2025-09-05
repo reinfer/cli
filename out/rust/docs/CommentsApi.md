@@ -148,7 +148,7 @@ Name | Type | Description  | Required | Notes
 
 ## get_source_comments
 
-> models::GetSourceCommentsResponse get_source_comments(owner, source_name)
+> models::GetSourceCommentsResponse get_source_comments(owner, source_name, after, limit, from_timestamp, to_timestamp, direction, include_thread_properties, include_markup)
 Get comments from a source
 
 Get comments from a source
@@ -160,6 +160,13 @@ Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
 **owner** | **String** |  | [required] |
 **source_name** | **String** |  | [required] |
+**after** | Option<**String**> | Continuation token for pagination. Use the 'continuation' value from a previous response to get the next batch of results. |  |
+**limit** | Option<**i32**> | Maximum number of comments to return (1-256). |  |
+**from_timestamp** | Option<**String**> | Start timestamp for filtering comments (ISO 8601 format). Cannot be used with descending direction. |  |
+**to_timestamp** | Option<**String**> | End timestamp for filtering comments (ISO 8601 format). Cannot be used with descending direction. |  |
+**direction** | Option<**String**> | Sort direction for comments. Default is 'ascending'. When 'descending', from_timestamp and to_timestamp cannot be used. |  |
+**include_thread_properties** | Option<**bool**> | Whether to include thread properties in the response. |  |
+**include_markup** | Option<**bool**> | Whether to include markup in the comment content. |  |
 
 ### Return type
 

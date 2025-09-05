@@ -47,12 +47,12 @@ pub enum ParseArgs {
     Pst(ParsePstArgs),
 }
 
-pub fn run(args: &ParseArgs, client: Client, pool: &mut Pool) -> Result<()> {
+pub fn run(args: &ParseArgs, config: &Configuration, pool: &mut Pool) -> Result<()> {
     match args {
-        ParseArgs::Msgs(args) => msgs::parse(&client, args),
-        ParseArgs::Emls(args) => emls::parse(&client, args, pool),
-        ParseArgs::AicClassificationCsv(args) => aic_classification_csv::parse(&client, args, pool),
-        ParseArgs::Pst(args) => pst::parse(&client, args),
+        ParseArgs::Msgs(args) => msgs::parse(&config, args),
+        ParseArgs::Emls(args) => emls::parse(&config, args, pool),
+        ParseArgs::AicClassificationCsv(args) => aic_classification_csv::parse(&config, args, pool),
+        ParseArgs::Pst(args) => pst::parse(&config, args),
     }
 }
 
@@ -173,13 +173,20 @@ fn upload_batch_of_documents(
 }
 
 fn upload_batch_of_comments(
-    client: &Client,
+    config: &Configuration,
     source: &Source,
     comments: &[NewComment],
     no_charge: bool,
     statistics: &Statistics,
 ) -> Result<()> {
-    client.sync_comments(&source.full_name(), comments.to_vec(), no_charge)?;
+    let request = SyncCommentsRequest {
+        comments: comments.to_vec(),
+        no_charge: Some(no_charge),
+    };
+
+    sync_comments(config, source.owner(), source.name(), request)
+        .context("Failed to sync comments")?;
+    
     statistics.add_uploaded(comments.len());
     Ok(())
 }

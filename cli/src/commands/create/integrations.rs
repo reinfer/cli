@@ -4,11 +4,18 @@ use dialoguer::Confirm;
 use std::path::PathBuf;
 
 use log::info;
-use reinfer_client::{
-    resources::integration::{Integration, NewIntegration},
-    Client, IntegrationFullName,
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        integrations_api::{
+            create_integration, get_all_integrations, get_integration, update_integration,
+        },
+    },
+    models::{CreateIntegrationRequest, IntegrationNew, Integration, UpdateIntegrationRequest},
 };
 use structopt::StructOpt;
+
+use crate::utils::{FullName as IntegrationFullName, resource_identifier::IntegrationIdentifier};
 
 #[derive(Debug, StructOpt)]
 pub struct CreateIntegrationArgs {
@@ -25,7 +32,7 @@ pub struct CreateIntegrationArgs {
     overwrite: bool,
 }
 
-pub fn create(client: &Client, args: &CreateIntegrationArgs) -> Result<()> {
+pub fn create(config: &Configuration, args: &CreateIntegrationArgs) -> Result<()> {
     let CreateIntegrationArgs {
         path,
         name,
@@ -34,20 +41,24 @@ pub fn create(client: &Client, args: &CreateIntegrationArgs) -> Result<()> {
 
     let new_integration = read_integration(path)?;
 
-    let mut integrations = client.get_integrations()?;
+    // Check if integration already exists
+    let existing = match get_integration(config, name.owner(), name.name()) {
+        Ok(response) => Some(response.integration),
+        Err(_) => None, // Integration doesn't exist
+    };
 
-    integrations
-        .retain(|integration| format!("{}/{}", integration.owner.0, integration.name.0) == name.0);
-
-    if let Some(existing) = integrations.first() {
+    if let Some(existing) = existing {
         if *overwrite {
-            overwrite_integration(client, name, &new_integration, existing)?;
+            overwrite_integration(config, name, &new_integration, &existing)?;
             info!("Updated integration {}", name.0);
         } else {
             bail!("Provide the `--overwrite` flag to update an existing integration")
         }
     } else {
-        client.put_integration(name, &new_integration)?;
+        let request = CreateIntegrationRequest {
+            integration: Box::new(new_integration),
+        };
+        create_integration(config, name.owner(), name.name(), request)?;
         info!("Created new integration {}", name.0);
     }
 
@@ -55,15 +66,17 @@ pub fn create(client: &Client, args: &CreateIntegrationArgs) -> Result<()> {
 }
 
 fn overwrite_integration(
-    client: &Client,
+    config: &Configuration,
     name: &IntegrationFullName,
-    new_integration: &NewIntegration,
+    new_integration: &IntegrationNew,
     old_integration: &Integration,
 ) -> Result<()> {
-    let old_integration: NewIntegration =
-        serde_json::from_str(&serde_json::to_string(old_integration)?)?;
+    // Check if the updatable fields are the same
+    let fields_are_same = old_integration.title == new_integration.title
+        && old_integration.configuration == new_integration.configuration
+        && old_integration.enabled == new_integration.enabled.unwrap_or(true);
 
-    if *new_integration == old_integration {
+    if fields_are_same {
         bail!("New integration is same as existing integration")
     }
 
@@ -84,17 +97,25 @@ fn overwrite_integration(
         )
         .interact()?
     {
-        client.post_integration(name, new_integration)?;
+        let request = UpdateIntegrationRequest {
+            integration: Box::new(openapi::models::IntegrationUpdate {
+                title: new_integration.title.clone(),
+                configuration: new_integration.configuration.clone(),
+                enabled: new_integration.enabled,
+                updated_at: None,
+            }),
+        };
+        update_integration(config, name.owner(), name.name(), request)?;
         Ok(())
     } else {
         bail!("Operation aborted by user")
     }
 }
 
-fn read_integration(path: &PathBuf) -> Result<NewIntegration> {
+fn read_integration(path: &PathBuf) -> Result<IntegrationNew> {
     let integration_str = std::fs::read_to_string(path)
         .with_context(|| format!("Could not open file `{}`", path.display()))?;
 
-    serde_json::from_str::<NewIntegration>(&integration_str)
+    serde_json::from_str::<IntegrationNew>(&integration_str)
         .with_context(|| "Could not parse integration".to_string())
 }

@@ -210,6 +210,7 @@ Class | Method | HTTP request | Description
 *IxpModelsApi* | [**upload_ixp_document**](docs/IxpModelsApi.md#upload_ixp_document) | **PUT** /api/_private/ixp/projects/{project_uuid}/models/{model_version}/documents | Upload IXP Document for Runtime Predictions
 *IxpProjectsApi* | [**get_ixp_project**](docs/IxpProjectsApi.md#get_ixp_project) | **GET** /api/_private/ixp/projects/{project_uuid} | Get an IXP project
 *IxpProjectsApi* | [**get_ixp_projects**](docs/IxpProjectsApi.md#get_ixp_projects) | **GET** /api/_private/ixp/projects | Get all IXP projects
+*IxpProjectsApi* | [**import_taxonomy**](docs/IxpProjectsApi.md#import_taxonomy) | **POST** /api/_private/ixp/projects/{owner}/{dataset_name}/import-taxonomy | Import an IXP Taxonomy using a Dataset JSON file
 *LabelDefsApi* | [**create_label_defs_bulk**](docs/LabelDefsApi.md#create_label_defs_bulk) | **PUT** /api/_private/datasets/{owner}/{dataset_name}/labels/{label_group_name} | Label Group Bulk Create
 *LabelDefsApi* | [**delete_label_def**](docs/LabelDefsApi.md#delete_label_def) | **DELETE** /api/_private/datasets/{owner}/{dataset_name}/labels/{label_group_name} | Delete Label Def
 *LabelDefsApi* | [**get_field_group_history**](docs/LabelDefsApi.md#get_field_group_history) | **GET** /api/_private/datasets/{owner}/{dataset_name}/labels/{label_group_name}/{label_name}/history | Get history for a field group
@@ -716,6 +717,8 @@ Class | Method | HTTP request | Description
  - [Highlight](docs/Highlight.md)
  - [HistogramBin](docs/HistogramBin.md)
  - [ImageInputConfig](docs/ImageInputConfig.md)
+ - [ImportTaxonomyRequest](docs/ImportTaxonomyRequest.md)
+ - [ImportTaxonomyResponse](docs/ImportTaxonomyResponse.md)
  - [InferenceStats](docs/InferenceStats.md)
  - [InheritsFrom](docs/InheritsFrom.md)
  - [InputConfig](docs/InputConfig.md)

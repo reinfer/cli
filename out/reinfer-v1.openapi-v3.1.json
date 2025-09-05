@@ -2969,6 +2969,97 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Continuation token for pagination. Use the 'continuation' value from a previous response to get the next batch of results.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Maximum number of comments to return (1-256).",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "from_timestamp",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Start timestamp for filtering comments (ISO 8601 format). Cannot be used with descending direction.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "to_timestamp",
+            "schema": {
+              "type": "string"
+            },
+            "description": "End timestamp for filtering comments (ISO 8601 format). Cannot be used with descending direction.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Sort direction for comments. Default is 'ascending'. When 'descending', from_timestamp and to_timestamp cannot be used.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "include_thread_properties",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Whether to include thread properties in the response.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "include_markup",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Whether to include markup in the comment content.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
           }
         ],
         "responses": {
@@ -7231,6 +7322,90 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GetIxpProjectResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "Client error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false,
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/api/_private/ixp/projects/{owner}/{dataset_name}/import-taxonomy": {
+      "post": {
+        "tags": [
+          "IxpProjects"
+        ],
+        "summary": "Import an IXP Taxonomy using a Dataset JSON file",
+        "description": "Import an IXP Taxonomy using a Dataset JSON file",
+        "operationId": "importTaxonomy",
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "deprecated": false,
+            "allowEmptyValue": false,
+            "explode": false,
+            "allowReserved": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dataset_name",
+            "in": "path",
+            "required": true,
+            "deprecated": false,
+            "allowEmptyValue": false,
+            "explode": false,
+            "allowReserved": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportTaxonomyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Import an IXP Taxonomy using a Dataset JSON file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTaxonomyResponse"
                 }
               }
             }
@@ -21505,7 +21680,7 @@
           },
           "name": {
             "title": "Name",
-            "maxLength": 32,
+            "maxLength": 64,
             "minLength": 1,
             "type": "string"
           },
@@ -21639,7 +21814,7 @@
           },
           "name": {
             "title": "Name",
-            "maxLength": 32,
+            "maxLength": 64,
             "minLength": 1,
             "type": "string"
           },
@@ -25860,7 +26035,7 @@
           },
           "api_name": {
             "title": "Field API name",
-            "maxLength": 32,
+            "maxLength": 64,
             "minLength": 1,
             "type": "string"
           },
@@ -26289,7 +26464,7 @@
           },
           "name": {
             "title": "Moon form field name",
-            "maxLength": 32,
+            "maxLength": 64,
             "minLength": 1,
             "type": "string"
           },
@@ -26608,7 +26783,7 @@
           },
           "api_name": {
             "title": "Field API name",
-            "maxLength": 32,
+            "maxLength": 64,
             "minLength": 1,
             "type": "string"
           },
@@ -26653,6 +26828,7 @@
         "properties": {
           "id": {
             "title": "Id",
+            "maxLength": 64,
             "type": "string"
           },
           "name": {
@@ -26660,14 +26836,16 @@
           },
           "description": {
             "title": "Description",
-            "type": "string"
+            "type": "string",
+            "maxLength": 8192
           },
           "properties": {
             "title": "Properties",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LabelDefProperty"
-            }
+            },
+            "maxItems": 64
           }
         },
         "required": [
@@ -26720,7 +26898,7 @@
           },
           "name": {
             "title": "Moon form field name",
-            "maxLength": 32,
+            "maxLength": 64,
             "minLength": 1,
             "type": "string"
           },
@@ -26752,26 +26930,31 @@
         "properties": {
           "name": {
             "title": "name",
+            "maxLength": 64,
             "type": "string"
           },
           "title": {
             "title": "Title",
-            "type": "string"
+            "type": "string",
+            "maxLength": 64
           },
           "instructions": {
             "title": "Instructions",
-            "type": "string"
+            "type": "string",
+            "maxLength": 8192
           },
           "external_id": {
             "title": "External Id",
-            "type": "string"
+            "type": "string",
+            "maxLength": 128
           },
           "properties": {
             "title": "Properties",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LabelDefProperty"
-            }
+            },
+            "maxItems": 64
           },
           "pretrained": {
             "$ref": "#/components/schemas/BuiltinLabelDef"
@@ -26785,14 +26968,16 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MoonFormFieldDef"
-            }
+            },
+            "maxItems": 256
           },
           "_flags": {
             "title": "Label Def Flags",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LabelDefFlag"
-            }
+            },
+            "maxItems": 64
           }
         },
         "required": [
@@ -26812,6 +26997,7 @@
           },
           "label_defs": {
             "title": "Label Defs",
+            "maxItems": 16384,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LabelDef"
@@ -27270,7 +27456,7 @@
           },
           "api_name": {
             "title": "Field name",
-            "maxLength": 32,
+            "maxLength": 64,
             "minLength": 1,
             "type": "string"
           },
@@ -28805,7 +28991,8 @@
               "unknown_forbidden_error",
               "mailbox_primary_address_not_found",
               "syncemail_consumption_limit_exceeded",
-              "mailbox_access_denied"
+              "mailbox_access_denied",
+              "mailbox_invalid_license"
             ],
             "type": "string"
           },
@@ -29719,6 +29906,7 @@
           },
           "instructions": {
             "title": "Instructions",
+            "maxLength": 8192,
             "type": [
               "string",
               "null"
@@ -29869,6 +30057,7 @@
           },
           "instructions": {
             "title": "Instructions",
+            "maxLength": 8192,
             "type": [
               "string",
               "null"
@@ -29934,6 +30123,7 @@
           },
           "instructions": {
             "title": "Instructions",
+            "maxLength": 8192,
             "type": [
               "string",
               "null"
@@ -29984,6 +30174,7 @@
           },
           "instructions": {
             "title": "Instructions",
+            "maxLength": 8192,
             "type": [
               "string",
               "null"
@@ -30239,6 +30430,60 @@
         "required": [
           "status",
           "project"
+        ],
+        "additionalProperties": false
+      },
+      "ImportTaxonomyRequest": {
+        "title": "ImportTaxonomyRequest",
+        "type": "object",
+        "properties": {
+          "entity_defs": {
+            "title": "Entity Defs to be imported",
+            "description": "Entity Defs to be imported",
+            "maxItems": 1024,
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EntityDefUpdate"
+            }
+          },
+          "label_groups": {
+            "title": "Label Groups to be imported",
+            "description": "Label Groups to be imported",
+            "maxItems": 1024,
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LabelGroup"
+            }
+          },
+          "overwrite_duplicates": {
+            "title": "Overwrite Duplicates",
+            "description": "Overwrite duplicates",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "entity_defs",
+          "label_groups",
+          "overwrite_duplicates"
+        ],
+        "additionalProperties": false
+      },
+      "ImportTaxonomyResponse": {
+        "title": "ImportTaxonomyResponse",
+        "type": "object",
+        "properties": {
+          "status": {
+            "title": "Status",
+            "enum": [
+              "ok"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
         ],
         "additionalProperties": false
       },
@@ -33455,7 +33700,7 @@
             "title": "Name",
             "type": "string",
             "minLength": 1,
-            "maxLength": 32
+            "maxLength": 64
           },
           "span": {
             "description": "Deprecated. Use `spans` instead.",
@@ -33846,7 +34091,7 @@
           },
           "name": {
             "title": "Moon form field name",
-            "maxLength": 32,
+            "maxLength": 64,
             "minLength": 1,
             "type": "string"
           },
@@ -34160,7 +34405,7 @@
           },
           "name": {
             "title": "Field name",
-            "maxLength": 32,
+            "maxLength": 64,
             "minLength": 1,
             "type": "string"
           },
@@ -37338,7 +37583,7 @@
           },
           "name": {
             "title": "Moon form field name",
-            "maxLength": 32,
+            "maxLength": 64,
             "minLength": 1,
             "type": "string"
           },
@@ -37411,7 +37656,7 @@
           },
           "name": {
             "title": "Field Name",
-            "maxLength": 32,
+            "maxLength": 64,
             "minLength": 1,
             "type": "string"
           },

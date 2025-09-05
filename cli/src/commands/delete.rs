@@ -8,13 +8,25 @@ use std::sync::{
 };
 use structopt::StructOpt;
 
-use reinfer_client::{
-    resources::{bucket::GetKeyedSyncStateIdsRequest, project::ForceDeleteProject},
-    BucketIdentifier, Client, CommentId, CommentsIter, CommentsIterTimerange, DatasetIdentifier,
-    ProjectName, Source, SourceIdentifier, UserIdentifier,
-};
-
+use crate::utils::{SourceIdentifier, CommentsIterTimerange, CommentId};
 use crate::progress::{Options as ProgressOptions, Progress};
+use crate::commands::get::comments::{CommentsIter, get_comments_iter};
+
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        sources_api::{delete_source, get_source, get_source_by_id},
+        comments_api::delete_comment,
+        buckets_api::{get_bucket, get_keyed_sync_state_ids, delete_keyed_sync_state, delete_bucket},
+        projects_api::{delete_project, get_project},
+        users_api::delete_user,
+        datasets_api::delete_dataset_by_id,
+    },
+    models::{
+        Source, BucketIdentifier, DatasetIdentifier, ProjectName, UserIdentifier,
+        GetKeyedSyncStateIdsRequest, ForceDeleteProject
+    }
+};
 
 #[derive(Debug, StructOpt)]
 pub enum DeleteArgs {
@@ -114,24 +126,34 @@ pub enum DeleteArgs {
     },
 }
 
-pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
+pub fn run(delete_args: &DeleteArgs, config: &Configuration) -> Result<()> {
     match delete_args {
         DeleteArgs::Source { source } => {
-            client
-                .delete_source(source.clone())
+            // Resolve source identifier to get the ID
+            let source_id = match source {
+                SourceIdentifier::Id(id) => id.clone(),
+                SourceIdentifier::FullName(full_name) => {
+                    let response = get_source(config, full_name.owner(), full_name.name())
+                        .context("Failed to get source by full name")?;
+                    response.source.id
+                }
+            };
+            
+            delete_source(config, &source_id)
                 .context("Operation to delete source has failed.")?;
             log::info!("Deleted source.");
         }
         DeleteArgs::User { user } => {
-            client
-                .delete_user(user.clone())
+            delete_user(config, &user.id)
                 .context("Operation to delete user has failed.")?;
             log::info!("Deleted user.");
         }
         DeleteArgs::Comments { source, comments } => {
-            client
-                .delete_comments(source.clone(), comments)
-                .context("Operation to delete comments has failed.")?;
+            // Delete comments one by one
+            for comment_id in comments {
+                delete_comment(config, &source.owner, &source.name)
+                    .context("Operation to delete comment has failed.")?;
+            }
             log::info!("Deleted comments.");
         }
         DeleteArgs::BulkComments {
@@ -141,10 +163,21 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
             to_timestamp,
             no_progress,
         } => {
-            let source = client.get_source(source_identifier.clone())?;
+            let source = match source_identifier {
+                SourceIdentifier::FullName(full_name) => {
+                    let response = get_source(config, full_name.owner(), full_name.name())
+                        .context("Failed to get source by full name")?;
+                    *response.source
+                }
+                SourceIdentifier::Id(id) => {
+                    let response = get_source_by_id(config, id)
+                        .context("Failed to get source by ID")?;
+                    *response.source
+                }
+            };
             let show_progress = !no_progress;
             delete_comments_in_period(
-                &client,
+                config,
                 source,
                 *include_annotated,
                 CommentsIterTimerange {
@@ -156,14 +189,12 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
             .context("Operation to delete comments has failed.")?;
         }
         DeleteArgs::Dataset { dataset } => {
-            client
-                .delete_dataset(dataset.clone())
+            delete_dataset_by_id(config, &dataset.id)
                 .context("Operation to delete dataset has failed.")?;
             log::info!("Deleted dataset.");
         }
         DeleteArgs::Bucket { bucket } => {
-            client
-                .delete_bucket(bucket.clone())
+            delete_bucket(config, &bucket.id)
                 .context("Operation to delete bucket has failed.")?;
             log::info!("Deleted bucket.");
         }
@@ -173,8 +204,7 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
             } else {
                 ForceDeleteProject::No
             };
-            client
-                .delete_project(project, force_delete)
+            delete_project(config, project, Some(force_delete))
                 .context("Operation to delete project has failed.")?;
             log::info!("Deleted project.");
         }
@@ -182,17 +212,22 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
             bucket,
             mailbox_name,
         } => {
-            let bucket = client.get_bucket(bucket.clone())?;
+            let bucket_response = get_bucket(config, bucket.owner(), bucket.name())
+                .context("Failed to get bucket")?;
+            let bucket = bucket_response.bucket;
 
-            let keyed_sync_state_ids = client.get_keyed_sync_state_ids(
+            let keyed_sync_state_ids = get_keyed_sync_state_ids(
+                config,
                 &bucket.id,
-                &GetKeyedSyncStateIdsRequest {
+                GetKeyedSyncStateIdsRequest {
                     mailbox_name: mailbox_name.clone(),
                 },
-            )?;
+            )
+            .context("Failed to get keyed sync state IDs")?;
 
             for id in keyed_sync_state_ids {
-                client.delete_keyed_sync_state(&bucket.id, &id)?;
+                delete_keyed_sync_state(config, &bucket.id, &id)
+                    .context("Failed to delete keyed sync state")?;
                 info!("Delete keyed sync state {}", id.0)
             }
         }
@@ -201,7 +236,7 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
 }
 
 fn delete_comments_in_period(
-    client: &Client,
+    config: &Configuration,
     source: Source,
     include_annotated: bool,
     timerange: CommentsIterTimerange,

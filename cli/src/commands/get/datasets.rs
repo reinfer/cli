@@ -2,14 +2,28 @@ use std::sync::mpsc::channel;
 
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::{
-    resources::dataset::{DatasetAndStats, DatasetStats, StatisticsRequestParams},
-    Client, DatasetIdentifier, SourceIdentifier,
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        datasets_api::{get_all_datasets, get_dataset, get_dataset_statistics},
+        models_api::get_validation,
+        sources_api::{get_source, get_source_by_id},
+    },
+    models::{Dataset, GetDatasetStatisticsRequest, Statistics, GetValidationResponse},
 };
 use scoped_threadpool::Pool;
 use structopt::StructOpt;
 
 use crate::printer::Printer;
+use crate::utils::resource_identifier::{DatasetIdentifier, SourceIdentifier};
+
+// Simple wrapper for dataset with stats
+#[derive(Debug, Clone)]
+pub struct DatasetWithStats {
+    pub dataset: Dataset,
+    pub stats: Statistics,
+    pub validation: Option<GetValidationResponse>,
+}
 
 #[derive(Debug, StructOpt)]
 pub struct GetDatasetsArgs {
@@ -27,7 +41,7 @@ pub struct GetDatasetsArgs {
 }
 
 pub fn get(
-    client: &Client,
+    config: &Configuration,
     args: &GetDatasetsArgs,
     printer: &Printer,
     pool: &mut Pool,
@@ -38,56 +52,80 @@ pub fn get(
         source_identifier,
     } = args;
     let mut datasets = if let Some(dataset) = dataset {
-        vec![client
-            .get_dataset(dataset.clone())
-            .context("Operation to list datasets has failed.")?]
+        let dataset_response = match &dataset {
+            DatasetIdentifier::Id(id) => {
+                // For now, we'll need to get dataset by ID - this might need a different API call
+                return Err(anyhow::anyhow!("Dataset lookup by ID is not supported. Please use the full name format 'owner/dataset'"));
+            }
+            DatasetIdentifier::FullName(full_name) => {
+                get_dataset(config, full_name.owner(), full_name.name())
+                    .context("Operation to list datasets has failed.")?
+            }
+        };
+        vec![dataset_response.dataset]
     } else {
-        let mut datasets = client
-            .get_datasets()
+        let response = get_all_datasets(config)
             .context("Operation to list datasets has failed.")?;
+        let mut datasets = response.datasets;
         datasets.sort_unstable_by(|lhs, rhs| {
-            (&lhs.owner.0, &lhs.name.0).cmp(&(&rhs.owner.0, &rhs.name.0))
+            (&lhs.owner, &lhs.name).cmp(&(&rhs.owner, &rhs.name))
         });
         datasets
     };
 
     if let Some(source_id) = source_identifier {
-        let source = client.get_source(source_id.clone())?;
+        let source = match &source_id {
+            SourceIdentifier::Id(id) => {
+                get_source_by_id(config, id)
+                    .context("Failed to get source")?
+                    .source
+            }
+            SourceIdentifier::FullName(full_name) => {
+                get_source(config, full_name.owner(), full_name.name())
+                    .context("Failed to get source")?
+                    .source
+            }
+        };
 
         datasets.retain(|d| d.source_ids.contains(&source.id));
     }
 
-    let (sender, receiver) = channel();
-
     if *include_stats {
+        let (sender, receiver) = channel();
+
         pool.scoped(|scope| {
             datasets.iter().for_each(|dataset| {
-                let get_stats = || -> Result<DatasetAndStats> {
-                    info!("Getting statistics for dataset {}", dataset.full_name().0);
-                    let unfiltered_stats = client
-                        .get_dataset_statistics(
-                            &dataset.full_name(),
-                            &StatisticsRequestParams {
-                                ..Default::default()
-                            },
-                        )
+                let get_stats = || -> Result<DatasetWithStats> {
+                    info!("Getting statistics for dataset {}/{}", dataset.owner, dataset.name);
+                    
+                    let request = GetDatasetStatisticsRequest {
+                        comment_filter: None,
+                        label_filter: None,
+                        by_labels: None,
+                        by_label_properties: vec![], // Empty for basic stats
+                        time_resolution: None,
+                        string_user_property_counts: None,
+                        email_property_counts: None,
+                        source_counts: None,
+                        label_timeseries: None,
+                        label_property_timeseries: None,
+                        thread_histogram: None,
+                        nps_property: None,
+                        attribute_filters: None,
+                        thread_mode: None,
+                        timezone: None,
+                    };
+
+                    let response = get_dataset_statistics(config, &dataset.owner, &dataset.name, request)
                         .context("Could not get statistics for dataset")?;
 
-                    let validation_response = client.get_latest_validation(&dataset.full_name());
+                    // Get validation (equivalent to get_latest_validation)
+                    let validation_response = get_validation(config, &dataset.owner, &dataset.name, "latest", None).ok();
 
-                    Ok(DatasetAndStats {
+                    Ok(DatasetWithStats {
                         dataset: dataset.clone(),
-                        stats: DatasetStats {
-                            total_verbatims: unfiltered_stats.num_comments,
-                            validation: validation_response.ok(),
-                            number_of_labels: dataset.label_defs.len(),
-                            number_of_fields: dataset.entity_defs.len(),
-                            number_of_extraction_defs: dataset
-                                .label_defs
-                                .iter()
-                                .map(|l| if l.moon_form.is_some() { 1 } else { 0 })
-                                .sum(),
-                        },
+                        stats: response.statistics,
+                        validation: validation_response,
                     })
                 };
 
@@ -100,7 +138,7 @@ pub fn get(
 
         drop(sender);
         let mut dataset_stats = Vec::new();
-        let results: Vec<Result<DatasetAndStats>> = receiver.iter().collect();
+        let results: Vec<Result<DatasetWithStats>> = receiver.iter().collect();
 
         for result in results {
             dataset_stats.push(result?);

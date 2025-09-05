@@ -1,8 +1,15 @@
 use anyhow::{bail, Context, Result};
-use reinfer_client::{Client, ProjectName, ProjectPermission, UserIdentifier};
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        users_api::{get_user_by_id, get_users},
+    },
+    models::{ProjectPermission, User},
+};
 use structopt::StructOpt;
 
 use crate::printer::Printer;
+use crate::utils::{full_name::ProjectName, resource_identifier::UserIdentifier};
 
 #[derive(Debug, StructOpt)]
 pub struct GetUsersArgs {
@@ -19,7 +26,7 @@ pub struct GetUsersArgs {
     project_permission_filter: Option<ProjectPermission>,
 }
 
-pub fn get(client: &Client, args: &GetUsersArgs, printer: &Printer) -> Result<()> {
+pub fn get(config: &Configuration, args: &GetUsersArgs, printer: &Printer) -> Result<()> {
     let GetUsersArgs {
         user,
         project_name_filter,
@@ -32,20 +39,29 @@ pub fn get(client: &Client, args: &GetUsersArgs, printer: &Printer) -> Result<()
 
     let mut users = match user {
         Some(user_id) => {
-            let user = client
-                .get_user(user_id.clone())
-                .context("Operation to get user has failed.")?;
+            let user = match user_id {
+                UserIdentifier::Id(id) => {
+                    let response = get_user_by_id(config, id)
+                        .context("Operation to get user has failed.")?;
+                    response.user
+                }
+                UserIdentifier::FullName(_) => {
+                    bail!("User lookup by full name is not supported. Please use user ID.")
+                }
+            };
             vec![user]
         }
-        None => client
-            .get_users()
-            .context("Operation to list users has failed.")?,
+        None => {
+            let response = get_users(config)
+                .context("Operation to list users has failed.")?;
+            response.users
+        }
     };
 
     if let Some(project_name) = project_name_filter {
         users.retain(|user| {
-            user.project_permissions
-                .get(project_name)
+            user.organisation_permissions
+                .get(project_name.as_str())
                 .is_some_and(|user_permissions| {
                     if let Some(project_permission) = project_permission_filter {
                         user_permissions.contains(project_permission)

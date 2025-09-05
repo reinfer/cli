@@ -18,6 +18,7 @@ use reinfer_client::{
     retry::{RetryConfig, RetryStrategy},
     Client, Config as ClientConfig, ProjectName, Token, DEFAULT_ENDPOINT,
 };
+use openapi::apis::configuration::{Configuration, ApiKey};
 use scoped_threadpool::Pool;
 use std::{env, fs, io, path::PathBuf, process};
 use structopt::{clap::Shell as ClapShell, StructOpt};
@@ -84,11 +85,11 @@ fn run(args: Args) -> Result<()> {
             get_client_and_refresh_permission(&args, &config)?,
             &printer,
         ),
-        Command::Parse { parse_args } => parse::run(
-            parse_args,
-            get_client_and_refresh_permission(&args, &config)?,
-            &mut pool,
-        ),
+        Command::Parse { parse_args } => {
+            let client = get_client_and_refresh_permission(&args, &config)?;
+            let openapi_config = client_to_configuration(&client)?;
+            parse::run(parse_args, &openapi_config, &mut pool)
+        },
 
         Command::Package { package_args } => package::run(
             package_args,
@@ -133,7 +134,7 @@ fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
     let token = Token(if let Some(token) = args_or_config_token {
         token
     } else {
-        utils::read_token_from_stdin()?.unwrap_or_default()
+        utils::utils::read_token_from_stdin()?.unwrap_or_default()
     });
 
     let accept_invalid_certificates = args
@@ -174,6 +175,24 @@ fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
     check_if_context_is_a_required_field(config, &client, args)?;
 
     Ok(client)
+}
+
+fn client_to_configuration(client: &Client) -> Result<Configuration> {
+    let base_url = client.base_url().to_string();
+    let token = client.headers().get("authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.strip_prefix("Bearer "))
+        .unwrap_or("")
+        .to_string();
+    
+    let mut config = Configuration::default();
+    config.base_path = base_url;
+    config.api_key = Some(ApiKey {
+        prefix: Some("Bearer".to_string()),
+        key: token,
+    });
+    
+    Ok(config)
 }
 
 const DOMAINS_THAT_REQUIRE_CONTEXT: [&str; 2] = ["uipath.com", "reinfer.dev"];
@@ -234,7 +253,7 @@ fn find_configuration(args: &Args) -> Result<PathBuf> {
 
 fn main() {
     let args = Args::from_args();
-    utils::init_env_logger(args.verbose);
+    utils::utils::init_env_logger(args.verbose);
 
     if let Err(error) = run(args) {
         error!("An error occurred:");

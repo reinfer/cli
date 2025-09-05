@@ -1,6 +1,6 @@
 use crate::common::TestCli;
 use pretty_assertions::assert_eq;
-use reinfer_client::Source;
+use openapi::models::Source;
 use uuid::Uuid;
 
 pub struct TestSource {

@@ -1,11 +1,11 @@
 use anyhow::{anyhow, Context, Result};
 use log::info;
-use reinfer_client::{
-    resources::{
-        quota::{CreateQuota, TenantQuotaKind},
-        tenant_id::{ReinferTenantId, TenantId, UiPathTenantId},
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        quotas_api::{set_quota_for_tenant, set_tenant_quota},
     },
-    Client,
+    models::{QuotaKind as TenantQuotaKind, Tenant, SetQuotaForTenantRequest},
 };
 use structopt::{clap::ArgGroup, StructOpt};
 
@@ -14,11 +14,11 @@ use structopt::{clap::ArgGroup, StructOpt};
 pub struct CreateQuotaArgs {
     #[structopt(long = "reinfer-tenant-id", group = "tenant-id")]
     /// Reinfer tenant ID for which to set the quota
-    reinfer_tenant_id: Option<ReinferTenantId>,
+    reinfer_tenant_id: Option<Tenant>,
 
     #[structopt(long = "uipath-tenant-id", group = "tenant-id")]
     /// UiPath tenant ID for which to set the quota
-    uipath_tenant_id: Option<UiPathTenantId>,
+    uipath_tenant_id: Option<Tenant>,
 
     #[structopt(long = "quota-kind")]
     /// Kind of quota to set
@@ -26,14 +26,14 @@ pub struct CreateQuotaArgs {
 
     #[structopt(long = "limit")]
     /// New value of the quota to set
-    hard_limit: u64,
+    hard_limit: i32,
 
     #[structopt(long = "auto-increase-up-to")]
     /// If set, will also change the `auto-increase-up-to` value of the quota
-    auto_increase_up_to: Option<u64>,
+    auto_increase_up_to: Option<i32>,
 }
 
-pub fn create(client: &Client, args: &CreateQuotaArgs) -> Result<()> {
+pub fn create(config: &Configuration, args: &CreateQuotaArgs) -> Result<()> {
     let CreateQuotaArgs {
         reinfer_tenant_id,
         uipath_tenant_id,
@@ -42,9 +42,10 @@ pub fn create(client: &Client, args: &CreateQuotaArgs) -> Result<()> {
         auto_increase_up_to,
     } = args;
 
-    let tenant_id: TenantId = match (reinfer_tenant_id, uipath_tenant_id) {
-        (Some(tenant_id), None) => TenantId::Reinfer(tenant_id.to_owned()),
-        (None, Some(tenant_id)) => TenantId::UiPath(tenant_id.to_owned()),
+    // Determine tenant ID (same logic as legacy version)
+    let tenant_id = match (reinfer_tenant_id, uipath_tenant_id) {
+        (Some(tenant), None) => &tenant.tenant_id,
+        (None, Some(tenant)) => &tenant.tenant_id,
         _ => {
             return Err(anyhow!(
                 "Expected one and only one tenant ID, got none or two."
@@ -52,17 +53,18 @@ pub fn create(client: &Client, args: &CreateQuotaArgs) -> Result<()> {
         }
     };
 
-    client
-        .create_quota(
-            &tenant_id,
-            *tenant_quota_kind,
-            CreateQuota {
-                hard_limit: *hard_limit,
-                auto_increase_up_to: *auto_increase_up_to,
-            },
-        )
-        .context("Operation to set quota has failed")?;
+    let quota_kind_str = tenant_quota_kind.to_string();
 
-    info!("New quota `{tenant_quota_kind}` set successfully in tenant with id `{tenant_id}`");
+    // Single API call (same for both Reinfer and UiPath tenant IDs)
+    let request = SetQuotaForTenantRequest {
+        hard_limit: *hard_limit,
+        auto_increase_up_to: auto_increase_up_to.map(Some),
+    };
+    
+    set_quota_for_tenant(config, tenant_id, &quota_kind_str, request)
+        .context("Operation to set quota has failed")?;
+    
+    info!("New quota `{}` set successfully in tenant with id `{}`", quota_kind_str, tenant_id);
+
     Ok(())
 }

@@ -12,53 +12,25 @@ use crate::models;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
-pub struct IntegrationErrorDetails {
-    /// A known error type which is explicitlyhandled for integration syncing
-    #[serde(rename = "kind")]
-    pub kind: Kind,
-    /// A verbose error text for the integration sync server error
-    #[serde(rename = "full_error_text")]
-    pub full_error_text: String,
+pub struct ImportTaxonomyRequest {
+    /// Entity Defs to be imported
+    #[serde(rename = "entity_defs")]
+    pub entity_defs: Vec<models::EntityDefUpdate>,
+    /// Label Groups to be imported
+    #[serde(rename = "label_groups")]
+    pub label_groups: Vec<models::LabelGroup>,
+    /// Overwrite duplicates
+    #[serde(rename = "overwrite_duplicates")]
+    pub overwrite_duplicates: bool,
 }
 
-impl IntegrationErrorDetails {
-    pub fn new(kind: Kind, full_error_text: String) -> IntegrationErrorDetails {
-        IntegrationErrorDetails {
-            kind,
-            full_error_text,
+impl ImportTaxonomyRequest {
+    pub fn new(entity_defs: Vec<models::EntityDefUpdate>, label_groups: Vec<models::LabelGroup>, overwrite_duplicates: bool) -> ImportTaxonomyRequest {
+        ImportTaxonomyRequest {
+            entity_defs,
+            label_groups,
+            overwrite_duplicates,
         }
-    }
-}
-/// A known error type which is explicitlyhandled for integration syncing
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub enum Kind {
-    #[serde(rename = "mailbox_not_found")]
-    MailboxNotFound,
-    #[serde(rename = "invalid_exchange_credentials")]
-    InvalidExchangeCredentials,
-    #[serde(rename = "comment_quota_hit")]
-    CommentQuotaHit,
-    #[serde(rename = "mailbox_inbox_not_found")]
-    MailboxInboxNotFound,
-    #[serde(rename = "mailbox_removed")]
-    MailboxRemoved,
-    #[serde(rename = "app_access_insufficient_scopes")]
-    AppAccessInsufficientScopes,
-    #[serde(rename = "unknown_forbidden_error")]
-    UnknownForbiddenError,
-    #[serde(rename = "mailbox_primary_address_not_found")]
-    MailboxPrimaryAddressNotFound,
-    #[serde(rename = "syncemail_consumption_limit_exceeded")]
-    SyncemailConsumptionLimitExceeded,
-    #[serde(rename = "mailbox_access_denied")]
-    MailboxAccessDenied,
-    #[serde(rename = "mailbox_invalid_license")]
-    MailboxInvalidLicense,
-}
-
-impl Default for Kind {
-    fn default() -> Kind {
-        Self::MailboxNotFound
     }
 }
 

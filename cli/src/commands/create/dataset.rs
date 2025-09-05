@@ -1,10 +1,17 @@
 use crate::printer::Printer;
+use crate::utils::{FullName as DatasetFullName, resource_identifier::SourceIdentifier};
 use anyhow::{anyhow, bail, Context, Error, Result};
 use log::info;
-use reinfer_client::{
-    resources::{dataset::DatasetFlag, entity_def::NewGeneralFieldDef},
-    Client, DatasetFullName, NewDataset, NewEntityDef, NewLabelDef, NewLabelGroup,
-    SourceIdentifier,
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        datasets_api::create_dataset,
+        sources_api::{get_source, get_source_by_id},
+    },
+    models::{
+        CreateDatasetRequest, DatasetNew, DatasetFlag, EntityDefNew, GeneralFieldDefNew,
+        LabelDefNew, LabelGroupNew,
+    },
 };
 use serde::Deserialize;
 use std::str::FromStr;
@@ -37,20 +44,20 @@ pub struct CreateDatasetArgs {
 
     #[structopt(short = "e", long = "entity-defs", default_value = "[]")]
     /// Entity defs to create at dataset creation, as json
-    entity_defs: VecExt<NewEntityDef>,
+    entity_defs: VecExt<EntityDefNew>,
 
     #[structopt(short = "g", long = "general-fields", default_value = "[]")]
     /// General Fields to create at dataset creation, as json
-    general_fields: VecExt<NewGeneralFieldDef>,
+    general_fields: VecExt<GeneralFieldDefNew>,
 
     #[structopt(long = "label-defs", default_value = "[]")]
     /// Label defs to create at dataset creation, as json.
     /// Only used if label_groups is not provided.
-    label_defs: VecExt<NewLabelDef>,
+    label_defs: VecExt<LabelDefNew>,
 
     #[structopt(long = "label-groups", default_value = "[]")]
     /// Label groups to create at dataset creation, as json
-    label_groups: VecExt<NewLabelGroup>,
+    label_groups: VecExt<LabelGroupNew>,
 
     #[structopt(long = "model-family")]
     /// Model family to use for the new dataset
@@ -77,7 +84,7 @@ pub struct CreateDatasetArgs {
     zero_shot: Option<bool>,
 }
 
-pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> Result<()> {
+pub fn create(config: &Configuration, args: &CreateDatasetArgs, printer: &Printer) -> Result<()> {
     let CreateDatasetArgs {
         name,
         title,
@@ -99,12 +106,19 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
     let source_ids = {
         let mut source_ids = Vec::with_capacity(sources.len());
         for source in sources.iter() {
-            source_ids.push(
-                client
-                    .get_source(source.clone())
-                    .context("Operation to get source has failed")?
-                    .id,
-            );
+            let source_id = match source {
+                SourceIdentifier::Id(id) => {
+                    // It's a source ID, use it directly
+                    id.clone()
+                }
+                SourceIdentifier::FullName(full_name) => {
+                    // It's a source name, need to look it up
+                    let response = get_source(config, full_name.owner(), full_name.name())
+                        .context("Operation to get source has failed")?;
+                    response.source.id
+                }
+            };
+            source_ids.push(source_id);
         }
         source_ids
     };
@@ -148,40 +162,50 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
         // otherwise, we either don't have defs or have groups, so don't use them
         _ => None,
     };
-    let dataset = client
-        .create_dataset(
-            name,
-            NewDataset {
-                source_ids: &source_ids,
-                title: title.as_deref(),
-                description: description.as_deref(),
-                has_sentiment: Some(has_sentiment.unwrap_or(false)),
-                entity_defs: if entity_defs.is_empty() {
-                    None
-                } else {
-                    Some(entity_defs)
-                },
-                general_fields: if general_fields.is_empty() {
-                    None
-                } else {
-                    Some(general_fields)
-                },
-                label_defs,
-                label_groups: if label_groups.is_empty() {
-                    None
-                } else {
-                    Some(&label_groups[..])
-                },
-                model_family: model_family.as_deref(),
-                copy_annotations_from: copy_annotations_from.as_deref(),
-                dataset_flags: get_dataset_flags()?,
-            },
-        )
+    let dataset_new = DatasetNew {
+        title: title.clone(),
+        description: description.clone(),
+        source_ids: Some(source_ids),
+        has_sentiment: Some(has_sentiment.unwrap_or(false)),
+        entity_defs: if entity_defs.is_empty() {
+            None
+        } else {
+            Some(entity_defs.clone())
+        },
+        general_fields: if general_fields.is_empty() {
+            None
+        } else {
+            Some(general_fields.clone())
+        },
+        label_defs: if let Some(label_defs) = label_defs {
+            Some(label_defs.clone())
+        } else {
+            None
+        },
+        label_groups: if label_groups.is_empty() {
+            None
+        } else {
+            Some(label_groups.clone())
+        },
+        model_family: model_family.clone(),
+        copy_annotations_from: copy_annotations_from.clone(),
+        _dataset_flags: Some(get_dataset_flags()?),
+        ..Default::default()
+    };
+
+    let create_request = CreateDatasetRequest {
+        dataset: Box::new(dataset_new),
+    };
+
+    let response = create_dataset(config, name.owner(), name.name(), create_request)
         .context("Operation to create a dataset has failed.")?;
+
+    let dataset = *response.dataset;
     info!(
-        "New dataset `{}` [id: {}] created successfully",
-        dataset.full_name().0,
-        dataset.id.0,
+        "New dataset `{}/{}` [id: {}] created successfully",
+        dataset.owner,
+        dataset.name,
+        dataset.id,
     );
     printer.print_resources(&[dataset])?;
     Ok(())

@@ -402,6 +402,8 @@ docs/Headers.md
 docs/Highlight.md
 docs/HistogramBin.md
 docs/ImageInputConfig.md
+docs/ImportTaxonomyRequest.md
+docs/ImportTaxonomyResponse.md
 docs/InferenceStats.md
 docs/InheritsFrom.md
 docs/InputConfig.md
@@ -1304,6 +1306,8 @@ src/models/headers.rs
 src/models/highlight.rs
 src/models/histogram_bin.rs
 src/models/image_input_config.rs
+src/models/import_taxonomy_request.rs
+src/models/import_taxonomy_response.rs
 src/models/inference_stats.rs
 src/models/inherits_from.rs
 src/models/input_config.rs

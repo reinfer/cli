@@ -2,7 +2,13 @@ use std::collections::HashMap;
 
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::{BucketIdentifier, Client};
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        buckets_api::{get_bucket, get_buckets},
+    },
+    models::BucketIdentifier,
+};
 use structopt::StructOpt;
 
 use crate::printer::{PrintableBucket, Printer};
@@ -18,22 +24,22 @@ pub struct GetBucketsArgs {
     include_stats: bool,
 }
 
-pub fn get(client: &Client, args: &GetBucketsArgs, printer: &Printer) -> Result<()> {
+pub fn get(config: &Configuration, args: &GetBucketsArgs, printer: &Printer) -> Result<()> {
     let GetBucketsArgs {
         bucket,
         include_stats,
     } = args;
 
     let buckets = if let Some(bucket) = bucket {
-        vec![client
-            .get_bucket(bucket.clone())
-            .context("Operation to list buckets has failed.")?]
+        vec![get_bucket(config, bucket.owner(), bucket.name())
+            .context("Operation to list buckets has failed.")?
+            .bucket]
     } else {
-        let mut buckets = client
-            .get_buckets()
-            .context("Operation to list buckets has failed.")?;
+        let mut buckets = get_buckets(config)
+            .context("Operation to list buckets has failed.")?
+            .buckets;
         buckets.sort_unstable_by(|lhs, rhs| {
-            (&lhs.owner.0, &lhs.name.0).cmp(&(&rhs.owner.0, &rhs.name.0))
+            (&lhs.owner, &lhs.name).cmp(&(&rhs.owner, &rhs.name))
         });
         buckets
     };

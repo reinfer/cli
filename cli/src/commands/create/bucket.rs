@@ -1,7 +1,14 @@
 use crate::printer::Printer;
+use crate::utils::FullName as BucketFullName;
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::{BucketFullName, BucketType, Client, NewBucket};
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        buckets_api::create_bucket,
+    },
+    models::BucketType,
+};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -19,25 +26,31 @@ pub struct CreateBucketArgs {
     bucket_type: BucketType,
 }
 
-pub fn create(client: &Client, args: &CreateBucketArgs, printer: &Printer) -> Result<()> {
+pub fn create(config: &Configuration, args: &CreateBucketArgs, printer: &Printer) -> Result<()> {
     let CreateBucketArgs {
         name,
         title,
         bucket_type,
     } = args;
 
-    let bucket = client
-        .create_bucket(
-            name,
-            NewBucket {
-                title: title.as_deref(),
-                bucket_type: *bucket_type,
-            },
-        )
+    let bucket_new = models::BucketNew {
+        title,
+        bucket_type: Some(bucket_type),
+    };
+
+    let create_request = models::CreateBucketRequest {
+        bucket: Box::new(bucket_new),
+    };
+
+    let response = create_bucket(config, name.owner(), name.name(), create_request)
         .context("Operation to create a bucket has failed")?;
+
+    let bucket = *response.bucket;
+    
     info!(
-        "New bucket `{}` [id: {}] created successfully",
-        bucket.full_name(),
+        "New bucket `{}/{}` [id: {}] created successfully",
+        bucket.owner,
+        bucket.name,
         bucket.id,
     );
     printer.print_resources(&[bucket])?;

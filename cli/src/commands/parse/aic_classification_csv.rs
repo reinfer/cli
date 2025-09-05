@@ -5,18 +5,22 @@ use crate::{
     },
     parse::Statistics,
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
 use log::{error, info};
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        datasets_api::get_dataset,
+        sources_api::{get_source, get_source_by_id},
+    },
+    models::{CommentId, DatasetFullName, EitherLabelling, Label, Message, MessageBody, NewComment, NewLabelling, Source, DEFAULT_LABEL_GROUP_NAME},
+};
 use scoped_threadpool::Pool;
 use serde::Deserialize;
 use std::sync::{mpsc::channel, Arc};
-
-use reinfer_client::{
-    Client, CommentId, DatasetFullName, DatasetIdentifier, EitherLabelling, Label, Message,
-    MessageBody, NewComment, NewLabelling, Source, SourceIdentifier, DEFAULT_LABEL_GROUP_NAME,
-};
 use std::path::PathBuf;
 use structopt::StructOpt;
+use crate::utils::resource_identifier::{DatasetIdentifier, SourceIdentifier};
 
 const UPLOAD_BATCH_SIZE: usize = 4;
 
@@ -51,7 +55,7 @@ fn send_comments_if_needed(
     annotations: &mut Vec<NewAnnotation>,
     force_send: bool,
     pool: &mut Pool,
-    client: &Client,
+    config: &Configuration,
     source: &Source,
     statistics: &Statistics,
     dataset: &DatasetFullName,
@@ -70,7 +74,7 @@ fn send_comments_if_needed(
     pool.scoped(|scope| {
         for chunk in chunks {
             scope.execute(|| {
-                let result = upload_batch_of_comments(client, source, chunk, no_charge, statistics);
+                let result = upload_batch_of_comments(config, source, chunk, no_charge, statistics);
 
                 if let Err(error) = result {
                     error_sender.send(error).expect("Could not send error");
@@ -81,7 +85,7 @@ fn send_comments_if_needed(
 
     upload_batch_of_annotations(
         annotations,
-        client,
+        config,
         source,
         statistics,
         dataset,
@@ -98,7 +102,7 @@ fn send_comments_if_needed(
     }
 }
 
-pub fn parse(client: &Client, args: &ParseAicClassificationCsvArgs, pool: &mut Pool) -> Result<()> {
+pub fn parse(config: &Configuration, args: &ParseAicClassificationCsvArgs, pool: &mut Pool) -> Result<()> {
     let ParseAicClassificationCsvArgs {
         file_path,
         source,
@@ -106,8 +110,29 @@ pub fn parse(client: &Client, args: &ParseAicClassificationCsvArgs, pool: &mut P
         no_charge,
     } = args;
 
-    let source = client.get_source(source.clone())?;
-    let dataset = client.get_dataset(dataset.clone())?;
+    let source = match source {
+        SourceIdentifier::Id(source_id) => {
+            let response = get_source_by_id(config, source_id)
+                .context("Failed to get source by ID")?;
+            response.source
+        }
+        SourceIdentifier::FullName(full_name) => {
+            let response = get_source(config, full_name.owner(), full_name.name())
+                .context("Failed to get source by name")?;
+            response.source
+        }
+    };
+
+    let dataset = match dataset {
+        DatasetIdentifier::Id(_) => {
+            anyhow::bail!("Dataset lookup by ID is not supported. Please use dataset full name (owner/name)")
+        }
+        DatasetIdentifier::FullName(full_name) => {
+            let response = get_dataset(config, full_name.owner(), full_name.name())
+                .context("Failed to get dataset")?;
+            response.dataset
+        }
+    };
     let record_count = csv::Reader::from_path(file_path)?.records().count();
 
     let statistics = Arc::new(Statistics::new());
@@ -157,7 +182,7 @@ pub fn parse(client: &Client, args: &ParseAicClassificationCsvArgs, pool: &mut P
                     &mut annotations,
                     false,
                     pool,
-                    client,
+                    config,
                     &source,
                     &statistics,
                     &dataset.full_name(),
@@ -177,7 +202,7 @@ pub fn parse(client: &Client, args: &ParseAicClassificationCsvArgs, pool: &mut P
         &mut annotations,
         true,
         pool,
-        client,
+        config,
         &source,
         &statistics,
         &dataset.full_name(),

@@ -230,7 +230,7 @@ fn parse_context_from_url(
 ) -> Result<()> {
     let mut url: Url = match url {
         None => loop {
-            match Url::parse(&utils::read_from_stdin("URL", None)?) {
+            match Url::parse(&utils::utils::read_from_stdin("URL", None)?) {
                 Ok(url) => break url,
                 Err(error) => {
                     error!("Invalid URL: {error}");
@@ -283,7 +283,7 @@ fn add_or_edit_context(
     // Get context name (either argument or from stdin)
     let name = loop {
         let name = match name {
-            None => utils::read_from_stdin("Context name", None)?,
+            None => utils::utils::read_from_stdin("Context name", None)?,
             Some(name) => name.clone(),
         };
         if !name.is_empty() {
@@ -302,7 +302,7 @@ fn add_or_edit_context(
 
     // Get API token (either argument or from stdin)
     let token = match token {
-        None => utils::read_token_from_stdin()?,
+        None => utils::utils::read_token_from_stdin()?,
         token => token.clone(),
     };
     if token.is_none() {
@@ -320,7 +320,7 @@ fn add_or_edit_context(
     // Get endpoint (either argument or from stdin)
     let endpoint = match endpoint {
         None => loop {
-            match Url::parse(&utils::read_from_stdin(
+            match Url::parse(&utils::utils::read_from_stdin(
                 "Endpoint",
                 Some(
                     existing_context

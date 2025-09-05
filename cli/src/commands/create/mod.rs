@@ -19,7 +19,7 @@ use self::{
 };
 use crate::printer::Printer;
 use anyhow::Result;
-use reinfer_client::Client;
+use openapi::apis::configuration::Configuration;
 use scoped_threadpool::Pool;
 use structopt::StructOpt;
 
@@ -84,30 +84,30 @@ pub enum CreateArgs {
 
 pub fn run(
     create_args: &CreateArgs,
-    client: Client,
+    config: &Configuration,
     printer: &Printer,
     pool: &mut Pool,
 ) -> Result<()> {
     match create_args {
-        CreateArgs::Bucket(bucket_args) => bucket::create(&client, bucket_args, printer),
-        CreateArgs::Source(source_args) => source::create(&client, source_args, printer),
-        CreateArgs::Dataset(dataset_args) => dataset::create(&client, dataset_args, printer),
-        CreateArgs::Project(project_args) => project::create(&client, project_args, printer),
-        CreateArgs::Comments(comments_args) => comments::create(&client, comments_args, pool),
+        CreateArgs::Bucket(bucket_args) => bucket::create(config, bucket_args, printer),
+        CreateArgs::Source(source_args) => source::create(config, source_args, printer),
+        CreateArgs::Dataset(dataset_args) => dataset::create(config, dataset_args, printer),
+        CreateArgs::Project(project_args) => project::create(config, project_args, printer),
+        CreateArgs::Comments(comments_args) => comments::create(config, comments_args, pool),
         CreateArgs::Annotations(annotations_args) => {
-            annotations::create(&client, annotations_args, pool)
+            annotations::create(config, annotations_args, pool)
         }
-        CreateArgs::Emails(emails_args) => emails::create(&client, emails_args),
-        CreateArgs::User(user_args) => user::create(&client, user_args, printer),
+        CreateArgs::Emails(emails_args) => emails::create(config, emails_args),
+        CreateArgs::User(user_args) => user::create(config, user_args, printer),
         CreateArgs::StreamException(stream_exception_args) => {
-            stream_exception::create(&client, stream_exception_args, printer)
+            stream_exception::create(config, stream_exception_args, printer)
         }
-        CreateArgs::Quota(quota_args) => quota::create(&client, quota_args),
+        CreateArgs::Quota(quota_args) => quota::create(config, quota_args),
         CreateArgs::Stream(stream_args) | CreateArgs::Streams(stream_args) => {
-            streams::create(&client, stream_args)
+            streams::create(config, stream_args)
         }
         CreateArgs::Integration(integration_args) | CreateArgs::Integrations(integration_args) => {
-            integrations::create(&client, integration_args)
+            integrations::create(config, integration_args)
         }
     }
 }

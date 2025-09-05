@@ -2,11 +2,18 @@ use crate::progress::{Options as ProgressOptions, Progress};
 use anyhow::{Context, Result};
 use colored::Colorize;
 use log::info;
-use reinfer_client::{
-    resources::comment::{should_skip_serializing_optional_vec, EitherLabelling, HasAnnotations},
-    Client, CommentId, CommentUid, DatasetFullName, DatasetIdentifier, NewEntities, NewLabelling,
-    NewMoonForm, Source, SourceIdentifier,
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        datasets_api::{get_dataset, update_comment_labelling},
+        sources_api::{get_source, get_source_by_id},
+    },
+    models::{
+        CommentId, CommentUid, DatasetFullName, EntitiesNew, GroupLabellingsRequest, Label,
+        MoonFormGroupUpdate, Source, UpdateCommentLabellingRequest,
+    },
 };
+use crate::utils::comment_utils::{should_skip_serializing_optional_vec, HasAnnotations};
 use scoped_threadpool::Pool;
 use serde::{Deserialize, Serialize};
 use std::sync::mpsc::channel;
@@ -20,6 +27,7 @@ use std::{
     },
 };
 use structopt::StructOpt;
+use crate::utils::resource_identifier::{DatasetIdentifier, SourceIdentifier};
 
 #[derive(Debug, StructOpt)]
 pub struct CreateAnnotationsArgs {
@@ -48,15 +56,31 @@ pub struct CreateAnnotationsArgs {
     resume_on_error: bool,
 }
 
-pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) -> Result<()> {
-    let source = client
-        .get_source(args.source.clone())
-        .with_context(|| format!("Unable to get source {}", args.source))?;
+pub fn create(config: &Configuration, args: &CreateAnnotationsArgs, pool: &mut Pool) -> Result<()> {
+    let source = match &args.source {
+        SourceIdentifier::Id(source_id) => {
+            let response = get_source_by_id(config, source_id)
+                .context("Failed to get source by ID")?;
+            response.source
+        }
+        SourceIdentifier::FullName(full_name) => {
+            let response = get_source(config, full_name.owner(), full_name.name())
+                .context("Failed to get source by name")?;
+            response.source
+        }
+    };
     let source_name = source.full_name();
 
-    let dataset = client
-        .get_dataset(args.dataset.clone())
-        .with_context(|| format!("Unable to get dataset {}", args.dataset))?;
+    let dataset = match &args.dataset {
+        DatasetIdentifier::Id(_) => {
+            anyhow::bail!("Dataset lookup by ID is not supported. Please use dataset full name (owner/name)")
+        }
+        DatasetIdentifier::FullName(full_name) => {
+            let response = get_dataset(config, full_name.owner(), full_name.name())
+                .context("Failed to get dataset")?;
+            response.dataset
+        }
+    };
     let dataset_name = dataset.full_name();
 
     let statistics = match &args.annotations_path {
@@ -86,7 +110,7 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
                 Some(progress_bar(file_metadata.len(), &statistics))
             };
             upload_annotations_from_reader(
-                client,
+                config,
                 &source,
                 file,
                 &statistics,
@@ -108,7 +132,7 @@ pub fn create(client: &Client, args: &CreateAnnotationsArgs, pool: &mut Pool) ->
             );
             let statistics = Statistics::new();
             upload_annotations_from_reader(
-                client,
+                config,
                 &source,
                 BufReader::new(io::stdin()),
                 &statistics,
@@ -141,7 +165,7 @@ pub trait AttachmentStatistic {
 #[allow(clippy::too_many_arguments)]
 pub fn upload_batch_of_annotations(
     annotations_to_upload: &mut Vec<NewAnnotation>,
-    client: &Client,
+    config: &Configuration,
     source: &Source,
     statistics: &(impl AnnotationStatistic + std::marker::Sync),
     dataset_name: &DatasetFullName,
@@ -158,27 +182,20 @@ pub fn upload_batch_of_annotations(
                 let comment_uid =
                     CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0));
 
-                let result = (if new_comment.moon_forms.is_none() {
-                    client.update_labelling(
-                        dataset_name,
-                        &comment_uid,
-                        new_comment
-                            .labelling
-                            .clone()
-                            .map(Into::<Vec<NewLabelling>>::into)
-                            .as_deref(),
-                        new_comment.entities.as_ref(),
-                        None,
-                    )
-                } else {
-                    client.update_labelling(
-                        dataset_name,
-                        &comment_uid,
-                        None,
-                        new_comment.entities.as_ref(),
-                        new_comment.moon_forms.as_deref(),
-                    )
-                })
+                let request = UpdateCommentLabellingRequest {
+                    context: None,
+                    labelling: new_comment.labelling.clone(),
+                    entities: new_comment.entities.as_ref().map(Box::new),
+                    moon_forms: new_comment.moon_forms.clone(),
+                };
+
+                let result = update_comment_labelling(
+                    config,
+                    dataset_name.owner(),
+                    dataset_name.name(),
+                    &comment_uid.0,
+                    request,
+                )
                 .with_context(|| {
                     format!(
                         "Could not update labelling for comment `{}`",
@@ -211,7 +228,7 @@ pub fn upload_batch_of_annotations(
 
 #[allow(clippy::too_many_arguments)]
 fn upload_annotations_from_reader(
-    client: &Client,
+    config: &Configuration,
     source: &Source,
     annotations: impl BufRead,
     statistics: &Statistics,
@@ -230,7 +247,7 @@ fn upload_annotations_from_reader(
             if annotations_to_upload.len() >= batch_size {
                 upload_batch_of_annotations(
                     &mut annotations_to_upload,
-                    client,
+                    config,
                     source,
                     statistics,
                     dataset_name,
@@ -244,7 +261,7 @@ fn upload_annotations_from_reader(
     if !annotations_to_upload.is_empty() {
         upload_batch_of_annotations(
             &mut annotations_to_upload,
-            client,
+            config,
             source,
             statistics,
             dataset_name,
@@ -268,11 +285,11 @@ pub struct CommentIdComment {
 pub struct NewAnnotation {
     pub comment: CommentIdComment,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub labelling: Option<EitherLabelling>,
+    pub labelling: Option<Vec<GroupLabellingsRequest>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub entities: Option<NewEntities>,
+    pub entities: Option<EntitiesNew>,
     #[serde(skip_serializing_if = "should_skip_serializing_optional_vec", default)]
-    pub moon_forms: Option<Vec<NewMoonForm>>,
+    pub moon_forms: Option<Vec<MoonFormGroupUpdate>>,
 }
 
 impl HasAnnotations for NewAnnotation {

@@ -6,10 +6,17 @@ use std::{
 
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::ModelVersion;
-use reinfer_client::{resources::stream::NewStream, Client, DatasetIdentifier};
-
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        datasets_api::get_dataset,
+        streams_api::create_stream,
+    },
+    models::{CreateStreamRequest, TriggerNew, TriggerUserModel},
+};
 use structopt::StructOpt;
+
+use crate::utils::resource_identifier::DatasetIdentifier;
 
 #[derive(Debug, StructOpt)]
 pub struct CreateStreamsArgs {
@@ -23,10 +30,10 @@ pub struct CreateStreamsArgs {
 
     #[structopt(short = "v", long = "model-version")]
     /// The model version for the new streams to use
-    model_version: ModelVersion,
+    model_version: TriggerUserModel,
 }
 
-pub fn create(client: &Client, args: &CreateStreamsArgs) -> Result<()> {
+pub fn create(config: &Configuration, args: &CreateStreamsArgs) -> Result<()> {
     let CreateStreamsArgs {
         path,
         dataset_id,
@@ -37,22 +44,38 @@ pub fn create(client: &Client, args: &CreateStreamsArgs) -> Result<()> {
         File::open(path).with_context(|| format!("Could not open file `{}`", path.display()))?,
     );
 
-    let dataset = client.get_dataset(dataset_id.clone())?;
+    // Get dataset info
+    let dataset = match &dataset_id {
+        DatasetIdentifier::Id(_) => {
+            return Err(anyhow::anyhow!("Dataset lookup by ID is not supported. Please use the full name format 'owner/dataset'"));
+        }
+        DatasetIdentifier::FullName(full_name) => {
+            get_dataset(config, full_name.owner(), full_name.name())
+                .context("Failed to get dataset")?
+                .dataset
+        }
+    };
 
     for read_stream_result in read_streams_iter(file) {
-        let mut new_stream = read_stream_result?;
+        let mut trigger_new = read_stream_result?;
 
-        new_stream.set_model_version(model_version);
+        // Set the model version
+        trigger_new.model = Some(Some(Box::new(*model_version)));
 
-        client.put_stream(&dataset.full_name(), &new_stream)?;
-        info!("Created stream {}", new_stream.name.0)
+        let request = CreateStreamRequest {
+            stream: Box::new(trigger_new.clone()),
+        };
+
+        create_stream(config, &dataset.owner, &dataset.name, request)
+            .context("Failed to create stream")?;
+        info!("Created stream {}", trigger_new.name.as_deref().unwrap_or("unnamed"))
     }
     Ok(())
 }
 
 fn read_streams_iter<'a>(
     mut streams: impl BufRead + 'a,
-) -> impl Iterator<Item = Result<NewStream>> + 'a {
+) -> impl Iterator<Item = Result<TriggerNew>> + 'a {
     let mut line = String::new();
     let mut line_number: u32 = 0;
     std::iter::from_fn(move || {
@@ -70,7 +93,7 @@ fn read_streams_iter<'a>(
         }
 
         Some(
-            serde_json::from_str::<NewStream>(line.trim_end()).with_context(|| {
+            serde_json::from_str::<TriggerNew>(line.trim_end()).with_context(|| {
                 format!("Could not parse stream at line {line_number} from input stream")
             }),
         )

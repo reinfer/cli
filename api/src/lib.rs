@@ -15,9 +15,7 @@ use reqwest::{
     header::{self, HeaderMap, HeaderValue},
     IntoUrl, Proxy, Result as ReqwestResult,
 };
-use openapi::apis::configuration::Configuration;
-use openapi::apis::sources_api;
-use openapi::models;
+
 
 use resources::{
     attachments::UploadAttachmentResponse,
@@ -87,7 +85,6 @@ use crate::resources::{
     quota::{CreateQuota, TenantQuotaKind},
     source::{
         CreateRequest as CreateSourceRequest, CreateResponse as CreateSourceResponse,
-        GetAvailableResponse as GetAvailableSourcesResponse, GetResponse as GetSourceResponse,
         UpdateRequest as UpdateSourceRequest, UpdateResponse as UpdateSourceResponse,
     },
     statistics::GetResponse as GetStatisticsResponse,
@@ -143,10 +140,6 @@ pub use crate::{
             LabelGroup, Name as LabelGroupName, NewLabelGroup, DEFAULT_LABEL_GROUP_NAME,
         },
         project::{NewProject, Project, ProjectName, UpdateProject},
-        source::{
-            FullName as SourceFullName, Id as SourceId, Identifier as SourceIdentifier,
-            Name as SourceName, NewSource, Source, SourceKind, TransformTag, UpdateSource,
-        },
         statistics::Statistics as CommentStatistics,
         stream::{
             Batch as StreamBatch, FullName as StreamFullName, SequenceId as StreamSequenceId,
@@ -293,19 +286,10 @@ impl Client {
     }
 
     /// List all visible sources.
-    pub fn get_sources(&self) -> Result<Vec<Source>> {
-        let cfg = self.make_cfg();
-
-        let resp = sources_api::get_all_sources(&cfg).map_err(Into::into)?;
-
-
-        let out = resp
-            .sources
-            .into_iter()
-            .map(Source::from)
-            .collect();
-
-        Ok(out)
+    pub fn get_sources(&self) -> Result<Vec<models::Source>> {
+        Ok(self
+            .get::<_, GetAvailableSourcesResponse>(self.endpoints.sources.clone())?
+            .sources)
     }
 
     /// Get a source by either id or name.
@@ -322,11 +306,11 @@ impl Client {
     pub fn get_source(&self, source: impl Into<SourceIdentifier>) -> Result<Source> {
         Ok(match source.into() {
             SourceIdentifier::Id(source_id) => {
-                self.get::<_, GetSourceResponse>(self.endpoints.source_by_id(&source_id)?)?
+                *self.get::<_, GetSourceByIdResponse>(self.endpoints.source_by_id(&source_id)?)?
                     .source
             }
             SourceIdentifier::FullName(source_name) => {
-                self.get::<_, GetSourceResponse>(self.endpoints.source_by_name(&source_name)?)?
+                *self.get::<_, GetSourceResponse>(self.endpoints.source_by_name(&source_name)?)?
                     .source
             }
         })
@@ -375,13 +359,13 @@ impl Client {
     }
 
     /// Delete a source.
-    pub fn delete_source(&self, source: impl Into<SourceIdentifier>) -> Result<()> {
-        let source_id = match source.into() {
-            SourceIdentifier::Id(source_id) => source_id,
-            source @ SourceIdentifier::FullName(_) => self.get_source(source)?.id,
-        };
-        self.delete(self.endpoints.source_by_id(&source_id)?)
-    }
+    // pub fn delete_source(&self, source: impl Into<SourceIdentifier>) -> Result<()> {
+    //     let source_id = match source.into() {
+    //         SourceIdentifier::Id(source_id) => source_id,
+    //         source @ SourceIdentifier::FullName(_) => self.get_source(source)?.id,
+    //     };
+    //     self.delete(self.endpoints.source_by_id(&source_id)?)
+    // }
 
     /// Set a quota
     pub fn create_quota(

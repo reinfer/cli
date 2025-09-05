@@ -1,21 +1,26 @@
 use anyhow::{Context, Result};
-use reinfer_client::{
-    Client, GlobalPermission, NewUser, ProjectName, ProjectPermission, UserEmail, Username,
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        users_api::{create_user, send_welcome_email},
+    },
+    models::{CreateUserRequest, GlobalPermission, ProjectPermission, UserNew, User},
 };
 use std::collections::hash_map::HashMap;
 use structopt::StructOpt;
 
 use crate::printer::Printer;
+use crate::utils::ProjectName;
 
 #[derive(Debug, StructOpt)]
 pub struct CreateUserArgs {
     #[structopt(name = "username")]
     /// Username for the new user
-    username: Username,
+    username: String,
 
     #[structopt(name = "email")]
     /// Email address of the new user
-    email: UserEmail,
+    email: String,
 
     #[structopt(long = "global-permissions")]
     /// Global permissions to give to the new user
@@ -34,7 +39,7 @@ pub struct CreateUserArgs {
     send_welcome_email: bool,
 }
 
-pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Result<()> {
+pub fn create(config: &Configuration, args: &CreateUserArgs, printer: &Printer) -> Result<()> {
     let CreateUserArgs {
         username,
         email,
@@ -44,7 +49,7 @@ pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Resu
         send_welcome_email,
     } = args;
 
-    let project_permissions = match (project, project_permissions_list) {
+    let organisation_permissions = match (project, project_permissions_list) {
         (Some(project), permissions) if !permissions.is_empty() => maplit::hashmap!(
             project.clone() => permissions.iter().cloned().collect()
         ),
@@ -56,26 +61,33 @@ pub fn create(client: &Client, args: &CreateUserArgs, printer: &Printer) -> Resu
         }
     };
 
-    let user = client
-        .create_user(NewUser {
-            username,
-            email,
-            global_permissions,
-            project_permissions: &project_permissions,
-        })
+    let user_new = UserNew {
+        username: username.clone(),
+        email: email.clone(),
+        global_permissions: if global_permissions.is_empty() { None } else { Some(global_permissions.clone()) },
+        organisation_permissions,
+    };
+
+    let request = CreateUserRequest {
+        user: Box::new(user_new),
+    };
+
+    let response = create_user(config, request)
         .context("Operation to create a user has failed")?;
+    
+    let user = response.user;
+    
     log::info!(
         "New user `{}` with email `{}` [id: {}] created successfully",
-        user.username.0,
-        user.email.0,
-        user.id.0
+        user.username,
+        user.email,
+        user.id
     );
 
     if *send_welcome_email {
-        client
-            .send_welcome_email(user.id.clone())
+        send_welcome_email(config, &user.id)
             .context("Operation to send welcome email failed")?;
-        log::info!("Welcome email sent for user '{}'", user.username.0);
+        log::info!("Welcome email sent for user '{}'", user.username);
     }
 
     printer.print_resources(&[user])?;
