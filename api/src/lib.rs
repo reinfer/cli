@@ -93,12 +93,11 @@ use crate::resources::{
         TagExceptionsRequest as TagStreamExceptionsRequest,
     },
     tenant_id::TenantId,
-    user::GetResponse as GetUserResponse,
     user::{
         CreateRequest as CreateUserRequest, CreateResponse as CreateUserResponse,
         GetAvailableResponse as GetAvailableUsersResponse,
-        GetCurrentResponse as GetCurrentUserResponse, PostUserRequest, PostUserResponse,
-        WelcomeEmailResponse,
+        GetCurrentResponse as GetCurrentUserResponse, GetResponse as GetUserResponse,
+        PostUserRequest, PostUserResponse, WelcomeEmailResponse,
     },
     EmptySuccess, Response,
 };
@@ -902,6 +901,15 @@ impl Client {
             &Retry::Yes,
             None,
         )?;
+
+        let status = response.status();
+
+        if !status.is_success() {
+            return Err(Error::Api {
+                status_code: status,
+                message: "Bad status code when getting octet stream".to_string(),
+            });
+        }
 
         let mut buffer = Vec::new();
 
