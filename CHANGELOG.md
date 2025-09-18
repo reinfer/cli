@@ -1,3 +1,6 @@
+# Unreleased
+- Check status code when getting octet stream
+
 # v0.38.8
 - Only ask for ai unit consumpion consent when unpacking CM packages
 - Remap entity field type names on cm package upload
