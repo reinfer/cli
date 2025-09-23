@@ -437,10 +437,14 @@ fn upload_batch_of_comments(
         }
 
         if resume_on_error {
-            // TODO: Implement split on failure for OpenAPI
-            let request = models::AddCommentsRequest::new(comments_to_put.to_vec());
-            add_comments(config, &source.owner, &source.name, request)
-                .context("Could not put batch of comments")?;
+            // Use split-on-failure for resilience
+            let result = crate::utils::openapi_split_on_failure::execute_with_split_on_failure(
+                |req| add_comments(config, &source.owner, &source.name, req),
+                models::AddCommentsRequest::new(comments_to_put.to_vec()),
+                "add_comments"
+            ).context("Could not put batch of comments")?;
+            
+            failed += result.num_failed;
         } else {
             let request = models::AddCommentsRequest::new(comments_to_put.to_vec());
             add_comments(config, &source.owner, &source.name, request)
@@ -463,10 +467,15 @@ fn upload_batch_of_comments(
             )?;
         }
         let result = if resume_on_error {
-            // TODO: Implement split on failure for OpenAPI
-            let request = models::SyncCommentsRequest::new(comments_to_sync.to_vec());
-            sync_comments(config, &source.owner, &source.name, request)
-                .context("Could not sync batch of comments")?
+            // Use split-on-failure for resilience
+            let split_result = crate::utils::openapi_split_on_failure::execute_with_split_on_failure(
+                |req| sync_comments(config, &source.owner, &source.name, req),
+                models::SyncCommentsRequest::new(comments_to_sync.to_vec()),
+                "sync_comments"
+            ).context("Could not sync batch of comments")?;
+            
+            failed += split_result.num_failed;
+            split_result.response
         } else {
             let request = models::SyncCommentsRequest::new(comments_to_sync.to_vec());
             sync_comments(config, &source.owner, &source.name, request)

@@ -3,12 +3,21 @@ use colored::{ColoredString, Colorize};
 use log::info;
 use ordered_float::NotNan;
 use prettytable::row;
-use reinfer_client::resources::stream::{StreamLabelThreshold, StreamModel};
-use reinfer_client::resources::validation::ValidationResponse;
-use reinfer_client::{
-    resources::validation::LabelValidation, Client, DatasetIdentifier, ModelVersion, StreamFullName,
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        datasets_api::get_dataset,
+        streams_api::{get_all_streams, get_stream_by_name, fetch_from_stream, advance_stream},
+        models_api::{get_validation, get_label_validation},
+    },
+    models::{
+        Trigger, TriggerUserModel, TriggerLabelThreshold, FetchFromStreamRequest, FetchFromStreamResponse,
+        AdvanceStreamRequest, GetValidationResponse, GetLabelValidationRequest, GetLabelValidationResponse,
+        LabelMetrics, ValidationSummary, LabelGroup,
+    },
 };
-use reinfer_client::{DatasetFullName, LabelDef, LabelName};
+use crate::utils::{DatasetIdentifier, ModelVersion, StreamFullName};
+use crate::utils::{DatasetFullName, LabelDef, LabelName};
 use scoped_threadpool::Pool;
 use serde::Serialize;
 use std::sync::mpsc::channel;
@@ -67,7 +76,7 @@ pub struct GetStreamStatsArgs {
     compare_to_dataset: Option<DatasetFullName>,
 }
 
-pub fn get(client: &Client, args: &GetStreamsArgs, printer: &Printer) -> Result<()> {
+pub fn get(config: &Configuration, args: &GetStreamsArgs, printer: &Printer) -> Result<()> {
     let GetStreamsArgs { dataset, path } = args;
 
     let file: Option<Box<dyn Write>> = match path {
@@ -79,14 +88,23 @@ pub fn get(client: &Client, args: &GetStreamsArgs, printer: &Printer) -> Result<
         None => None,
     };
 
-    let dataset_name = client
-        .get_dataset(dataset.clone())
-        .context("Operation to get dataset has failed.")?
-        .full_name();
-    let mut streams = client
-        .get_streams(&dataset_name)
+    // Get dataset using OpenAPI
+    let dataset_response = match dataset {
+        DatasetIdentifier::FullName(full_name) => {
+            get_dataset(config, full_name.owner(), full_name.name())
+                .context("Operation to get dataset has failed.")?
+        }
+        DatasetIdentifier::Id(_) => {
+            return Err(anyhow!("Dataset lookup by ID is not supported. Please use dataset full name (owner/name)"));
+        }
+    };
+    let dataset = dataset_response.dataset;
+    
+    // Get streams using OpenAPI
+    let streams_response = get_all_streams(config, &dataset.owner, &dataset.name)
         .context("Operation to list streams has failed.")?;
-    streams.sort_unstable_by(|lhs, rhs| lhs.name.0.cmp(&rhs.name.0));
+    let mut streams = streams_response.streams;
+    streams.sort_unstable_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
 
     if let Some(file) = file {
         print_resources_as_json(streams, file)
@@ -184,7 +202,7 @@ struct ThresholdAndPrecision {
 fn get_threshold_and_precision_for_recall(
     recall: NotNan<f64>,
     label_name: &LabelName,
-    label_validation: &LabelValidation,
+    label_validation: &LabelMetrics,
 ) -> Result<ThresholdAndPrecision> {
     let recall_index = label_validation
         .recalls
@@ -211,7 +229,7 @@ struct ThresholdAndRecall {
 fn get_threshold_and_recall_for_precision(
     precision: NotNan<f64>,
     label_name: &LabelName,
-    label_validation: &LabelValidation,
+    label_validation: &LabelMetrics,
 ) -> Result<ThresholdAndRecall> {
     // Get lowest index with greater than or equal precision
     let mut precision_index = None;
@@ -248,7 +266,7 @@ struct PrecisionAndRecall {
 fn get_precision_and_recall_for_threshold(
     threshold: NotNan<f64>,
     label_name: &LabelName,
-    label_validation: &LabelValidation,
+    label_validation: &LabelMetrics,
 ) -> Result<PrecisionAndRecall> {
     let threshold_index = label_validation
         .thresholds
@@ -276,7 +294,7 @@ fn get_precision_and_recall_for_threshold(
 
 #[derive(Clone)]
 struct CompareConfig {
-    validation: ValidationResponse,
+    validation: ValidationSummary,
     dataset_name: DatasetFullName,
     model_version: ModelVersion,
 }
@@ -294,7 +312,7 @@ impl CompareConfig {
 }
 
 fn get_compare_config(
-    client: &Client,
+    config: &Configuration,
     model_version: &Option<ModelVersion>,
     dataset_name: &Option<DatasetFullName>,
     stream_name: &StreamFullName,
@@ -314,7 +332,9 @@ fn get_compare_config(
         .context("No compare to model version provided")?;
 
     info!("Getting validation for {}", dataset_name.0);
-    let validation = client.get_validation(dataset_name, &model_version)?;
+    let validation_response = get_validation(config, dataset_name.owner(), dataset_name.name(), &model_version.0.to_string(), None)
+        .context("Failed to get validation")?;
+    let validation = validation_response.validation;
 
     Ok(Some(CompareConfig {
         validation,
@@ -324,20 +344,22 @@ fn get_compare_config(
 }
 
 fn get_stream_stat(
-    label_threshold: &StreamLabelThreshold,
+    label_threshold: &TriggerLabelThreshold,
     stream_full_name: &StreamFullName,
-    model: &StreamModel,
+    model: &TriggerUserModel,
     compare_config: &Option<CompareConfig>,
-    client: &Client,
+    config: &Configuration,
 ) -> Result<StreamStat> {
-    let label_name = reinfer_client::LabelName(label_threshold.name.join(" > "));
+    let label_name = LabelName(label_threshold.name.join(" > "));
 
     info!(
         "Getting label validation for {} in dataset {}",
-        label_name.0, stream_full_name.dataset.0
+        label_name.0, stream_full_name.dataset
     );
-    let label_validation =
-        client.get_label_validation(&label_name, &stream_full_name.dataset, &model.version)?;
+    let request = GetLabelValidationRequest::new(label_name.0.clone());
+    let label_validation_response = get_label_validation(config, &stream_full_name.owner, &stream_full_name.dataset, &model.version.to_string(), request, None)
+        .context("Failed to get label validation")?;
+    let label_validation = label_validation_response.label_validation;
 
     let PrecisionAndRecall { precision, recall } = get_precision_and_recall_for_threshold(
         label_threshold.threshold,
@@ -364,11 +386,10 @@ fn get_stream_stat(
                 "Getting label validation for {} in dataset {}",
                 label_name.0, compare_config.dataset_name.0
             );
-            let compare_to_label_validation = client.get_label_validation(
-                &label_name,
-                &compare_config.dataset_name,
-                &compare_config.model_version,
-            )?;
+            let request = GetLabelValidationRequest::new(label_name.0.clone());
+            let compare_to_label_validation_response = get_label_validation(config, compare_config.dataset_name.owner(), compare_config.dataset_name.name(), &compare_config.model_version.0.to_string(), request, None)
+                .context("Failed to get comparison label validation")?;
+            let compare_to_label_validation = compare_to_label_validation_response.label_validation;
 
             let same_threshold_precision_and_recall = get_precision_and_recall_for_threshold(
                 label_threshold.threshold,
@@ -405,7 +426,7 @@ fn get_stream_stat(
 }
 
 pub fn get_stream_stats(
-    client: &Client,
+    config: &Configuration,
     args: &GetStreamStatsArgs,
     printer: &Printer,
     pool: &mut Pool,
@@ -423,11 +444,13 @@ pub fn get_stream_stats(
     }
 
     info!("Getting Stream");
-    let stream = client.get_stream(stream_full_name)?;
-    let model = stream.model.context("No model associated with stream.")?;
+    let stream_response = get_stream_by_name(config, &stream_full_name.owner, &stream_full_name.dataset, &stream_full_name.stream)
+        .context("Failed to get stream")?;
+    let stream = stream_response.stream;
+    let model = stream.model.as_ref().context("No model associated with stream.")?;
 
     let compare_config = get_compare_config(
-        client,
+        config,
         compare_to_model_version,
         compare_to_dataset,
         stream_full_name,
@@ -453,7 +476,7 @@ pub fn get_stream_stats(
                     stream_full_name,
                     &model,
                     &compare_config,
-                    client,
+                    config,
                 );
                 sender.send(result).expect("Could not send result");
             });
@@ -474,7 +497,7 @@ pub fn get_stream_stats(
     Ok(())
 }
 
-pub fn get_stream_comments(client: &Client, args: &GetStreamCommentsArgs) -> Result<()> {
+pub fn get_stream_comments(config: &Configuration, args: &GetStreamCommentsArgs) -> Result<()> {
     let GetStreamCommentsArgs {
         stream,
         size,
@@ -491,8 +514,8 @@ pub fn get_stream_comments(client: &Client, args: &GetStreamCommentsArgs) -> Res
                 if batch.filtered == 0 {
                     std::thread::sleep(std::time::Duration::from_secs_f64(*delay));
                 } else {
-                    client
-                        .advance_stream(stream, batch.sequence_id)
+                    let advance_request = AdvanceStreamRequest::new(batch.sequence_id.clone());
+                    advance_stream(config, &stream.dataset.owner, &stream.dataset.name, &stream.name, advance_request)
                         .context("Operation to advance stream for batch failed.")?;
                 }
                 continue;
@@ -503,20 +526,20 @@ pub fn get_stream_comments(client: &Client, args: &GetStreamCommentsArgs) -> Res
                 print_resources_as_json(Some(&result), io::stdout().lock())?;
 
                 if *individual_advance {
-                    client
-                        .advance_stream(stream, result.sequence_id)
+                    let advance_request = AdvanceStreamRequest::new(result.sequence_id.clone());
+                    advance_stream(config, &stream.dataset.owner, &stream.dataset.name, &stream.name, advance_request)
                         .context("Operation to advance stream for comment failed.")?;
                 }
             }
             if needs_final_advance {
-                client
-                    .advance_stream(stream, batch.sequence_id)
+                let advance_request = AdvanceStreamRequest::new(batch.sequence_id.clone());
+                advance_stream(config, &stream.dataset.owner, &stream.dataset.name, &stream.name, advance_request)
                     .context("Operation to advance stream for batch failed.")?;
             }
         },
         None => {
-            let batch = client
-                .fetch_stream_comments(stream, *size)
+            let request = FetchFromStreamRequest::new(*size as i32);
+            let batch = fetch_from_stream(config, &stream.dataset.owner, &stream.dataset.name, &stream.name, request)
                 .context("Operation to fetch stream comments failed.")?;
             print_resources_as_json(Some(&batch), io::stdout().lock())
         }

@@ -148,7 +148,7 @@ Name | Type | Description  | Required | Notes
 
 ## get_source_comments
 
-> models::GetSourceCommentsResponse get_source_comments(owner, source_name, after, limit, from_timestamp, to_timestamp, direction, include_thread_properties, include_markup)
+> models::GetSourceCommentsResponse get_source_comments(owner, source_name, after, limit, from_timestamp, to_timestamp, include_thread_properties, include_markup, direction)
 Get comments from a source
 
 Get comments from a source
@@ -160,13 +160,13 @@ Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
 **owner** | **String** |  | [required] |
 **source_name** | **String** |  | [required] |
-**after** | Option<**String**> | Continuation token for pagination. Use the 'continuation' value from a previous response to get the next batch of results. |  |
-**limit** | Option<**i32**> | Maximum number of comments to return (1-256). |  |
-**from_timestamp** | Option<**String**> | Start timestamp for filtering comments (ISO 8601 format). Cannot be used with descending direction. |  |
-**to_timestamp** | Option<**String**> | End timestamp for filtering comments (ISO 8601 format). Cannot be used with descending direction. |  |
-**direction** | Option<**String**> | Sort direction for comments. Default is 'ascending'. When 'descending', from_timestamp and to_timestamp cannot be used. |  |
-**include_thread_properties** | Option<**bool**> | Whether to include thread properties in the response. |  |
-**include_markup** | Option<**bool**> | Whether to include markup in the comment content. |  |
+**after** | Option<**String**> | An opaque continuation token for pagination. Use this to fetch the next batch of comments after a specific point in time. |  |
+**limit** | Option<**i32**> | The maximum number of comments to return in this batch. |  |
+**from_timestamp** | Option<**String**> | Only return comments created at or after this timestamp. Format: ISO 8601 datetime string (e.g., '2023-01-01T00:00:00Z'). |  |
+**to_timestamp** | Option<**String**> | Only return comments created before this timestamp. Format: ISO 8601 datetime string (e.g., '2023-12-31T23:59:59Z'). |  |
+**include_thread_properties** | Option<**bool**> | Whether to include thread properties in the response. Thread properties contain conversation-level metadata. |  |
+**include_markup** | Option<**bool**> | Whether to include rich text markup in comment content. This includes formatting information for the comment text. |  |
+**direction** | Option<**String**> | The sort direction for comments. 'ascending' sorts by timestamp from oldest to newest, 'descending' sorts from newest to oldest. |  |
 
 ### Return type
 
@@ -186,7 +186,7 @@ Name | Type | Description  | Required | Notes
 
 ## query_comments
 
-> models::QueryCommentsResponse query_comments(owner, dataset_name, query_comments_request)
+> models::QueryCommentsResponse query_comments(owner, dataset_name, query_comments_request, limit, continuation, collapse_mode, order)
 Query comments in a dataset
 
 Query comments in a dataset
@@ -199,6 +199,10 @@ Name | Type | Description  | Required | Notes
 **owner** | **String** |  | [required] |
 **dataset_name** | **String** |  | [required] |
 **query_comments_request** | [**QueryCommentsRequest**](QueryCommentsRequest.md) |  | [required] |
+**limit** | Option<**i32**> | Maximum number of comments to return. Overrides limit in request body if provided. |  |
+**continuation** | Option<**String**> | Continuation token for pagination. Overrides continuation in request body if provided. |  |
+**collapse_mode** | Option<**String**> | How to collapse results by thread. Overrides collapse_mode in request body if provided. |  |
+**order** | Option<**String**> | Simple ordering options (for complex orders like text search, use request body). Overrides order in request body if provided. |  |
 
 ### Return type
 

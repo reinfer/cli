@@ -13,12 +13,21 @@ use crate::commands::{
     ensure_uip_user_consents_to_ai_unit_charge,
     parse::{get_files_in_directory, get_progress_bar, Statistics},
 };
-use reinfer_client::{
-    resources::attachments::AttachmentMetadata, BucketIdentifier, Client, NewEmail,
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        buckets_api::get_bucket,
+        emails_api::add_emails_to_bucket,
+    },
+    models::{
+        Attachment, 
+        EmailNew,
+        AddEmailsToBucketRequest,
+    },
 };
+use crate::utils::resource_identifier::BucketIdentifier;
 use structopt::StructOpt;
 
-use super::upload_batch_of_new_emails;
 const UPLOAD_BATCH_SIZE: usize = 4;
 
 #[derive(Debug, StructOpt)]
@@ -40,7 +49,7 @@ pub struct ParseEmlArgs {
     yes: bool,
 }
 
-pub fn parse(client: &Client, args: &ParseEmlArgs, pool: &mut Pool) -> Result<()> {
+pub fn parse(config: &Configuration, args: &ParseEmlArgs, pool: &mut Pool) -> Result<()> {
     let ParseEmlArgs {
         directory,
         bucket,
@@ -49,21 +58,21 @@ pub fn parse(client: &Client, args: &ParseEmlArgs, pool: &mut Pool) -> Result<()
     } = args;
 
     if !no_charge && !yes {
-        ensure_uip_user_consents_to_ai_unit_charge(client.base_url())?;
+        ensure_uip_user_consents_to_ai_unit_charge(&config.base_path)?;
     }
 
     let eml_paths = get_files_in_directory(directory, "eml", true)?;
     let statistics = Arc::new(Statistics::new());
     let _progress = get_progress_bar(eml_paths.len() as u64, &statistics);
 
-    let bucket = client
-        .get_bucket(bucket.clone())
+    let bucket_response = get_bucket(config, bucket.owner(), bucket.name())
         .with_context(|| format!("Unable to get bucket {}", args.bucket))?;
+    let bucket = bucket_response.bucket;
 
     let mut emails = Vec::new();
     let mut errors = Vec::new();
 
-    let mut send_if_needed = |emails: &mut Vec<NewEmail>, force_send: bool| -> Result<()> {
+    let mut send_if_needed = |emails: &mut Vec<EmailNew>, force_send: bool| -> Result<()> {
         let thread_count = pool.thread_count();
         let should_upload = emails.len() > (thread_count as usize * UPLOAD_BATCH_SIZE);
 
@@ -77,16 +86,16 @@ pub fn parse(client: &Client, args: &ParseEmlArgs, pool: &mut Pool) -> Result<()
         pool.scoped(|scope| {
             for chunk in chunks {
                 scope.execute(|| {
-                    let result = upload_batch_of_new_emails(
-                        client,
-                        &bucket.full_name(),
-                        chunk,
-                        *no_charge,
-                        &statistics,
-                    );
+                    let request = AddEmailsToBucketRequest {
+                        emails: chunk.to_vec(),
+                    };
+                    let result = add_emails_to_bucket(config, &bucket.owner, &bucket.name, request)
+                        .context("Could not upload batch of emails");
 
                     if let Err(error) = result {
                         error_sender.send(error).expect("Could not send error");
+                    } else {
+                        statistics.add_uploaded(chunk.len());
                     }
                 });
             }
@@ -128,7 +137,7 @@ pub fn parse(client: &Client, args: &ParseEmlArgs, pool: &mut Pool) -> Result<()
     Ok(())
 }
 
-fn read_eml_to_new_email(path: &PathBuf) -> Result<NewEmail> {
+fn read_eml_to_new_email(path: &PathBuf) -> Result<EmailNew> {
     if !path.is_file() {
         return Err(anyhow!("No such file : {:?}", path));
     }
@@ -172,12 +181,13 @@ fn read_eml_to_new_email(path: &PathBuf) -> Result<NewEmail> {
             let extension = Path::new(attachment_filename)
                 .extension()
                 .context("Could not get attachment extension")?;
-            attachments.push(AttachmentMetadata {
+            attachments.push(Attachment {
                 name: attachment_filename.to_owned(),
-                size,
+                size: size as i32,
                 content_type: format!(".{}", extension.to_string_lossy()),
                 attachment_reference: None,
                 content_hash: None,
+                inline: None,
             });
         }
     }
@@ -192,13 +202,13 @@ fn read_eml_to_new_email(path: &PathBuf) -> Result<NewEmail> {
     // Get mime content
     let eml_str = std::str::from_utf8(&eml_bytes)?;
 
-    Ok(NewEmail {
-        id: reinfer_client::EmailId(message_id),
-        mailbox: reinfer_client::Mailbox(file_name),
-        timestamp,
+    Ok(EmailNew {
+        id: message_id,
+        mailbox: file_name,
+        timestamp: timestamp.to_rfc3339(),
         metadata: None,
-        attachments,
-        mime_content: reinfer_client::MimeContent(eml_str.to_string()),
+        attachments: Some(attachments),
+        mime_content: eml_str.to_string(),
     })
 }
 pub fn parse_header(headers: &[MailHeader], header: &str) -> Option<String> {
@@ -222,30 +232,32 @@ mod tests {
             .unwrap()
             .with_timezone(&Utc);
         let expected_attachments = vec![
-            AttachmentMetadata {
+            Attachment {
                 name: "hello.txt".to_string(),
                 size: 176,
                 content_type: ".txt".to_string(),
                 attachment_reference: None,
                 content_hash: None,
+                inline: None,
             },
-            AttachmentMetadata {
+            Attachment {
                 name: "world.pdf".to_string(),
                 size: 7476,
                 content_type: ".pdf".to_string(),
                 attachment_reference: None,
                 content_hash: None,
+                inline: None,
             },
         ];
         let expected_mime_content = include_str!("../../../tests/samples/test.eml");
 
-        let expected_email = NewEmail {
-            id: reinfer_client::EmailId(expected_id.to_string()),
-            attachments: expected_attachments,
-            timestamp: expected_timestamp,
+        let expected_email = EmailNew {
+            id: expected_id.to_string(),
+            attachments: Some(expected_attachments),
+            timestamp: expected_timestamp.to_rfc3339(),
             metadata: None,
-            mailbox: reinfer_client::Mailbox(expected_mailbox.to_string()),
-            mime_content: reinfer_client::MimeContent(expected_mime_content.to_string()),
+            mailbox: expected_mailbox.to_string(),
+            mime_content: expected_mime_content.to_string(),
         };
 
         let actual_email = read_eml_to_new_email(&PathBuf::from("tests/samples/test.eml"))

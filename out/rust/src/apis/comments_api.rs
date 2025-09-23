@@ -273,7 +273,7 @@ pub fn get_comment_audio(configuration: &configuration::Configuration, source_id
 }
 
 /// Get comments from a source
-pub fn get_source_comments(configuration: &configuration::Configuration, owner: &str, source_name: &str, after: Option<&str>, limit: Option<i32>, from_timestamp: Option<&str>, to_timestamp: Option<&str>, direction: Option<&str>, include_thread_properties: Option<bool>, include_markup: Option<bool>) -> Result<models::GetSourceCommentsResponse, Error<GetSourceCommentsError>> {
+pub fn get_source_comments(configuration: &configuration::Configuration, owner: &str, source_name: &str, after: Option<&str>, limit: Option<i32>, from_timestamp: Option<&str>, to_timestamp: Option<&str>, include_thread_properties: Option<bool>, include_markup: Option<bool>, direction: Option<&str>) -> Result<models::GetSourceCommentsResponse, Error<GetSourceCommentsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -293,14 +293,14 @@ pub fn get_source_comments(configuration: &configuration::Configuration, owner: 
     if let Some(ref local_var_str) = to_timestamp {
         local_var_req_builder = local_var_req_builder.query(&[("to_timestamp", &local_var_str.to_string())]);
     }
-    if let Some(ref local_var_str) = direction {
-        local_var_req_builder = local_var_req_builder.query(&[("direction", &local_var_str.to_string())]);
-    }
     if let Some(ref local_var_str) = include_thread_properties {
         local_var_req_builder = local_var_req_builder.query(&[("include_thread_properties", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_str) = include_markup {
         local_var_req_builder = local_var_req_builder.query(&[("include_markup", &local_var_str.to_string())]);
+    }
+    if let Some(ref local_var_str) = direction {
+        local_var_req_builder = local_var_req_builder.query(&[("direction", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
         local_var_req_builder = local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
@@ -330,7 +330,7 @@ pub fn get_source_comments(configuration: &configuration::Configuration, owner: 
 }
 
 /// Query comments in a dataset
-pub fn query_comments(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, query_comments_request: models::QueryCommentsRequest) -> Result<models::QueryCommentsResponse, Error<QueryCommentsError>> {
+pub fn query_comments(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, query_comments_request: models::QueryCommentsRequest, limit: Option<i32>, continuation: Option<&str>, collapse_mode: Option<&str>, order: Option<&str>) -> Result<models::QueryCommentsResponse, Error<QueryCommentsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -338,6 +338,18 @@ pub fn query_comments(configuration: &configuration::Configuration, owner: &str,
     let local_var_uri_str = format!("{}/api/_private/datasets/{owner}/{dataset_name}/query", local_var_configuration.base_path, owner=crate::apis::urlencode(owner), dataset_name=crate::apis::urlencode(dataset_name));
     let mut local_var_req_builder = local_var_client.request(reqwest::Method::POST, local_var_uri_str.as_str());
 
+    if let Some(ref local_var_str) = limit {
+        local_var_req_builder = local_var_req_builder.query(&[("limit", &local_var_str.to_string())]);
+    }
+    if let Some(ref local_var_str) = continuation {
+        local_var_req_builder = local_var_req_builder.query(&[("continuation", &local_var_str.to_string())]);
+    }
+    if let Some(ref local_var_str) = collapse_mode {
+        local_var_req_builder = local_var_req_builder.query(&[("collapse_mode", &local_var_str.to_string())]);
+    }
+    if let Some(ref local_var_str) = order {
+        local_var_req_builder = local_var_req_builder.query(&[("order", &local_var_str.to_string())]);
+    }
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
         local_var_req_builder = local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
     }

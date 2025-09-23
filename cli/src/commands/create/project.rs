@@ -74,7 +74,7 @@ pub fn create_project_with_wait(
     // Block until project is created
     let mut project_found = false;
     for _ in 0..10 {
-        // refresh_user_permissions(client, false)?; do we still need this?
+        refresh_user_permissions(client, false)?;
         let projects_response = get_all_projects(config, None)
             .context("Failed to get projects")?;
         
@@ -85,8 +85,7 @@ pub fn create_project_with_wait(
         sleep(Duration::from_secs(1));
     }
 
-    // refresh_user_permissions(client, false)?; do we still need this?
-
+    refresh_user_permissions(client, false)?; 
     if !project_found {
         return Err(anyhow!(
             "Could not create project, timed out waiting for it to exist"

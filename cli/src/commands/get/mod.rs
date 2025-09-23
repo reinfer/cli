@@ -120,7 +120,7 @@ pub fn run(args: &GetArgs, config: &Configuration, printer: &Printer, pool: &mut
         GetArgs::StreamComments(args) => streams::get_stream_comments(config, args),
         GetArgs::StreamStats(args) => streams::get_stream_stats(config, args, printer, pool),
         GetArgs::Users(args) => users::get(config, args, printer),
-        GetArgs::CurrentUser => users::get_current_user(config, printer),
+        GetArgs::CurrentUser => users::get_current_user_and_print(config, printer),
         GetArgs::Quotas(args) => quota::get(config, args, printer),
         GetArgs::AuditEvents(args) => audit_events::get(config, args, printer),
         GetArgs::Integrations(args) => integrations::get(config, args, printer),

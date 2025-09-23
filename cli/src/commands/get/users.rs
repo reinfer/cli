@@ -9,7 +9,7 @@ use openapi::{
 use structopt::StructOpt;
 
 use crate::printer::Printer;
-use crate::utils::{full_name::ProjectName, resource_identifier::UserIdentifier};
+use crate::utils::{full_name::ProjectName, resource_identifier::UserIdentifier, get_current_user};
 
 #[derive(Debug, StructOpt)]
 pub struct GetUsersArgs {
@@ -75,9 +75,7 @@ pub fn get(config: &Configuration, args: &GetUsersArgs, printer: &Printer) -> Re
     printer.print_resources(&users)
 }
 
-pub fn get_current_user(client: &Client, printer: &Printer) -> Result<()> {
-    let user = client
-        .get_current_user()
-        .context("Operation to get the current user has failed.")?;
+pub fn get_current_user_and_print(config: &Configuration, printer: &Printer) -> Result<()> {
+    let user = get_current_user(config)?;
     printer.print_resources(&[user])
 }

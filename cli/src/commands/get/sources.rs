@@ -10,10 +10,9 @@ use openapi::{
     apis::{
         configuration::Configuration,
         sources_api::{
-            get_all_sources,
+            get_all_sources_in_project,
             get_source,
             get_source_by_id,
-            get_source_statistics,
         },
         buckets_api::get_all_buckets,
     },

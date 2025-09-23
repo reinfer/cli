@@ -5,7 +5,7 @@ use log::info;
 use openapi::{
     apis::{
         configuration::Configuration,
-        buckets_api::{get_bucket, get_buckets},
+        buckets_api::{get_bucket, get_buckets, get_bucket_by_id, get_bucket_statistics},
     },
     models::BucketIdentifier,
 };
@@ -31,9 +31,14 @@ pub fn get(config: &Configuration, args: &GetBucketsArgs, printer: &Printer) -> 
     } = args;
 
     let buckets = if let Some(bucket) = bucket {
-        vec![get_bucket(config, bucket.owner(), bucket.name())
-            .context("Operation to list buckets has failed.")?
-            .bucket]
+        vec![match bucket {
+            BucketIdentifier::Id(id) => get_bucket_by_id(config, id)
+                .context("Operation to get bucket by ID has failed.")?
+                .bucket,
+            BucketIdentifier::FullName(full_name) => get_bucket(config, full_name.owner(), full_name.name())
+                .context("Operation to get bucket has failed.")?
+                .bucket,
+        }]
     } else {
         let mut buckets = get_buckets(config)
             .context("Operation to list buckets has failed.")?
@@ -49,9 +54,9 @@ pub fn get(config: &Configuration, args: &GetBucketsArgs, printer: &Printer) -> 
     if *include_stats {
         buckets.iter().try_for_each(|bucket| -> Result<()> {
             info!("Getting statistics for bucket {}", bucket.full_name().0);
-            let stats = client
-                .get_bucket_statistics(&bucket.full_name())
-                .context("Could not get statistics for bucket")?;
+            let stats = get_bucket_statistics(config, &bucket.owner, &bucket.name)
+                .context("Could not get statistics for bucket")?
+                .statistics;
 
             bucket_stats.insert(bucket.id.clone(), stats);
             Ok(())

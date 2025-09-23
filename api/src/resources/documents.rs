@@ -1,4 +1,5 @@
-use crate::{CommentId, NewComment, PropertyMap, TransformTag};
+use crate::{CommentId, NewComment, PropertyMap};
+// TransformTag is commented out in source module
 use serde::{Deserialize, Serialize, Serializer};
 use std::collections::{BTreeMap, HashMap};
 
@@ -48,7 +49,7 @@ where
 pub(crate) struct SyncRawEmailsRequest<'request> {
     pub documents: &'request [Document],
     pub include_comments: bool,
-    pub transform_tag: &'request TransformTag,
+    // pub transform_tag: &'request TransformTag, // TransformTag commented out
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

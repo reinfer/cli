@@ -16,16 +16,24 @@ use csv::Writer;
 use dialoguer::{FuzzySelect, Input, MultiSelect};
 use log::{info, warn};
 use ordered_float::NotNan;
-use reinfer_client::{
-    resources::{
-        comment::{CommentTimestampFilter, UserPropertiesFilter},
-        dataset::{
-            OrderEnum, QueryRequestParams, StatisticsRequestParams, SummaryResponse,
-            UserModelMetadata,
-        },
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        datasets_api::{get_dataset, get_all_datasets_in_project},
+        comments_api::query_comments,
     },
-    AnnotatedComment, Client, CommentFilter, Dataset, Entities, LabelDef, LabelName, Labelling,
-    ModelVersion, PredictedLabel, Prediction, TriggerLabelThreshold, DEFAULT_LABEL_GROUP_NAME,
+    models::{
+        self, Dataset, LabelDef, CommentFilter, CommentTimestampFilter, 
+        QueryCommentsRequest, QueryCommentsOrderSample, QueryCommentsResponse,
+        GetDatasetStatisticsRequest, UserPropertiesFilter as OpenAPIUserPropertiesFilter,
+        Order,
+    },
+};
+
+// For now, we'll need some compatibility types until full migration
+use reinfer_client::{
+    AnnotatedComment, Entities, LabelName, Labelling, ModelVersion, PredictedLabel, 
+    Prediction, TriggerLabelThreshold, DEFAULT_LABEL_GROUP_NAME,
 };
 use structopt::StructOpt;
 
@@ -69,7 +77,7 @@ impl LabelTrendReportParams {
     }
 }
 
-pub fn get_dataset_selection(client: &Client) -> Result<Dataset> {
+pub fn get_dataset_selection(config: &Configuration) -> Result<Box<Dataset>> {
     info!("Getting datasets...");
     let datasets = client.get_datasets()?;
 
@@ -78,12 +86,12 @@ pub fn get_dataset_selection(client: &Client) -> Result<Dataset> {
         .items(
             &datasets
                 .iter()
-                .map(|dataset| dataset.full_name().0)
+                .map(|dataset| format!("{}/{}", dataset.owner, dataset.name))
                 .collect::<Vec<String>>(),
         )
         .interact()?;
 
-    Ok(datasets[dataset_selection].clone())
+    Ok(Box::new(datasets[dataset_selection].clone()))
 }
 
 pub fn pop_label_selection(prompt: &str, label_defs: &mut Vec<LabelDef>) -> Result<Vec<LabelName>> {
@@ -92,7 +100,7 @@ pub fn pop_label_selection(prompt: &str, label_defs: &mut Vec<LabelDef>) -> Resu
         .items(
             &label_defs
                 .iter()
-                .map(|label| label.name.0.clone())
+                .map(|label| label.name.clone())
                 .collect::<Vec<String>>(),
         )
         .interact()?;
@@ -100,16 +108,16 @@ pub fn pop_label_selection(prompt: &str, label_defs: &mut Vec<LabelDef>) -> Resu
     Ok(label_inclusion_selections
         .iter()
         .rev()
-        .map(|selection| label_defs.remove(*selection).name)
+        .map(|selection| LabelName(label_defs.remove(*selection).name))
         .collect())
 }
 
 fn get_dataset_info(
-    client: &Client,
+    config: &Configuration,
     dataset: &Dataset,
-) -> Result<(SummaryResponse, Vec<UserModelMetadata>)> {
+) -> Result<(models::GetDatasetSummaryResponse, Vec<models::UserModelMetadata>)> {
     info!("Getting dataset summary...");
-    let summary_response = client.dataset_summary(&dataset.full_name(), &Default::default())?;
+    let summary_response = openapi::apis::datasets_api::get_dataset_summary(config, &dataset.owner, &dataset.name, models::GetDatasetSummaryRequest::default())?;
 
     info!("Getting labellers...");
     let labellers = client.get_labellers(&dataset.full_name())?;
@@ -174,11 +182,11 @@ enum ModelVersionSelection {
 }
 
 fn get_model_version_selection(
-    labellers: &[UserModelMetadata],
+    labellers: &[models::UserModelMetadata],
 ) -> Result<Vec<ModelVersionSelection>> {
     let labellers_as_string: Vec<String> = labellers
         .iter()
-        .map(|labeller| labeller.version.0.to_string())
+        .map(|labeller| labeller.version.to_string())
         .collect::<Vec<String>>();
     let mut options = vec!["Latest".to_string()];
     options.extend(labellers_as_string);
@@ -194,8 +202,8 @@ fn get_model_version_selection(
             if *selection == 0 {
                 ModelVersionSelection::Latest
             } else {
-                let labeller = labellers[*selection].clone();
-                ModelVersionSelection::ModelVersion(labeller.version)
+                let labeller = labellers[*selection - 1].clone();
+                ModelVersionSelection::ModelVersion(ModelVersion(labeller.version))
             }
         })
         .collect())
@@ -235,33 +243,32 @@ fn get_comment_filter(
 }
 
 pub fn get_comment_count(
-    client: &Client,
+    config: &Configuration,
     dataset: &Dataset,
     comment_filter: CommentFilter,
 ) -> Result<u64> {
-    let num_comments: f64 = client
-        .get_dataset_statistics(
-            &dataset.full_name(),
-            &StatisticsRequestParams {
-                comment_filter: comment_filter.clone(),
-                ..Default::default()
-            },
-        )
-        .context("Operation to get dataset comment count has failed..")?
-        .num_comments
-        .into();
+    let stats_response = openapi::apis::datasets_api::get_dataset_statistics(
+        config,
+        &dataset.owner,
+        &dataset.name,
+        GetDatasetStatisticsRequest {
+            comment_filter: Some(Box::new(comment_filter)),
+            ..Default::default()
+        },
+    )
+    .context("Operation to get dataset comment count has failed..")?;
 
-    Ok(num_comments as u64)
+    Ok(stats_response.statistics.total_verbatims as u64)
 }
 
 pub fn get(
-    client: &Client,
+    config: &Configuration,
     _args: &GetCustomLabelTrendReportArgs,
     _printer: &Printer,
 ) -> Result<()> {
-    let dataset = get_dataset_selection(client)?;
+    let dataset = get_dataset_selection(config)?;
 
-    let (summary_response, labellers) = get_dataset_info(client, &dataset)?;
+    let (summary_response, labellers) = get_dataset_info(config, &dataset)?;
 
     let mut label_defs = dataset.label_defs.clone();
 
@@ -300,7 +307,7 @@ pub fn get(
         user_property_filters.clone(),
     );
 
-    let total_comment_count = get_comment_count(client, &dataset, comment_filter)?;
+    let total_comment_count = get_comment_count(config, &dataset, comment_filter)?;
 
     let report_multiply_ratio = if total_comment_count >= MAX_COMMENT_SAMPLE {
         warn!("Dataset size too big, sampling from first {MAX_COMMENT_SAMPLE}");
@@ -327,8 +334,9 @@ pub fn get(
     };
 
     let mut report = get_label_trend_report(
-        client,
-        &dataset.full_name(),
+        config,
+        &dataset.owner,
+        &dataset.name,
         &statistics,
         model_versions,
         &label_trend_report_params,
@@ -350,8 +358,9 @@ pub fn get(
 }
 
 fn get_label_trend_report_from_json(
-    client: &Client,
-    dataset_name: &reinfer_client::DatasetFullName,
+    config: &Configuration,
+    dataset_owner: &str,
+    dataset_name: &str,
     statistics: &Arc<Statistics>,
     model_version: &ModelVersion,
     params: &LabelTrendReportParams,
@@ -364,14 +373,48 @@ fn get_label_trend_report_from_json(
         ..
     } = params;
 
-    let mut query_params = params.get_query_request_params(Some(DEFAULT_QUERY_PAGE_SIZE));
-    let query_iter = client.get_dataset_query_iter(dataset_name, &mut query_params);
+    // Convert old query params to OpenAPI format
+    let mut request = QueryCommentsRequest {
+        continuation: None,
+        limit: Some(DEFAULT_QUERY_PAGE_SIZE as i32),
+        attribute_filters: None,
+        collapse_mode: None,
+        filter: Some(get_comment_filter(
+            params.start_timestamp,
+            params.end_timestamp,
+            params.user_property_filters.clone(),
+        )),
+        order: Box::new(Order::Sample(Box::new(QueryCommentsOrderSample {
+            kind: openapi::models::_query_comments_order_sample::Kind::Sample,
+            seed: 42,
+        }))),
+    };
 
-    for page in query_iter.take(MAX_COMMENT_SAMPLE as usize) {
-        let page = page.context("Operation to get comments has failed.")?;
-        if page.is_empty() {
-            return Ok(());
+    let mut total_processed = 0;
+
+    // Use OpenAPI pagination pattern
+    loop {
+        if total_processed >= MAX_COMMENT_SAMPLE as usize {
+            break;
         }
+
+        let response = query_comments(
+            config,
+            dataset_owner,
+            dataset_name,
+            request.clone(),
+            None, // limit is already in the request
+            request.continuation.as_deref(),
+            None, // collapse_mode is already in the request
+            None, // order is already in the request
+        )
+        .context("Operation to get comments has failed.")?;
+
+        if response.results.is_empty() {
+            break;
+        }
+
+        let page = response.results;
         statistics.add_comments(page.len());
 
         let predictions: Vec<Prediction> = client
@@ -439,6 +482,13 @@ fn get_label_trend_report_from_json(
         }
 
         statistics.add_predicted(page.len());
+        total_processed += page.len();
+
+        // Update continuation for next iteration
+        request.continuation = response.continuation;
+        if request.continuation.is_none() {
+            break;
+        }
     }
     Ok(())
 }
@@ -468,8 +518,9 @@ fn count_for_predicted_labels(
 }
 
 fn get_label_trend_report(
-    client: &Client,
-    dataset_name: &reinfer_client::DatasetFullName,
+    config: &Configuration,
+    owner: &str,
+    dataset_name: &str,
     statistics: &Arc<Statistics>,
     model_version_selections: Vec<ModelVersionSelection>,
     params: &LabelTrendReportParams,
@@ -486,7 +537,8 @@ fn get_label_trend_report(
     for model_version_selection in &model_version_selections {
         match model_version_selection {
             ModelVersionSelection::Latest => get_label_trend_report_from_csv(
-                client,
+                config,
+                owner,
                 dataset_name,
                 statistics,
                 params,
@@ -494,7 +546,8 @@ fn get_label_trend_report(
                 target_comment_count,
             )?,
             ModelVersionSelection::ModelVersion(model_version) => get_label_trend_report_from_json(
-                client,
+                config,
+                owner,
                 dataset_name,
                 statistics,
                 model_version,
@@ -520,8 +573,9 @@ fn has_exceeded_threshold(
 }
 
 fn get_label_trend_report_from_csv(
-    client: &Client,
-    dataset_name: &reinfer_client::DatasetFullName,
+    config: &Configuration,
+    owner: &str,
+    dataset_name: &str,
     statistics: &Arc<Statistics>,
     params: &LabelTrendReportParams,
     report: &mut Report,
@@ -534,7 +588,7 @@ fn get_label_trend_report_from_csv(
         ..
     } = params;
 
-    let params = params.get_query_request_params(Some(limit));
+    let params = params.get_query_request_params(Some(limit as i32));
 
     let csv_string = client.query_dataset_csv(dataset_name, &params)?;
 

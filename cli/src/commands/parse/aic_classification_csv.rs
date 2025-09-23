@@ -13,7 +13,7 @@ use openapi::{
         datasets_api::get_dataset,
         sources_api::{get_source, get_source_by_id},
     },
-    models::{CommentId, DatasetFullName, EitherLabelling, Label, Message, MessageBody, NewComment, NewLabelling, Source, DEFAULT_LABEL_GROUP_NAME},
+    models::{CommentId, DatasetFullName, EitherLabelling, Label, Message, MessageBody, NewComment, NewLabelling, Sentiment, Source, DEFAULT_LABEL_GROUP_NAME},
 };
 use scoped_threadpool::Pool;
 use serde::Deserialize;
@@ -167,9 +167,10 @@ pub fn parse(config: &Configuration, args: &ParseAicClassificationCsvArgs, pool:
                     labelling: Some(EitherLabelling::Labelling(vec![NewLabelling {
                         group: DEFAULT_LABEL_GROUP_NAME.clone(),
                         assigned: Some(vec![Label {
-                            name: reinfer_client::LabelName(record.target),
-                            sentiment: reinfer_client::Sentiment::Positive,
+                            name: record.target,
+                            sentiment: Sentiment::Positive,
                             metadata: None,
+                            instructions: None,
                         }]),
                         dismissed: None,
                     }])),

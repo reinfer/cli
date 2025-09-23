@@ -77,7 +77,7 @@ Name | Type | Description  | Required | Notes
 
 ## get_email_from_bucket_by_id
 
-> models::GetEmailFromBucketByIdResponse get_email_from_bucket_by_id(owner, bucket_name)
+> models::GetEmailFromBucketByIdResponse get_email_from_bucket_by_id(owner, bucket_name, id)
 Get email from bucket
 
 Get email from bucket
@@ -89,6 +89,7 @@ Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
 **owner** | **String** |  | [required] |
 **bucket_name** | **String** |  | [required] |
+**id** | **String** | The external ID of the email to retrieve from the bucket. | [required] |
 
 ### Return type
 

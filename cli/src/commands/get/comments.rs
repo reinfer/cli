@@ -14,128 +14,17 @@ use openapi::{
         sources_api::{get_source, get_source_by_id, get_source_statistics},
         attachments_api::get_attachment,
         datasets_api::{get_dataset, get_dataset_summary, get_dataset_statistics, get_labellings},
+        models_api::get_comment_predictions,
     },
     models::{
-        AttributeFilterAttribute, AnnotatedComment, Dataset, Source, AttributeFilter, MessageFilter, CommentFilter, TimestampRangeFilter, StringArrayFilter, FullParticipantFilter, Reviewed, GetDatasetSummaryRequest, GetDatasetStatisticsRequest, GetSourceStatisticsRequest, Comment, GetSourceCommentsResponse, QueryCommentsRequest, Order, QueryCommentsOrderSample, Kind, QueryCommentsResponse
+        AttributeFilterAttribute, AnnotatedComment, Dataset, Source, AttributeFilter, MessageFilter, CommentFilter, TimestampRangeFilter, StringArrayFilter, FullParticipantFilter, Reviewed, GetDatasetSummaryRequest, GetDatasetStatisticsRequest, GetSourceStatisticsRequest, Comment, GetSourceCommentsResponse, QueryCommentsRequest, Order, QueryCommentsOrderSample, Kind, QueryCommentsResponse, GetCommentPredictionsRequest, CommentPrediction, PredictedLabel, PredictedEntity, Labelling, Entities
     }
 };
 use crate::utils::{
     CommentId, SourceIdentifier, DatasetIdentifier, AttributeFilterEnum, CommentsIterTimerange,
 };
 
-/// Custom iterator for getting comments using OpenAPI client
-/// This mimics the exact behavior of the original lib.rs CommentsIter
-pub struct CommentsIter<'a> {
-    config: &'a Configuration,
-    source_owner: String,
-    source_name: String,
-    timerange: CommentsIterTimerange,
-    continuation: Option<String>,
-    page_size: usize,
-    finished: bool,
-}
-
-impl<'a> CommentsIter<'a> {
-    // Default number of comments per page to request from API (matching original)
-    pub const DEFAULT_PAGE_SIZE: usize = 64;
-    // Maximum number of comments per page which can be requested from the API (matching original)
-    pub const MAX_PAGE_SIZE: usize = 256;
-
-    pub fn new(
-        config: &'a Configuration,
-        source_owner: String,
-        source_name: String,
-        timerange: CommentsIterTimerange,
-        page_size: Option<usize>,
-    ) -> Self {
-        Self {
-            config,
-            source_owner,
-            source_name,
-            timerange,
-            continuation: None,
-            page_size: page_size.unwrap_or(Self::DEFAULT_PAGE_SIZE),
-            finished: false,
-        }
-    }
-}
-
-impl<'a> Iterator for CommentsIter<'a> {
-    type Item = Result<Vec<Comment>>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None;
-        }
-
-        // Determine the continuation parameters (matching original logic)
-        let (from_timestamp, after) = if let Some(cont) = &self.continuation {
-            // If we have a continuation, use it as the 'after' parameter
-            (None, Some(cont.as_str()))
-        } else if let Some(from_ts) = self.timerange.from {
-            // If we have a from_timestamp, use it as the starting point
-            (Some(from_ts), None)
-        } else {
-            // Otherwise, start from the beginning
-            (None, None)
-        };
-
-        // Call the generated OpenAPI function with query parameters
-        match get_source_comments(
-            self.config,
-            &self.source_owner,
-            &self.source_name,
-            after,
-            Some(self.page_size as i32),
-            from_timestamp.map(|dt| dt.to_rfc3339().as_str()),
-            self.timerange.to.map(|dt| dt.to_rfc3339().as_str()),
-            None, // direction
-            None, // include_thread_properties
-            None, // include_markup
-        ) {
-            Ok(response) => {
-                let comments = response.comments;
-                
-                // Update continuation for next iteration (matching original behavior)
-                self.continuation = response.continuation;
-                
-                // If no continuation, we're done (matching original behavior)
-                if self.continuation.is_none() {
-                    self.finished = true;
-                }
-                
-                // If no comments returned, we're done
-                if comments.is_empty() {
-                    self.finished = true;
-                    return None;
-                }
-                
-                Some(Ok(comments))
-            }
-            Err(e) => {
-                self.finished = true;
-                Some(Err(e.into()))
-            }
-        }
-    }
-}
-
-/// Helper function to create a comments iterator
-/// This uses the source endpoint like the original lib.rs implementation
-pub fn get_comments_iter<'a>(
-    config: &'a Configuration,
-    source_owner: &str,
-    source_name: &str,
-    timerange: CommentsIterTimerange,
-) -> CommentsIter<'a> {
-    CommentsIter::new(
-        config,
-        source_owner.to_string(),
-        source_name.to_string(),
-        timerange,
-        None, // page_size - use default
-    )
-}
+// Removed custom CommentsIter - now using direct API calls with built-in pagination
 
 use crate::utils::user_properties_filter::{UserPropertiesFilter, PropertyFilter, PropertyValue};
 use openapi::models::DatasetSummary;
@@ -953,8 +842,27 @@ fn download_comments(
         } else {
             None
         };
-        for page in get_comments_iter(config, &source.owner, &source.name, options.timerange) {
-            let page = page.context("Operation to get comments has failed.")?;
+        
+        // Use direct API calls with built-in pagination instead of custom iterator
+        let mut continuation: Option<String> = None;
+        loop {
+            let response = get_source_comments(
+                config,
+                &source.owner,
+                &source.name,
+                continuation.as_deref(),
+                Some(256), // Use max page size for efficiency
+                options.timerange.from.map(|dt| dt.to_rfc3339().as_str()),
+                options.timerange.to.map(|dt| dt.to_rfc3339().as_str()),
+                None, // direction
+                None, // include_thread_properties
+                None, // include_markup
+            ).context("Operation to get comments has failed.")?;
+
+            let page = response.comments;
+            if page.is_empty() {
+                break;
+            }
 
             if options
                 .stop_after
@@ -982,6 +890,12 @@ fn download_comments(
                 }),
                 &mut writer,
             )?;
+
+            // Update continuation for next iteration
+            continuation = response.continuation;
+            if continuation.is_none() {
+                break;
+            }
         }
     }
     log::info!(
@@ -1061,58 +975,55 @@ fn get_comments_from_uids(
         }
 
         if let Some(model_version) = &options.model_version {
-            let predictions = client
-                .get_comment_predictions(
-                    &dataset_name,
-                    &ModelVersion(*model_version),
-                    page.iter().map(|comment| &comment.comment.uid),
-                    Some(CommentPredictionsThreshold::Auto),
-                    None,
-                )
-                .context("Operation to get predictions has failed.")?;
-            // since predict-comments endpoint doesn't return some fields,
-            // they are set to None or [] here
+            // Get predictions for the comments using the new OpenAPI client
+            let uids: Vec<String> = page.iter()
+                .map(|comment| comment.comment.uid.clone())
+                .collect();
+            
+            let prediction_request = GetCommentPredictionsRequest::new(uids);
+            let predictions_response = get_comment_predictions(
+                config,
+                &dataset.owner,
+                &dataset.name,
+                &model_version.to_string(),
+                prediction_request,
+            ).context("Operation to get predictions has failed.")?;
+            
+            let predictions = predictions_response.predictions;
+            
+            // Create a map of uid to prediction for easy lookup
+            let mut prediction_map = std::collections::HashMap::new();
+            for prediction in predictions {
+                prediction_map.insert(prediction.uid.clone(), prediction);
+            }
+            
             let comments: Vec<_> = page
                 .into_iter()
-                .zip(predictions.into_iter())
-                .map(|(comment, prediction)| AnnotatedComment {
-                    comment: comment.comment,
-                    labelling: Some(vec![Labelling {
-                        group: "default".to_string(),
-                        assigned: Vec::new(),
-                        dismissed: Vec::new(),
-                        predicted: prediction.labels.map(|auto_threshold_labels| {
-                            auto_threshold_labels
-                                .iter()
-                                .map(|auto_threshold_label| PredictedLabel {
-                                    name: auto_threshold_label.name.clone(),
-                                    sentiment: None,
-                                    probability: auto_threshold_label.probability,
-                                    auto_thresholds: Some(
-                                        auto_threshold_label
-                                            .auto_thresholds
-                                            .clone()
-                                            .expect("Could not get auto thresholds")
-                                            .to_vec(),
-                                    ),
-                                })
-                                .collect()
+                .map(|comment| {
+                    let prediction = prediction_map.get(&comment.comment.uid);
+                    AnnotatedComment {
+                        comment: comment.comment,
+                        labelling: Some(vec![Labelling {
+                            group: "default".to_string(),
+                            assigned: Vec::new(),
+                            dismissed: Vec::new(),
+                            predicted: prediction.map(|p| p.labels.clone()),
+                        }]),
+                        entities: Some(Entities {
+                            assigned: Vec::new(),
+                            dismissed: Vec::new(),
+                            predicted: prediction.and_then(|p| p.entities.clone()),
                         }),
-                    }]),
-                    entities: Some(Entities {
-                        assigned: Vec::new(),
-                        dismissed: Vec::new(),
-                        predicted: prediction.entities,
-                    }),
-                    reviewable_blocks: None,
-                    thread_properties: None,
-                    trigger_exceptions: None,
-                    label_properties: None,
-                    moon_forms: None,
-                    extractions: None,
-                    highlights: None,
-                    diagnostics: None,
-                    model_version: None,
+                        reviewable_blocks: None,
+                        thread_properties: None,
+                        trigger_exceptions: None,
+                        label_properties: prediction.and_then(|p| p.label_properties.clone()),
+                        moon_forms: None,
+                        extractions: None,
+                        highlights: None,
+                        diagnostics: None,
+                        model_version: Some(*model_version),
+                    }
                 })
                 .collect();
 

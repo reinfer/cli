@@ -175,18 +175,17 @@ fn upload_emails_from_reader(
         if batch.len() == batch_size || (!batch.is_empty() && eof) {
             // Upload emails
 
-            let request = AddEmailsToBucketRequest {
-                emails: batch.clone(),
-            };
-
             if resume_on_error {
-                // For resume_on_error, we'll need to implement split-on-failure logic
-                // For now, just do a regular upload
-                add_emails_to_bucket(config, &bucket.owner, &bucket.name, request)
-                    .context("Could not upload batch of emails")?;
+                // Use OpenAPI split-on-failure for resilience
+                let result = crate::utils::openapi_split_on_failure::execute_with_split_on_failure(
+                    |req| add_emails_to_bucket(config, &bucket.owner, &bucket.name, req),
+                    AddEmailsToBucketRequest::new(batch.to_vec()),
+                    "add_emails_to_bucket"
+                ).context("Could not upload batch of emails")?;
+                
                 statistics.add_emails(StatisticsUpdate {
-                    uploaded: batch.len(),
-                    failed: 0,
+                    uploaded: batch.len() - result.num_failed,
+                    failed: result.num_failed,
                 });
                 batch.clear();
             } else {
