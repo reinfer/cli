@@ -132,6 +132,19 @@ pub struct GptIxpModelConfig {
     pub flags: Vec<GptIxpFlag>,
     #[serde(rename = "iterative_config", skip_serializing_if = "Option::is_none")]
     pub iterative_config: Option<IterativeConfig>,
+
+    #[serde(default)]
+    pub attribution_method: AttributionMethod,
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Default,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum AttributionMethod {
+    #[default]
+    TableHeuristic,
+    WordIds,
 }
 
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, Eq)]
