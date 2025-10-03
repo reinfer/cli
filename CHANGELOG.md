@@ -1,3 +1,6 @@
+# Unreleased
+- Support mailbox sync states 
+
 # v0.38.9
 - Check status code when getting octet stream
 - Round trip and add default for `attribution_method`

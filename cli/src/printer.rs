@@ -315,13 +315,22 @@ impl DisplayTable for PrintableSource {
 
 impl DisplayTable for KeyedSyncState {
     fn to_table_headers() -> Row {
-        row![bFg => "Mailbox Name", "Folder Path", "Status", "Synced Until", "Last Synced At"]
+        row![bFg => "Type", "Mailbox Name", "Folder Path", "Status", "Synced Until", "Last Synced At"]
     }
 
     fn to_table_row(&self) -> Row {
         row![
+            if self.folder_id.is_none() {
+                "Mailbox"
+            } else {
+                "Folder"
+            },
             self.mailbox_name,
-            self.folder_path.join("/"),
+            if let Some(folder_path) = &self.folder_path {
+                folder_path.join("/").normal()
+            } else {
+                "N/A".dimmed()
+            },
             self.status,
             if let Some(synced_until) = self.synced_until {
                 synced_until.to_rfc2822().normal()

@@ -133,8 +133,8 @@ impl fmt::Display for FolderStatus {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct KeyedSyncState {
     pub mailbox_name: String,
-    pub folder_id: String,
-    pub folder_path: Vec<String>,
+    pub folder_id: Option<String>,
+    pub folder_path: Option<Vec<String>>,
     pub status: FolderStatus,
     pub synced_until: Option<DateTime<Utc>>,
     pub last_synced_at: DateTime<Utc>,
