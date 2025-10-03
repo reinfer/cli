@@ -25,19 +25,5 @@ pub struct PropertyFilter {
     pub maximum: Option<NotNan<f64>>,
 }
 
-impl PropertyFilter {
-    pub fn new(
-        one_of: Vec<PropertyValue>,
-        not_one_of: Vec<PropertyValue>,
-        domain_not_one_of: Vec<PropertyValue>,
-    ) -> Self {
-        Self {
-            one_of,
-            not_one_of,
-            domain_not_one_of,
-            ..Default::default()
-        }
-    }
-}
-
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserPropertiesFilter(pub HashMap<UserPropertyName, PropertyFilter>);

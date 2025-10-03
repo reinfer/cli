@@ -11,14 +11,23 @@
 use crate::models;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
-pub struct TextFormat {
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum TextFormat {
+    #[serde(rename = "markdown")]
+    Markdown,
+    #[serde(rename = "plain")]
+    Plain,
+}
+
+impl Default for TextFormat {
+    fn default() -> TextFormat {
+        Self::Plain
+    }
 }
 
 impl TextFormat {
     pub fn new() -> TextFormat {
-        TextFormat {
-        }
+        TextFormat::Plain
     }
 }
 

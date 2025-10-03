@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use structopt::StructOpt;
 
-use crate::out::rust::src::apis::configuration::Configuration;
+use openapi::apis::configuration::Configuration;
 use crate::utils::refresh_permissions::{refresh_user_permissions as refresh_permissions_impl};
 
 #[derive(Debug, StructOpt)]

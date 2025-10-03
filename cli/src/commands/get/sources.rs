@@ -10,9 +10,10 @@ use openapi::{
     apis::{
         configuration::Configuration,
         sources_api::{
-            get_all_sources_in_project,
+            get_all_sources,
             get_source,
             get_source_by_id,
+            get_source_statistics,
         },
         buckets_api::get_all_buckets,
     },
@@ -36,17 +37,19 @@ pub fn get(config: &Configuration, args: &GetSourcesArgs, printer: &Printer) -> 
 
     let mut sources: Vec<models::Source> = match source {
         Some(source_identifier) => {
-            let resp = match source_identifier {
+            let source = match source_identifier {
                 SourceIdentifier::FullName(full) => {
-                    get_source(config, full.owner(), full.name())
+                    *get_source(config, full.owner(), full.name())
                         .context("get source by full name")?
+                        .source
                 }
                 SourceIdentifier::Id(id) => {
-                    get_source_by_id(config, &id)
+                    *get_source_by_id(config, &id)
                         .context("get source by id")?
+                        .source
                 }
             };
-            vec![*resp.source]
+            vec![source]
         }
         None => {
             let resp = get_all_sources(config)
@@ -58,7 +61,7 @@ pub fn get(config: &Configuration, args: &GetSourcesArgs, printer: &Printer) -> 
     sources.sort_unstable_by(|a, b| (&a.owner, &a.name).cmp(&(&b.owner, &b.name)));
 
  
-    let mut buckets_by_id: HashMap<String, models::Bucket> = {
+    let buckets_by_id: HashMap<String, models::Bucket> = {
         let resp = get_all_buckets(config)
             .context("list buckets")?;
         resp.buckets.into_iter().map(|b| (b.id.clone(), b)).collect()

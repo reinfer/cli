@@ -11,13 +11,12 @@ use openapi::{
         models_api::{get_validation, get_label_validation},
     },
     models::{
-        Trigger, TriggerUserModel, TriggerLabelThreshold, FetchFromStreamRequest, FetchFromStreamResponse,
-        AdvanceStreamRequest, GetValidationResponse, GetLabelValidationRequest, GetLabelValidationResponse,
-        LabelMetrics, ValidationSummary, LabelGroup,
+        TriggerUserModel, TriggerLabelThreshold, FetchFromStreamRequest,
+        AdvanceStreamRequest, GetLabelValidationRequest,
+        LabelMetrics, LabelDef, GetValidationResponse,
     },
 };
-use crate::utils::{DatasetIdentifier, ModelVersion, StreamFullName};
-use crate::utils::{DatasetFullName, LabelDef, LabelName};
+use crate::utils::{DatasetIdentifier, StreamFullName, ModelVersion, DatasetFullName};
 use scoped_threadpool::Pool;
 use serde::Serialize;
 use std::sync::mpsc::channel;
@@ -30,6 +29,10 @@ use std::{
 use structopt::StructOpt;
 
 use crate::printer::{print_resources_as_json, DisplayTable, Printer};
+
+// Simple wrapper types for compatibility
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct LabelName(pub String);
 
 #[derive(Debug, StructOpt)]
 pub struct GetStreamsArgs {
@@ -207,7 +210,7 @@ fn get_threshold_and_precision_for_recall(
     let recall_index = label_validation
         .recalls
         .iter()
-        .position(|&val_recall| val_recall >= recall)
+        .position(|&val_recall| val_recall >= *recall)
         .context(format!("Could not get recall for label {}", label_name.0))?;
 
     let precision = label_validation.precisions.get(recall_index);
@@ -215,8 +218,8 @@ fn get_threshold_and_precision_for_recall(
     let threshold = label_validation.thresholds.get(recall_index);
 
     Ok(ThresholdAndPrecision {
-        threshold: threshold.cloned(),
-        precision: precision.cloned(),
+        threshold: threshold.map(|t| NotNan::new(*t).unwrap()),
+        precision: precision.map(|p| NotNan::new(*p).unwrap()),
     })
 }
 
@@ -252,8 +255,8 @@ fn get_threshold_and_recall_for_precision(
     let threshold = label_validation.thresholds.get(precision_index);
 
     Ok(ThresholdAndRecall {
-        threshold: threshold.cloned(),
-        recall: recall.cloned(),
+        threshold: threshold.map(|t| NotNan::new(*t).unwrap()),
+        recall: recall.map(|r| NotNan::new(*r).unwrap()),
     })
 }
 
@@ -271,43 +274,49 @@ fn get_precision_and_recall_for_threshold(
     let threshold_index = label_validation
         .thresholds
         .iter()
-        .position(|&val_threshold| val_threshold <= threshold)
+        .position(|&val_threshold| val_threshold <= *threshold)
         .context(format!(
             "Could not find threshold for label {}",
             label_name.0
         ))?;
 
-    let precision = *label_validation
+    let precision = NotNan::new(*label_validation
         .precisions
         .get(threshold_index)
         .context(format!(
             "Could not get precision for label {}",
             label_name.0
-        ))?;
-    let recall = *label_validation
+        ))?)
+        .unwrap();
+    let recall = NotNan::new(*label_validation
         .recalls
         .get(threshold_index)
-        .context(format!("Could not get recall for label {}", label_name.0))?;
+        .context(format!("Could not get recall for label {}", label_name.0))?)
+        .unwrap();
 
     Ok(PrecisionAndRecall { precision, recall })
 }
 
 #[derive(Clone)]
 struct CompareConfig {
-    validation: ValidationSummary,
+    validation_response: GetValidationResponse,
     dataset_name: DatasetFullName,
     model_version: ModelVersion,
 }
 
 impl CompareConfig {
     pub fn get_label_def(&self, label_name: &LabelName) -> Result<Option<&LabelDef>> {
-        Ok(self
-            .validation
-            .get_default_label_group()
-            .context("Compare to dataset does not have a default label group")?
+        let default_group = self
+            .validation_response
+            .label_groups
+            .iter()
+            .find(|group| group.name == "default")
+            .context("Compare to dataset does not have a default label group")?;
+        
+        Ok(default_group
             .label_defs
             .iter()
-            .find(|label| label.name == *label_name))
+            .find(|label| label.name == label_name.0))
     }
 }
 
@@ -322,9 +331,11 @@ fn get_compare_config(
     }
 
     let dataset_name = if let Some(dataset_name) = dataset_name {
-        dataset_name
+        dataset_name.clone()
     } else {
-        &stream_name.dataset
+        format!("{}/{}", stream_name.owner, stream_name.dataset)
+            .parse::<DatasetFullName>()
+            .context("Failed to construct dataset full name from stream")?
     };
 
     let model_version = model_version
@@ -334,11 +345,10 @@ fn get_compare_config(
     info!("Getting validation for {}", dataset_name.0);
     let validation_response = get_validation(config, dataset_name.owner(), dataset_name.name(), &model_version.0.to_string(), None)
         .context("Failed to get validation")?;
-    let validation = validation_response.validation;
 
     Ok(Some(CompareConfig {
-        validation,
-        dataset_name: dataset_name.clone(),
+        validation_response,
+        dataset_name,
         model_version,
     }))
 }
@@ -361,15 +371,21 @@ fn get_stream_stat(
         .context("Failed to get label validation")?;
     let label_validation = label_validation_response.label_validation;
 
+    // Extract threshold - it should be present since we filter out None values in the caller
+    let threshold_value = label_threshold.threshold
+        .context("Label threshold should have a threshold value")?;
+    let threshold = NotNan::new(threshold_value)
+        .context("Invalid threshold value")?;
+    
     let PrecisionAndRecall { precision, recall } = get_precision_and_recall_for_threshold(
-        label_threshold.threshold,
+        threshold,
         &label_name.clone(),
         &label_validation,
     )?;
 
     let mut stream_stat = StreamStat {
         label_name: label_name.clone(),
-        threshold: label_threshold.threshold,
+        threshold,
         precision,
         recall,
         compare_to_precision: None,
@@ -391,8 +407,14 @@ fn get_stream_stat(
                 .context("Failed to get comparison label validation")?;
             let compare_to_label_validation = compare_to_label_validation_response.label_validation;
 
+            // Extract threshold - it should be present since we filter out None values in the caller  
+            let threshold_value = label_threshold.threshold
+                .context("Label threshold should have a threshold value")?;
+            let threshold = NotNan::new(threshold_value)
+                .context("Invalid threshold value")?;
+            
             let same_threshold_precision_and_recall = get_precision_and_recall_for_threshold(
-                label_threshold.threshold,
+                threshold,
                 &label_name,
                 &compare_to_label_validation,
             )?;
@@ -460,28 +482,43 @@ pub fn get_stream_stats(
 
     let (sender, receiver) = channel();
 
-    pool.scoped(|scope| {
-        for label_threshold in &model.label_thresholds {
-            if label_threshold.threshold >= NotNan::new(1.0).expect("Could not create NotNan") {
-                // As the precision and recall will always be 0
-                continue;
-            }
-            let sender = sender.clone();
-            let model = model.clone();
-            let compare_config = compare_config.clone();
+    if let Some(ref label_thresholds) = model.label_thresholds {
+        pool.scoped(|scope| {
+            for label_threshold in label_thresholds {
+                // Skip label thresholds without a threshold value (preserving original behavior)
+                let threshold = match label_threshold.threshold {
+                    Some(t) => t,
+                    None => {
+                        info!("Skipping label threshold {:?} - no threshold value", label_threshold.name);
+                        continue;
+                    }
+                };
+                
+                if threshold >= 1.0 {
+                    // As the precision and recall will always be 0
+                    continue;
+                }
+                
+                let sender = sender.clone();
+                let model = model.clone();
+                let compare_config = compare_config.clone();
 
-            scope.execute(move || {
-                let result = get_stream_stat(
-                    label_threshold,
-                    stream_full_name,
-                    &model,
-                    &compare_config,
-                    config,
-                );
-                sender.send(result).expect("Could not send result");
-            });
-        }
-    });
+                scope.execute(move || {
+                    let result = get_stream_stat(
+                        label_threshold,
+                        stream_full_name,
+                        &model,
+                        &compare_config,
+                        config,
+                    );
+                    sender.send(result).expect("Could not send result");
+                });
+            }
+        });
+    } else {
+        // Handle case where model has no label_thresholds
+        info!("No label thresholds found for model version {}", model.version);
+    }
 
     drop(sender);
     let results: Vec<Result<StreamStat>> = receiver.iter().collect();
@@ -507,15 +544,15 @@ pub fn get_stream_comments(config: &Configuration, args: &GetStreamCommentsArgs)
 
     match listen {
         Some(delay) => loop {
-            let batch = client
-                .fetch_stream_comments(stream, *size)
+            let request = FetchFromStreamRequest::new(*size as i32);
+            let batch = fetch_from_stream(config, &stream.owner, &stream.dataset, &stream.stream, request)
                 .context("Operation to fetch stream comments failed.")?;
             if batch.results.is_empty() {
                 if batch.filtered == 0 {
                     std::thread::sleep(std::time::Duration::from_secs_f64(*delay));
                 } else {
                     let advance_request = AdvanceStreamRequest::new(batch.sequence_id.clone());
-                    advance_stream(config, &stream.dataset.owner, &stream.dataset.name, &stream.name, advance_request)
+                    advance_stream(config, &stream.owner, &stream.dataset, &stream.stream, advance_request)
                         .context("Operation to advance stream for batch failed.")?;
                 }
                 continue;
@@ -527,19 +564,19 @@ pub fn get_stream_comments(config: &Configuration, args: &GetStreamCommentsArgs)
 
                 if *individual_advance {
                     let advance_request = AdvanceStreamRequest::new(result.sequence_id.clone());
-                    advance_stream(config, &stream.dataset.owner, &stream.dataset.name, &stream.name, advance_request)
+                    advance_stream(config, &stream.owner, &stream.dataset, &stream.stream, advance_request)
                         .context("Operation to advance stream for comment failed.")?;
                 }
             }
             if needs_final_advance {
                 let advance_request = AdvanceStreamRequest::new(batch.sequence_id.clone());
-                advance_stream(config, &stream.dataset.owner, &stream.dataset.name, &stream.name, advance_request)
+                advance_stream(config, &stream.owner, &stream.dataset, &stream.stream, advance_request)
                     .context("Operation to advance stream for batch failed.")?;
             }
         },
         None => {
             let request = FetchFromStreamRequest::new(*size as i32);
-            let batch = fetch_from_stream(config, &stream.dataset.owner, &stream.dataset.name, &stream.name, request)
+            let batch = fetch_from_stream(config, &stream.owner, &stream.dataset, &stream.stream, request)
                 .context("Operation to fetch stream comments failed.")?;
             print_resources_as_json(Some(&batch), io::stdout().lock())
         }

@@ -20,16 +20,15 @@ use structopt::StructOpt;
 use openapi::{
     apis::{
         configuration::Configuration,
-        emails_api::sync_raw_emails,
         sources_api::{get_source, get_source_by_id},
     },
-    models::{Attachment, Headers, RawEmail, RawEmailBody, RawEmailDocument, SyncRawEmailsRequest},
+    models::{Attachment, Headers, RawEmail, RawEmailBody, RawEmailDocument},
 };
 
 // Local crate imports
 use crate::{
     commands::{ensure_uip_user_consents_to_ai_unit_charge, DEFAULT_TRANSFORM_TAG},
-    parse::{get_files_in_directory, Statistics},
+    parse::{get_files_in_directory, Statistics, upload_batch_of_documents},
     progress::{Options as ProgressOptions, Progress},
     utils::{
         resource_identifier::SourceIdentifier,
@@ -215,8 +214,8 @@ fn read_msg_to_raw_email_document(path: &PathBuf) -> Result<RawEmailDocument> {
     Ok(RawEmailDocument {
         raw_email: Box::new(RawEmail {
             headers: Box::new(Headers {
-                raw: Some(headers_string_no_content_headers),
-                parsed: None,
+                raw: headers_string_no_content_headers,
+                parsed: std::collections::HashMap::new(),
             }),
             body: Box::new(RawEmailBody {
                 plain: Some(plain_body_string),
@@ -283,13 +282,7 @@ pub fn parse(config: &Configuration, args: &ParseMsgArgs) -> Result<()> {
             return Ok(());
         }
 
-        let mut request = SyncRawEmailsRequest::new(documents.clone());
-        request.transform_tag = Some(transform_tag.as_str().to_string());
-        
-        sync_raw_emails(config, &source.owner, &source.name, request)
-            .context("Failed to sync raw emails to source")?;
-        
-        statistics.add_uploaded(documents.len());
+        upload_batch_of_documents(config, &source, documents, &transform_tag, *no_charge, &statistics)?;
         documents.clear();
         Ok(())
     };
@@ -360,7 +353,7 @@ mod tests {
     fn test_read_msg_to_raw_email_document_non_unicode() {
         let result = read_msg_to_raw_email_document(&PathBuf::from("tests/samples/non-unicode.msg"));
 
-        assert_eq!(result.expect_err("Expected Error Result").to_string(), "Could not find stream __substg1.0_007d001F. Please check that you are using unicode msgs");
+        assert_eq!(result.expect_err("Expected Error Result").to_string(), "Could not find stream __substg1.0_007d001F. Please check that you are using Unicode MSG files");
     }
 
     #[test] 
@@ -394,8 +387,8 @@ mod tests {
         let expected_document = RawEmailDocument {
             raw_email: Box::new(RawEmail {
                 headers: Box::new(Headers {
-                    raw: Some(expected_headers.to_string()),
-                    parsed: None,
+                    raw: expected_headers.to_string(),
+                    parsed: std::collections::HashMap::new(),
                 }),
                 body: Box::new(RawEmailBody {
                     plain: Some(expected_body.to_string()),

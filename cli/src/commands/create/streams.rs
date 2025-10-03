@@ -30,7 +30,7 @@ pub struct CreateStreamsArgs {
 
     #[structopt(short = "v", long = "model-version")]
     /// The model version for the new streams to use
-    model_version: TriggerUserModel,
+    model_version: i32,
 }
 
 pub fn create(config: &Configuration, args: &CreateStreamsArgs) -> Result<()> {
@@ -60,7 +60,8 @@ pub fn create(config: &Configuration, args: &CreateStreamsArgs) -> Result<()> {
         let mut trigger_new = read_stream_result?;
 
         // Set the model version
-        trigger_new.model = Some(Some(Box::new(*model_version)));
+        let trigger_user_model = TriggerUserModel::new(*model_version);
+        trigger_new.model = Some(Some(Box::new(trigger_user_model)));
 
         let request = CreateStreamRequest {
             stream: Box::new(trigger_new.clone()),

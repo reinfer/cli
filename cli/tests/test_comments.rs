@@ -95,8 +95,8 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
 
     for (input_comment, output_comment) in input_comments.iter().zip(output_comments.iter()) {
         assert_eq!(input_comment.id, output_comment.id);
-        assert_eq!(input_comment.messages, output_comment.messages);
-        assert_eq!(input_comment.timestamp, output_comment.timestamp);
+        assert_eq!(input_comment.messages.as_ref(), Some(&output_comment.messages));
+        assert_eq!(input_comment.timestamp.as_ref(), Some(&output_comment.timestamp));
     }
 
     // Test getting a comment by id to check the content matches
@@ -110,12 +110,13 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
     let fetched_comment: AnnotatedComment =
         serde_json::from_str(&output).expect("invalid annotated comment fetched");
     assert_eq!(test_comment.id, fetched_comment.comment.id);
-    assert_eq!(test_comment.messages, fetched_comment.comment.messages);
-    assert_eq!(test_comment.timestamp, fetched_comment.comment.timestamp);
-    assert_eq!(
-        test_comment.user_properties,
-        fetched_comment.comment.user_properties
-    );
+    assert_eq!(test_comment.messages.as_ref(), Some(&fetched_comment.comment.messages));
+    assert_eq!(test_comment.timestamp.as_ref(), Some(&fetched_comment.comment.timestamp));
+    // The API normalizes None user_properties to an empty HashMap
+    let empty_props = std::collections::HashMap::new();
+    let expected_user_properties = test_comment.user_properties.as_ref()
+        .unwrap_or(&empty_props);
+    assert_eq!(expected_user_properties, &fetched_comment.comment.user_properties);
 
     // Deleting one comment reduces the comment count in the source
     let output = cli.run([

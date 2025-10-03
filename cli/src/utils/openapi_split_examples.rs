@@ -1,34 +1,42 @@
-//! Usage examples for the OpenAPI split-on-failure utility
+//! High-level wrapper functions for OpenAPI split-on-failure operations
 //! 
-//! This module shows how to use the `execute_with_split_on_failure` function
-//! to add resilience to OpenAPI batch operations.
+//! This module provides clean, easy-to-use wrapper functions that add automatic
+//! resilience to OpenAPI batch operations. When batch requests fail with certain
+//! error conditions, these functions automatically split the request into individual
+//! operations and retry them, allowing for partial success instead of complete failure.
 
 use anyhow::{Context, Result};
 use openapi::{
     apis::{
         configuration::Configuration,
-        comments_api::{add_comments, sync_comments, AddCommentsError, SyncCommentsError},
-        emails_api::{add_emails_to_bucket, AddEmailsToBucketError},
+        comments_api::{add_comments, sync_comments},
+        emails_api::add_emails_to_bucket,
     },
-    models::{AddCommentsRequest, SyncCommentsRequest, AddEmailsToBucketRequest, CommentNew},
+    models::{
+        AddCommentsRequest, AddCommentsResponse, AddEmailsToBucketRequest, AddEmailsToBucketResponse,
+        CommentNew, EmailNew, SyncCommentsRequest, SyncCommentsResponse,
+    },
 };
+
 use crate::utils::openapi_split_on_failure::{execute_with_split_on_failure, SplitOnFailureResult};
 
-/// Example: Add comments with split-on-failure
+/// Add comments with automatic split-on-failure resilience
 /// 
-/// This shows how to wrap the `add_comments` OpenAPI call to provide automatic
-/// splitting when batch requests fail.
+/// This function wraps the `add_comments` OpenAPI call with automatic retry logic.
+/// If the batch request fails with certain error conditions (422, 400, timeouts),
+/// it automatically splits the request into individual comment operations and retries them.
 pub fn add_comments_with_split_on_failure(
     config: &Configuration,
     owner: &str,
     source_name: &str,
     comments: Vec<CommentNew>,
-) -> Result<SplitOnFailureResult<openapi::models::AddCommentsResponse>> {
+    no_charge: Option<bool>,
+) -> Result<SplitOnFailureResult<AddCommentsResponse>> {
     let request = AddCommentsRequest::new(comments);
     
-    // Create a closure that captures the API parameters
+    // Wrap the API call with parameters
     let api_call = |req: AddCommentsRequest| {
-        add_comments(config, owner, source_name, req)
+        add_comments(config, owner, source_name, req, no_charge)
     };
     
     execute_with_split_on_failure(
@@ -38,20 +46,22 @@ pub fn add_comments_with_split_on_failure(
     ).context("Failed to add comments with split-on-failure")
 }
 
-/// Example: Sync comments with split-on-failure  
+/// Sync comments with automatic split-on-failure resilience  
 /// 
-/// Similar to add_comments but for sync operations which return more detailed
-/// statistics that get properly merged across split requests.
+/// This function wraps the `sync_comments` OpenAPI call with automatic retry logic.
+/// Similar to `add_comments_with_split_on_failure` but for sync operations which return
+/// detailed statistics that get properly merged across split requests.
 pub fn sync_comments_with_split_on_failure(
     config: &Configuration,
     owner: &str,
     source_name: &str,
     comments: Vec<CommentNew>,
-) -> Result<SplitOnFailureResult<openapi::models::SyncCommentsResponse>> {
+    no_charge: Option<bool>,
+) -> Result<SplitOnFailureResult<SyncCommentsResponse>> {
     let request = SyncCommentsRequest::new(comments);
     
     let api_call = |req: SyncCommentsRequest| {
-        sync_comments(config, owner, source_name, req)
+        sync_comments(config, owner, source_name, req, no_charge)
     };
     
     execute_with_split_on_failure(
@@ -61,17 +71,21 @@ pub fn sync_comments_with_split_on_failure(
     ).context("Failed to sync comments with split-on-failure")
 }
 
-/// Example: Add emails to bucket with split-on-failure
+/// Add emails to bucket with automatic split-on-failure resilience
+/// 
+/// This function wraps the `add_emails_to_bucket` OpenAPI call with automatic retry logic.
+/// If the batch request fails, it automatically splits the request into individual email operations.
 pub fn add_emails_to_bucket_with_split_on_failure(
     config: &Configuration,
     owner: &str,
     bucket_name: &str,
-    emails: Vec<openapi::models::EmailNew>,
-) -> Result<SplitOnFailureResult<openapi::models::AddEmailsToBucketResponse>> {
+    emails: Vec<EmailNew>,
+    no_charge: Option<bool>,
+) -> Result<SplitOnFailureResult<AddEmailsToBucketResponse>> {
     let request = AddEmailsToBucketRequest::new(emails);
     
     let api_call = |req: AddEmailsToBucketRequest| {
-        add_emails_to_bucket(config, owner, bucket_name, req)
+        add_emails_to_bucket(config, owner, bucket_name, req, no_charge)
     };
     
     execute_with_split_on_failure(
@@ -81,37 +95,10 @@ pub fn add_emails_to_bucket_with_split_on_failure(
     ).context("Failed to add emails to bucket with split-on-failure")
 }
 
-/// Example: Integration into existing code
+/// Display results of split-on-failure operations with user-friendly messages
 /// 
-/// Shows how you can easily replace existing OpenAPI calls with split-on-failure versions.
-/// 
-/// ```rust,no_run
-/// # use anyhow::Result;
-/// # use openapi::{apis::configuration::Configuration, models::CommentNew};
-/// # fn example(config: &Configuration, owner: &str, source: &str, comments: Vec<CommentNew>) -> Result<()> {
-/// // Before: Direct OpenAPI call (fails completely on any error)
-/// // let response = add_comments(config, owner, source, AddCommentsRequest::new(comments))?;
-/// 
-/// // After: With split-on-failure (partial success possible)
-/// let result = add_comments_with_split_on_failure(config, owner, source, comments)?;
-/// 
-/// println!("Successfully processed {} comments", 
-///          comments.len() - result.num_failed);
-/// if result.num_failed > 0 {
-///     println!("Failed to process {} comments", result.num_failed);
-/// }
-/// # Ok(())
-/// # }
-/// ```
-pub fn integration_example() {
-    // This function exists only for documentation purposes
-    // The actual example is in the docstring above
-}
-
-/// Helper function to demonstrate error handling patterns
-/// 
-/// Shows how to handle the results of split-on-failure operations,
-/// including partial failures.
+/// This helper function provides consistent status reporting for split-on-failure operations,
+/// displaying success, partial failure, or complete failure with appropriate icons and details.
 pub fn handle_split_on_failure_result<T>(
     result: SplitOnFailureResult<T>,
     total_items: usize,
@@ -139,24 +126,23 @@ mod tests {
     fn test_handle_result_display() {
         // Test complete success
         let success_result = SplitOnFailureResult {
-            response: openapi::models::AddCommentsResponse::default(),
+            response: AddCommentsResponse::default(),
             num_failed: 0,
         };
         handle_split_on_failure_result(success_result, 10, "test_operation");
         
         // Test partial success
         let partial_result = SplitOnFailureResult {
-            response: openapi::models::AddCommentsResponse::default(),
+            response: AddCommentsResponse::default(),
             num_failed: 3,
         };
         handle_split_on_failure_result(partial_result, 10, "test_operation");
         
         // Test complete failure
         let failure_result = SplitOnFailureResult {
-            response: openapi::models::AddCommentsResponse::default(),
+            response: AddCommentsResponse::default(),
             num_failed: 10,
         };
         handle_split_on_failure_result(failure_result, 10, "test_operation");
     }
 }
-

@@ -61,32 +61,6 @@ impl TransformTag {
         self.0
     }
     
-    /// Validate the transform tag against the API
-    /// 
-    /// This method can be used to validate the transform tag against the actual API
-    /// to ensure it's a valid transform tag. This is optional validation that can
-    /// be called when a Configuration is available.
-    /// 
-    /// # Arguments
-    /// * `config` - The API configuration to use for validation
-    /// 
-    /// # Returns
-    /// * `Ok(())` if the transform tag is valid
-    /// * `Err` if the transform tag is invalid or validation fails
-    /// 
-    /// # Example
-    /// ```rust
-    /// use std::str::FromStr;
-    /// use crate::utils::transform_tag::TransformTag;
-    /// 
-    /// let transform_tag = TransformTag::from_str("my-transform-tag").unwrap();
-    /// // validate_tag(&config).await?; // When you have a config available
-    /// ```
-    pub async fn validate_tag(&self, _config: &openapi::apis::configuration::Configuration) -> Result<()> {
-        // TODO: Implement validation using get_email_transform_tag_info API
-        // For now, we just do basic validation in FromStr
-        Ok(())
-    }
 }
 
 impl std::fmt::Display for TransformTag {

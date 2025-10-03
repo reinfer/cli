@@ -179,7 +179,7 @@ fn test_project_force_delete() {
     assert!(!output.status.success());
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("API request failed with 409 Conflict: Project contains child resources but force deletion was not requested: {\"sources\": 1}"),
+            .contains("error in response: status code 409 Conflict: {\"status\": \"error\", \"message\": \"Project contains child resources but force deletion was not requested: {\\\"sources\\\": 1}\"}"),
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );

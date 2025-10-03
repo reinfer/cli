@@ -60,7 +60,7 @@ pub struct CreateEmailsArgs {
 
 pub fn create(config: &Configuration, args: &CreateEmailsArgs) -> Result<()> {
     if !args.no_charge && !args.yes {
-        ensure_uip_user_consents_to_ai_unit_charge(&config.base_path)?;
+        ensure_uip_user_consents_to_ai_unit_charge(&config.base_path.parse()?)?;
     }
 
     let bucket = match &args.bucket {
@@ -178,7 +178,7 @@ fn upload_emails_from_reader(
             if resume_on_error {
                 // Use OpenAPI split-on-failure for resilience
                 let result = crate::utils::openapi_split_on_failure::execute_with_split_on_failure(
-                    |req| add_emails_to_bucket(config, &bucket.owner, &bucket.name, req),
+                    |req| add_emails_to_bucket(config, &bucket.owner, &bucket.name, req, Some(no_charge)),
                     AddEmailsToBucketRequest::new(batch.to_vec()),
                     "add_emails_to_bucket"
                 ).context("Could not upload batch of emails")?;
@@ -189,7 +189,8 @@ fn upload_emails_from_reader(
                 });
                 batch.clear();
             } else {
-                add_emails_to_bucket(config, &bucket.owner, &bucket.name, request)
+                let request = AddEmailsToBucketRequest::new(batch.to_vec());
+                add_emails_to_bucket(config, &bucket.owner, &bucket.name, request, Some(no_charge))
                     .context("Could not upload batch of emails")?;
                 statistics.add_emails(StatisticsUpdate {
                     uploaded: batch.len(),

@@ -4,9 +4,11 @@ use itertools::Itertools;
 use openapi::{
     apis::configuration::Configuration,
     models::{
-        Bucket, Email, AnnotatedComment, Comment, Dataset, CommentNew, EmailNew, Source,
+        Bucket, Email, AnnotatedComment, Dataset, EmailNew, Source,
     },
 };
+// DatasetId is just String in OpenAPI models
+
 use scoped_threadpool::Pool;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -46,7 +48,7 @@ pub fn run(args: &PackageArgs, config: &Configuration, pool: &mut Pool) -> Resul
 
 pub enum PackageContentId<'a> {
     Dataset {
-        dataset_id: &'a DatasetId,
+        dataset_id: &'a str,
     },
     Source {
         source_id: &'a str,
@@ -245,7 +247,7 @@ impl Package {
         &mut self,
         source_id: &str,
         key: CommentBatchKey,
-    ) -> Result<Vec<NewAnnotatedComment>> {
+    ) -> Result<Vec<AnnotatedComment>> {
         let content_id = PackageContentId::CommentBatch { key, source_id };
 
         self.read_jsonl_content_by_id(content_id)

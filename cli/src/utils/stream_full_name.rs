@@ -3,7 +3,7 @@
 //! This module provides a `StreamFullName` struct that represents a stream identifier
 //! in the format 'owner/dataset/stream'.
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use std::str::FromStr;
 
 /// Represents a stream full name in the format 'owner/dataset/stream'

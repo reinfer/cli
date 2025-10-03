@@ -5,8 +5,8 @@ use log::info;
 use openapi::{
     apis::{
         configuration::Configuration,
-        datasets_api::{get_dataset, update_dataset},
-        sources_api::{get_source, get_source_by_id},
+        datasets_api::update_dataset,
+        sources_api::get_source,
     },
     models::{DatasetUpdate, UpdateDatasetRequest},
 };
@@ -97,9 +97,9 @@ pub fn update(config: &Configuration, args: &UpdateDatasetArgs, printer: &Printe
     let dataset = response.dataset;
     info!(
         "Dataset `{}` [id: {}] updated successfully",
-        dataset.full_name,
+        format!("{}/{}", dataset.owner, dataset.name),
         dataset.id,
     );
-    printer.print_resources(&[dataset])?;
+    printer.print_resources(&[*dataset])?;
     Ok(())
 }

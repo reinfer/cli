@@ -2,8 +2,8 @@ use super::thousands::Thousands;
 use colored::Colorize;
 use prettytable::{format, row, Row, Table};
 use openapi::models::{
-    AuditEvent, Bucket, BucketStatistics, Dataset, Integration, KeyedSyncState, 
-    Project, Quota, Source, SourceStatistics, Trigger, User,
+    AuditEvent, Bucket, BucketStatistics, Count, Dataset, Integration, KeyedSyncState, 
+    Project, Quota, Source, SourceStatistics, Statistics, Trigger, User,
 };
 use serde::{Serialize, Serializer};
 
@@ -67,7 +67,7 @@ impl DisplayTable for Integration {
     fn to_table_row(&self) -> Row {
         // Parse the created_at timestamp
         let created_at = chrono::DateTime::parse_from_rfc3339(&self.created_at)
-            .unwrap_or_else(|_| chrono::Utc::now())
+            .unwrap_or_else(|_| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()))
             .format("%Y-%m-%d %H:%M:%S");
         
         // Extract mailbox count from configuration JSON
@@ -94,7 +94,7 @@ impl DisplayTable for Bucket {
     fn to_table_row(&self) -> Row {
         let full_name = format!("{}{}{}", self.owner.dimmed(), "/".dimmed(), self.name);
         let created_at = chrono::DateTime::parse_from_rfc3339(&self.created_at)
-            .unwrap_or_else(|_| chrono::Utc::now())
+            .unwrap_or_else(|_| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()))
             .format("%Y-%m-%d %H:%M:%S");
         row![
             full_name,
@@ -112,8 +112,8 @@ impl DisplayTable for Quota {
     fn to_table_row(&self) -> Row {
         row![
             self.quota_kind,
-            Thousands(self.hard_limit),
-            Thousands(self.current_max_usage),
+            Thousands(self.hard_limit as u64),
+            Thousands(self.current_max_usage as u64),
             if self.hard_limit > 0 {
                 format!(
                     "{:.0}%",
@@ -134,7 +134,7 @@ impl DisplayTable for Dataset {
     fn to_table_row(&self) -> Row {
         let full_name = format!("{}{}{}", self.owner.dimmed(), "/".dimmed(), self.name);
         let updated_at = chrono::DateTime::parse_from_rfc3339(&self.last_modified)
-            .unwrap_or_else(|_| chrono::Utc::now())
+            .unwrap_or_else(|_| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()))
             .format("%Y-%m-%d %H:%M:%S");
         row![
             full_name,
@@ -150,11 +150,12 @@ impl DisplayTable for Dataset {
 pub struct PrintableDatasetWithStats {
     pub dataset: Dataset,
     pub stats: Option<Statistics>,
+    pub validation: Option<openapi::models::GetValidationResponse>,
 }
 
 impl DisplayTable for PrintableDatasetWithStats {
     fn to_table_headers() -> Row {
-        row![bFg => "Name", "ID", "Updated (UTC)", "Title", "Total Comments"]
+        row![bFg => "Name", "ID", "Updated (UTC)", "Title", "Total Comments", "Validation"]
     }
 
     fn to_table_row(&self) -> Row {
@@ -166,7 +167,7 @@ impl DisplayTable for PrintableDatasetWithStats {
         );
 
         let updated_at = chrono::DateTime::parse_from_rfc3339(&self.dataset.last_modified)
-            .unwrap_or_else(|_| chrono::Utc::now())
+            .unwrap_or_else(|_| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()))
             .format("%Y-%m-%d %H:%M:%S");
 
         let comment_count = if let Some(stats) = &self.stats {
@@ -175,12 +176,25 @@ impl DisplayTable for PrintableDatasetWithStats {
             0
         };
 
+        let validation_status = if let Some(validation) = &self.validation {
+            // Show validation data is available with model score
+            let rating = &validation.validation.model_rating;
+            let quality_score = rating.score * 100.0;
+            format!("✓ {:.1}% ({} labels)", 
+                format!("{:.1}", quality_score).green(),
+                validation.validation.labels.len()
+            )
+        } else {
+            "No validation".dimmed().to_string()
+        };
+
         row![
             full_name,
             self.dataset.id,
             updated_at,
             self.dataset.title,
-            comment_count,
+            Thousands(comment_count as u64),
+            validation_status,
         ]
     }
 }
@@ -202,10 +216,7 @@ impl DisplayTable for Project {
     fn to_table_row(&self) -> Row {
         row![
             self.name,
-            match &self.id {
-                Some(id) => id.as_str().into(),
-                None => "unknown".dimmed(),
-            },
+            self.id,
             self.title
         ]
     }
@@ -219,7 +230,7 @@ impl DisplayTable for Source {
     fn to_table_row(&self) -> Row {
         let full_name = format!("{}{}{}", self.owner.dimmed(), "/".dimmed(), self.name);
         let updated_at = chrono::DateTime::parse_from_rfc3339(&self.updated_at)
-            .unwrap_or_else(|_| chrono::Utc::now())
+            .unwrap_or_else(|_| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()))
             .format("%Y-%m-%d %H:%M:%S");
         row![
             full_name,
@@ -264,7 +275,7 @@ impl DisplayTable for PrintableBucket {
             "none".dimmed().to_string()
         };
         let created_at = chrono::DateTime::parse_from_rfc3339(&self.bucket.created_at)
-            .unwrap_or_else(|_| chrono::Utc::now())
+            .unwrap_or_else(|_| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()))
             .format("%Y-%m-%d %H:%M:%S");
         row![
             full_name,
@@ -314,7 +325,7 @@ impl DisplayTable for PrintableSource {
             self.source.name
         );
         let updated_at = chrono::DateTime::parse_from_rfc3339(&self.source.updated_at)
-            .unwrap_or_else(|_| chrono::Utc::now())
+            .unwrap_or_else(|_| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()))
             .format("%Y-%m-%d %H:%M:%S");
         row![
             full_name,
@@ -350,7 +361,7 @@ impl DisplayTable for KeyedSyncState {
         let synced_until_str = if let Some(synced_until) = &self.synced_until {
             if let Some(until) = synced_until {
                 chrono::DateTime::parse_from_rfc3339(until)
-                    .unwrap_or_else(|_| chrono::Utc::now())
+                    .unwrap_or_else(|_| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()))
                     .to_rfc2822()
                     .normal()
             } else {
@@ -378,9 +389,10 @@ impl DisplayTable for Trigger {
     fn to_table_row(&self) -> Row {
         let updated_at = match &self.updated_at {
             Some(updated) => chrono::DateTime::parse_from_rfc3339(updated)
-                .unwrap_or_else(|_| chrono::Utc::now())
-                .format("%Y-%m-%d %H:%M:%S"),
-            None => "N/A".dimmed(),
+                .unwrap_or_else(|_| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()))
+                .format("%Y-%m-%d %H:%M:%S")
+                .to_string(),
+            None => "N/A".dimmed().to_string(),
         };
         row![
             self.name,
@@ -398,7 +410,7 @@ impl DisplayTable for User {
 
     fn to_table_row(&self) -> Row {
         let created_at = chrono::DateTime::parse_from_rfc3339(&self.created)
-            .unwrap_or_else(|_| chrono::Utc::now())
+            .unwrap_or_else(|_| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()))
             .format("%Y-%m-%d %H:%M:%S");
         row![
             self.username,

@@ -10,40 +10,40 @@ use std::{
 };
 
 use anyhow::{anyhow, Context, Result};
+use colored::Colorize;
 use itertools::Itertools;
+use scoped_threadpool::Pool;
+use structopt::StructOpt;
+
 use openapi::{
     apis::{
         configuration::Configuration,
         datasets_api::{get_dataset, get_dataset_statistics},
-        sources_api::get_source,
-        buckets_api::get_bucket,
-        comments_api::query_comments,
         emails_api::get_bucket_emails,
     },
     models::{
-        Dataset, DatasetFullName, Source, Bucket, CommentFilter,
-        QueryCommentsRequest, QueryCommentsResponse, Order, QueryCommentsOrderRecent,
-        GetDatasetStatisticsRequest, GetBucketEmailsRequest,
+        Attachment, Bucket, CommentFilter, Dataset, DatasetFlag,
+        GetBucketEmailsRequest, GetDatasetStatisticsRequest,
+        Order, QueryCommentsOrderRecent, QueryCommentsRequest,
     },
 };
-use reinfer_client::{
-    resources::{
-        attachments::AttachmentMetadata,
-        dataset::DatasetFlag,
-    },
-    CommentId, DatasetName, HasAnnotations, SourceId,
-};
-use scoped_threadpool::Pool;
-use structopt::StructOpt;
 
 use crate::{
     commands::package::{
         AttachmentKey, CommentBatchKey, EmailBatchKey, PackageContentId, PackageWriter,
     },
     progress::Progress,
+    utils::{
+        comment_utils::HasAnnotations,
+        full_name::FullName as DatasetFullName,
+        get_dataset_query_iter, get_document_bytes,
+        AttachmentExt, CommentId, SourceId,
+    },
     DEFAULT_PROJECT_NAME,
 };
-use colored::Colorize;
+
+// Type aliases for compatibility
+pub type BucketId = String;
 
 #[derive(Debug)]
 struct IxpDatasetIdentifier(DatasetFullName);
@@ -55,9 +55,9 @@ impl FromStr for IxpDatasetIdentifier {
         let identifier = match DatasetFullName::from_str(s) {
             Ok(full_name) => IxpDatasetIdentifier(full_name),
             Err(_) => {
-                let full_name =
-                    DatasetName(s.to_string()).with_project(&DEFAULT_PROJECT_NAME.clone())?;
-
+                // Create full name directly: "project/dataset"
+                let full_name_str = format!("{}/{}", DEFAULT_PROJECT_NAME.as_str(), s);
+                let full_name = DatasetFullName::from_str(&full_name_str)?;
                 IxpDatasetIdentifier(full_name)
             }
         };
@@ -95,14 +95,13 @@ fn package_bucket_contents(
     config: &Configuration,
     statistics: &Arc<Statistics>,
 ) -> Result<()> {
-    let bucket_full_name = bucket.full_name();
     
     let mut request = GetBucketEmailsRequest::new();
     request.limit = Some(batch_size as i32);
     
     let mut idx = 0;
     loop {
-        let response = get_bucket_emails(config, &bucket_full_name.owner, &bucket_full_name.name, request.clone())
+        let response = get_bucket_emails(config, &bucket.owner, &bucket.name, request.clone())
             .context("Failed to get emails from bucket")?;
         
         if response.emails.is_empty() {
@@ -141,13 +140,13 @@ fn package_source_contents(
     pool: &mut Pool,
     source_type: SourceType,
 ) -> Result<()> {
-    let mut request = QueryCommentsRequest {
+    let request = QueryCommentsRequest {
         continuation: None,
         limit: Some(batch_size as i32),
         attribute_filters: None,
         collapse_mode: None,
         filter: Some(CommentFilter {
-            sources: Some(vec![source_id.clone()]),
+            sources: Some(vec![source_id.0.clone()]),
             ..Default::default()
         }),
         order: Box::new(Order::Recent(Box::new(QueryCommentsOrderRecent {
@@ -155,97 +154,82 @@ fn package_source_contents(
         }))),
     };
 
-    let mut documents: Vec<(AttachmentMetadata, AttachmentKey, SourceId, CommentId)> = Vec::new();
-    let mut batch_idx = 0;
+    let source_comments_iter = get_dataset_query_iter(
+        config.clone(),
+        dataset.owner().to_string(),
+        dataset.name().to_string(),
+        request,
+    );
 
-    // Use OpenAPI pagination pattern
-    loop {
-        let response = query_comments(
-            config,
-            &dataset.owner,
-            &dataset.name,
-            request.clone(),
-            None, // limit is already in the request
-            request.continuation.as_deref(),
-            None, // collapse_mode is already in the request
-            None, // order is already in the request
-        )
-        .context("Failed to query comments")?;
+    let mut documents: Vec<(Attachment, AttachmentKey, String, CommentId)> = Vec::new();
 
-        if response.results.is_empty() {
-            break;
-        }
+    source_comments_iter
+        .enumerate()
+        .try_for_each(|(idx, result)| -> Result<()> {
+            let comments = result.context("Failed to read comment batch")?;
 
-        let comments = response.results;
+            package_writer
+                .write_comment_batch(source_id.as_ref(), CommentBatchKey(idx), &comments)
+                .context("Failed to write comment batch")?;
 
-        package_writer
-            .write_comment_batch(source_id, CommentBatchKey(batch_idx), &comments)
-            .context("Failed to write comment batch")?;
+            statistics.add_comments(comments.len());
+            statistics.add_annotations(comments.iter().filter(|c| c.has_annotations()).count());
 
-        statistics.add_comments(comments.len());
-        statistics.add_annotations(comments.iter().filter(|c| c.has_annotations()).count());
+            if matches!(source_type, SourceType::UnstructedAndComplexDocs) {
+                documents.append(
+                    &mut comments
+                        .iter()
+                        .flat_map(|comment| {
+                            comment
+                                .comment
+                                .clone()
+                                .attachments
+                                .into_iter()
+                                .enumerate()
+                                .map(|(idx, attachment)| {
+                                    (
+                                        attachment,
+                                        AttachmentKey(idx),
+                                        source_id.0.clone(),
+                                        CommentId(comment.comment.id.clone()),
+                                    )
+                                })
+                        })
+                        .collect(),
+                );
 
-        if matches!(source_type, SourceType::UnstructedAndComplexDocs) {
-            documents.append(
-                &mut comments
-                    .iter()
-                    .flat_map(|comment| {
-                        comment
-                            .comment
-                            .clone()
-                            .attachments
-                            .into_iter()
-                            .enumerate()
-                            .map(|(idx, attachment)| {
-                                (
-                                    attachment,
-                                    AttachmentKey(idx),
-                                    source_id.clone(),
-                                    comment.comment.id.clone(),
-                                )
-                            })
-                    })
-                    .collect(),
-            );
-
-            if should_package_batch_of_documents(&documents, max_attachment_memory_mb) {
-                package_batch_of_documents(
-                    &documents,
-                    statistics,
-                    package_writer,
-                    config,
-                    pool,
-                )
-                .context("Failed to package document batch")?;
-                documents.clear();
+                if should_package_batch_of_documents(&documents, max_attachment_memory_mb) {
+                    package_batch_of_documents(
+                        &documents,
+                        statistics,
+                        package_writer,
+                        config,
+                        pool,
+                    )
+                    .context("Failed to package document batch")?;
+                    documents.clear();
+                }
             }
-        }
 
-        batch_idx += 1;
-
-        // Update continuation for next iteration
-        request.continuation = response.continuation;
-        if request.continuation.is_none() {
-            break;
-        }
-    }
+            Ok(())
+        })?;
     package_batch_of_documents(&documents, statistics, package_writer, config, pool)
 }
 
 fn should_package_batch_of_documents(
-    documents: &[(AttachmentMetadata, AttachmentKey, SourceId, CommentId)],
+    documents: &[(Attachment, AttachmentKey, String, CommentId)],
     max_attachment_memory_mb: &u64,
 ) -> bool {
     documents
         .iter()
-        .map(|(attachment, _, _, _)| attachment.size)
+        .map(|(attachment, _, _, _)| attachment.size as u64)
         .sum::<u64>()
         / 1_000_000
         >= *max_attachment_memory_mb
 }
 
 fn package_batch_of_documents(
-    documents: &[(AttachmentMetadata, AttachmentKey, SourceId, CommentId)],
+    documents: &[(Attachment, AttachmentKey, String, CommentId)],
     statistics: &Arc<Statistics>,
     package_writer: &mut PackageWriter,
     config: &Configuration,
@@ -260,9 +244,9 @@ fn package_batch_of_documents(
             .for_each(|(metadata, key, source_id, comment_id)| {
                 let error_sender = error_sender.clone();
                 let sender = document_sender.clone();
+                let config = config.clone();
                 scope.execute(move || {
-                    // TODO: Need to implement OpenAPI equivalent for IXP documents
-                    let result = client.get_ixp_document(source_id, comment_id);
+                    let result = get_document_bytes(&config, source_id.as_ref(), comment_id.0.as_str());
 
                     let extension = metadata.extension();
 
@@ -276,8 +260,8 @@ fn package_batch_of_documents(
                             sender
                                 .send((
                                     PackageContentId::Document {
-                                        source_id,
-                                        comment_id,
+                                        source_id: source_id.as_ref(),
+                                        comment_id: comment_id.as_ref(),
                                         key,
                                         extension,
                                     },
@@ -310,9 +294,8 @@ fn package_batch_of_documents(
 }
 
 fn get_comment_count(dataset: &Dataset, config: &Configuration) -> Result<u64> {
-    let dataset_full_name = dataset.full_name();
     let request = GetDatasetStatisticsRequest::new(Vec::new());
-    let response = get_dataset_statistics(config, &dataset_full_name.owner, &dataset_full_name.name, request)
+    let response = get_dataset_statistics(config, &dataset.owner, &dataset.name, request)
         .context("Failed to get dataset statistics")?;
     Ok(response.statistics.num_comments as u64)
 }
@@ -341,15 +324,15 @@ fn package_cm_project(
         .source_ids
         .iter()
         .map(|source_id| -> Result<Option<BucketId>> {
-            let response = get_source(config, &source_id.owner, &source_id.name)?;
+            let response = openapi::apis::sources_api::get_source_by_id(config, source_id)?;
             Ok(response.source.bucket_id)
         })
         .try_collect::<Option<BucketId>, Vec<Option<BucketId>>, anyhow::Error>()?
         .into_iter()
         .flatten()
-        .map(|bucket_id| {
-            let response = get_bucket(config, &bucket_id.owner, &bucket_id.name)?;
-            Ok(response.bucket)
+        .map(|bucket_id| -> Result<Bucket> {
+            let response = openapi::apis::buckets_api::get_bucket_by_id(config, &bucket_id)?;
+            Ok(*response.bucket)
         })
         .try_collect()?;
 
@@ -371,7 +354,7 @@ fn package_cm_project(
 
     // Write sources and comments
     for source_id in &dataset.source_ids {
-        let response = get_source(config, &source_id.owner, &source_id.name)
+        let response = openapi::apis::sources_api::get_source_by_id(config, source_id)
             .context("Failed to get source")?;
         let source = response.source;
 
@@ -380,8 +363,8 @@ fn package_cm_project(
             .context("Failed to write source")?;
 
         package_source_contents(
-            &dataset.full_name(),
-            source_id,
+            &DatasetFullName(format!("{}/{}", dataset.owner, dataset.name)),
+            &SourceId(source_id.clone()),
             *batch_size,
             &mut package_writer,
             config,
@@ -417,7 +400,7 @@ fn package_ixp_project(
 
     // Package each source
     for source_id in &dataset.source_ids {
-        let response = get_source(config, &source_id.owner, &source_id.name)
+        let response = openapi::apis::sources_api::get_source_by_id(config, source_id)
             .context("Failed to get source")?;
         let source = response.source;
 
@@ -426,8 +409,8 @@ fn package_ixp_project(
             .context("Failed to write source")?;
 
         package_source_contents(
-            &dataset.full_name(),
-            source_id,
+            &DatasetFullName(format!("{}/{}", dataset.owner, dataset.name)),
+            &SourceId(source_id.clone()),
             *batch_size,
             &mut package_writer,
             config,
@@ -460,13 +443,13 @@ pub fn run(args: &DownloadPackageArgs, config: &Configuration, pool: &mut Pool) 
     }
 
     // Get dataset, statistics and progres bar
-    let response = get_dataset(config, &project.0.owner, &project.0.name).context(format!(
+    let response = get_dataset(config, project.0.owner(), project.0.name()).context(format!(
         "Could not get project with the name {0}",
         project.0
     ))?;
     let dataset = response.dataset;
 
-    if dataset.has_flag(DatasetFlag::Ixp) {
+    if dataset._dataset_flags.contains(&DatasetFlag::Ixp) {
         package_ixp_project(
             config,
             &dataset,

@@ -53,7 +53,7 @@ pub enum UploadEmailAttachmentError {
 
 
 /// Add emails to bucket
-pub fn add_emails_to_bucket(configuration: &configuration::Configuration, owner: &str, bucket_name: &str, add_emails_to_bucket_request: models::AddEmailsToBucketRequest) -> Result<models::AddEmailsToBucketResponse, Error<AddEmailsToBucketError>> {
+pub fn add_emails_to_bucket(configuration: &configuration::Configuration, owner: &str, bucket_name: &str, add_emails_to_bucket_request: models::AddEmailsToBucketRequest, no_charge: Option<bool>) -> Result<models::AddEmailsToBucketResponse, Error<AddEmailsToBucketError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -61,6 +61,9 @@ pub fn add_emails_to_bucket(configuration: &configuration::Configuration, owner:
     let local_var_uri_str = format!("{}/api/_private/buckets/{owner}/{bucket_name}/emails", local_var_configuration.base_path, owner=crate::apis::urlencode(owner), bucket_name=crate::apis::urlencode(bucket_name));
     let mut local_var_req_builder = local_var_client.request(reqwest::Method::PUT, local_var_uri_str.as_str());
 
+    if let Some(ref local_var_str) = no_charge {
+        local_var_req_builder = local_var_req_builder.query(&[("no_charge", &local_var_str.to_string())]);
+    }
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
         local_var_req_builder = local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
     }

@@ -5,13 +5,13 @@ use log::info;
 use openapi::{
     apis::{
         configuration::Configuration,
-        buckets_api::{get_bucket, get_buckets, get_bucket_by_id, get_bucket_statistics},
+        buckets_api::{get_bucket, get_all_buckets, get_bucket_by_id, get_bucket_statistics},
     },
-    models::BucketIdentifier,
 };
 use structopt::StructOpt;
 
 use crate::printer::{PrintableBucket, Printer};
+use crate::utils::BucketIdentifier;
 
 #[derive(Debug, StructOpt)]
 pub struct GetBucketsArgs {
@@ -32,15 +32,15 @@ pub fn get(config: &Configuration, args: &GetBucketsArgs, printer: &Printer) -> 
 
     let buckets = if let Some(bucket) = bucket {
         vec![match bucket {
-            BucketIdentifier::Id(id) => get_bucket_by_id(config, id)
+            BucketIdentifier::Id(id) => *get_bucket_by_id(config, id)
                 .context("Operation to get bucket by ID has failed.")?
                 .bucket,
-            BucketIdentifier::FullName(full_name) => get_bucket(config, full_name.owner(), full_name.name())
+            BucketIdentifier::FullName(full_name) => *get_bucket(config, full_name.owner(), full_name.name())
                 .context("Operation to get bucket has failed.")?
                 .bucket,
         }]
     } else {
-        let mut buckets = get_buckets(config)
+        let mut buckets = get_all_buckets(config)
             .context("Operation to list buckets has failed.")?
             .buckets;
         buckets.sort_unstable_by(|lhs, rhs| {
@@ -53,8 +53,8 @@ pub fn get(config: &Configuration, args: &GetBucketsArgs, printer: &Printer) -> 
 
     if *include_stats {
         buckets.iter().try_for_each(|bucket| -> Result<()> {
-            info!("Getting statistics for bucket {}", bucket.full_name().0);
-            let stats = get_bucket_statistics(config, &bucket.owner, &bucket.name)
+            info!("Getting statistics for bucket {}/{}", bucket.owner, bucket.name);
+            let stats = *get_bucket_statistics(config, &bucket.owner, &bucket.name)
                 .context("Could not get statistics for bucket")?
                 .statistics;
 

@@ -1,6 +1,6 @@
 mod audit_events;
 mod buckets;
-mod comments;
+pub mod comments;
 mod custom_label_trend_report;
 mod datasets;
 mod emails;

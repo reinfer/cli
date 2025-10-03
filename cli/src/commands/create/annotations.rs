@@ -9,7 +9,7 @@ use openapi::{
         sources_api::{get_source, get_source_by_id},
     },
     models::{
-        CommentId, CommentUid, DatasetFullName, EntitiesNew, GroupLabellingsRequest, Label,
+        EntitiesNew, GroupLabellingsRequest,
         MoonFormGroupUpdate, Source, UpdateCommentLabellingRequest,
     },
 };
@@ -21,6 +21,7 @@ use std::{
     fs::File,
     io::{self, BufRead, BufReader},
     path::PathBuf,
+    str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -28,6 +29,7 @@ use std::{
 };
 use structopt::StructOpt;
 use crate::utils::resource_identifier::{DatasetIdentifier, SourceIdentifier};
+use crate::utils::{DatasetFullName};
 
 #[derive(Debug, StructOpt)]
 pub struct CreateAnnotationsArgs {
@@ -69,7 +71,7 @@ pub fn create(config: &Configuration, args: &CreateAnnotationsArgs, pool: &mut P
             response.source
         }
     };
-    let source_name = source.full_name();
+    let source_name = DatasetFullName::from_str(&format!("{}/{}", source.owner, source.name))?;
 
     let dataset = match &args.dataset {
         DatasetIdentifier::Id(_) => {
@@ -81,7 +83,7 @@ pub fn create(config: &Configuration, args: &CreateAnnotationsArgs, pool: &mut P
             response.dataset
         }
     };
-    let dataset_name = dataset.full_name();
+    let dataset_name = DatasetFullName::from_str(&format!("{}/{}", dataset.owner, dataset.name))?;
 
     let statistics = match &args.annotations_path {
         Some(annotations_path) => {
@@ -89,9 +91,9 @@ pub fn create(config: &Configuration, args: &CreateAnnotationsArgs, pool: &mut P
                 "Uploading comments from file `{}` to source `{}` [id: {}] and dataset `{}` [id: {}]",
                 annotations_path.display(),
                 source_name.0,
-                source.id.0,
+                source.id,
                 dataset_name.0,
-                dataset.id.0,
+                dataset.id,
             );
             let file = BufReader::new(File::open(annotations_path).with_context(|| {
                 format!("Could not open file `{}`", annotations_path.display())
@@ -128,7 +130,7 @@ pub fn create(config: &Configuration, args: &CreateAnnotationsArgs, pool: &mut P
         None => {
             info!(
                 "Uploading annotations from stdin to source `{}` [id: {}] and dataset `{} [id: {}]",
-                source_name.0, source.id.0, dataset_name.0, dataset.id.0
+                source_name.0, source.id, dataset_name.0, dataset.id
             );
             let statistics = Statistics::new();
             upload_annotations_from_reader(
@@ -180,12 +182,12 @@ pub fn upload_batch_of_annotations(
 
             scope.execute(move || {
                 let comment_uid =
-                    CommentUid(format!("{}.{}", source.id.0, new_comment.comment.id.0));
+                    format!("{}.{}", source.id, new_comment.comment.id);
 
                 let request = UpdateCommentLabellingRequest {
                     context: None,
                     labelling: new_comment.labelling.clone(),
-                    entities: new_comment.entities.as_ref().map(Box::new),
+                    entities: new_comment.entities.clone().map(Box::new),
                     moon_forms: new_comment.moon_forms.clone(),
                 };
 
@@ -193,13 +195,13 @@ pub fn upload_batch_of_annotations(
                     config,
                     dataset_name.owner(),
                     dataset_name.name(),
-                    &comment_uid.0,
+                    &comment_uid,
                     request,
                 )
                 .with_context(|| {
                     format!(
                         "Could not update labelling for comment `{}`",
-                        &comment_uid.0
+                        &comment_uid
                     )
                 });
 
@@ -278,7 +280,7 @@ fn upload_annotations_from_reader(
 /// files downloaded via `re` compatible with the `re create annotations` command.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct CommentIdComment {
-    pub id: CommentId,
+    pub id: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]

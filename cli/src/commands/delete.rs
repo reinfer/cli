@@ -8,23 +8,23 @@ use std::sync::{
 };
 use structopt::StructOpt;
 
-use crate::utils::{SourceIdentifier, CommentsIterTimerange, CommentId};
+use crate::utils::{SourceIdentifier, CommentsIterTimerange, CommentId, BucketIdentifier, DatasetIdentifier, ProjectName, resource_identifier::UserIdentifier};
 use crate::progress::{Options as ProgressOptions, Progress};
-use crate::commands::get::comments::{CommentsIter, get_comments_iter};
+use crate::commands::get::comments::{get_comments_iter, CommentsIter};
 
 use openapi::{
     apis::{
         configuration::Configuration,
         sources_api::{delete_source, get_source, get_source_by_id},
         comments_api::delete_comment,
-        buckets_api::{get_bucket, get_keyed_sync_state_ids, delete_keyed_sync_state, delete_bucket},
-        projects_api::{delete_project, get_project},
+        buckets_api::{get_bucket, query_keyed_sync_state_ids, delete_keyed_sync_state, delete_bucket},
+        projects_api::{delete_project},
         users_api::delete_user,
         datasets_api::delete_dataset_by_id,
     },
     models::{
-        Source, BucketIdentifier, DatasetIdentifier, ProjectName, UserIdentifier,
-        GetKeyedSyncStateIdsRequest, ForceDeleteProject
+        Source,
+        QueryKeyedSyncStateIdsRequest,
     }
 };
 
@@ -144,15 +144,18 @@ pub fn run(delete_args: &DeleteArgs, config: &Configuration) -> Result<()> {
             log::info!("Deleted source.");
         }
         DeleteArgs::User { user } => {
-            delete_user(config, &user.id)
+            let user_id = user.id().ok_or_else(|| anyhow::anyhow!("User must be specified by ID"))?;
+            delete_user(config, user_id)
                 .context("Operation to delete user has failed.")?;
             log::info!("Deleted user.");
         }
         DeleteArgs::Comments { source, comments } => {
             // Delete comments one by one
             for comment_id in comments {
-                delete_comment(config, &source.owner, &source.name)
-                    .context("Operation to delete comment has failed.")?;
+                let owner = source.owner().ok_or_else(|| anyhow::anyhow!("Source must be specified by full name"))?;
+                let name = source.name().ok_or_else(|| anyhow::anyhow!("Source must be specified by full name"))?;
+                delete_comment(config, owner, name)
+                    .context(format!("Operation to delete comment {} has failed.", comment_id))?;
             }
             log::info!("Deleted comments.");
         }
@@ -189,22 +192,19 @@ pub fn run(delete_args: &DeleteArgs, config: &Configuration) -> Result<()> {
             .context("Operation to delete comments has failed.")?;
         }
         DeleteArgs::Dataset { dataset } => {
-            delete_dataset_by_id(config, &dataset.id)
+            let dataset_id = dataset.id().ok_or_else(|| anyhow::anyhow!("Dataset must be specified by ID"))?;
+            delete_dataset_by_id(config, dataset_id)
                 .context("Operation to delete dataset has failed.")?;
             log::info!("Deleted dataset.");
         }
         DeleteArgs::Bucket { bucket } => {
-            delete_bucket(config, &bucket.id)
+            let bucket_id = bucket.id().ok_or_else(|| anyhow::anyhow!("Bucket must be specified by ID"))?;
+            delete_bucket(config, bucket_id)
                 .context("Operation to delete bucket has failed.")?;
             log::info!("Deleted bucket.");
         }
         DeleteArgs::Project { project, force } => {
-            let force_delete = if *force {
-                ForceDeleteProject::Yes
-            } else {
-                ForceDeleteProject::No
-            };
-            delete_project(config, project, Some(force_delete))
+            delete_project(config, project.as_str(), Some(*force))
                 .context("Operation to delete project has failed.")?;
             log::info!("Deleted project.");
         }
@@ -212,23 +212,25 @@ pub fn run(delete_args: &DeleteArgs, config: &Configuration) -> Result<()> {
             bucket,
             mailbox_name,
         } => {
-            let bucket_response = get_bucket(config, bucket.owner(), bucket.name())
+            let owner = bucket.owner().ok_or_else(|| anyhow::anyhow!("Bucket must be specified by full name"))?;
+            let name = bucket.name().ok_or_else(|| anyhow::anyhow!("Bucket must be specified by full name"))?;
+            let bucket_response = get_bucket(config, owner, name)
                 .context("Failed to get bucket")?;
             let bucket = bucket_response.bucket;
 
-            let keyed_sync_state_ids = get_keyed_sync_state_ids(
+            let keyed_sync_state_ids_response = query_keyed_sync_state_ids(
                 config,
                 &bucket.id,
-                GetKeyedSyncStateIdsRequest {
+                QueryKeyedSyncStateIdsRequest {
                     mailbox_name: mailbox_name.clone(),
                 },
             )
             .context("Failed to get keyed sync state IDs")?;
 
-            for id in keyed_sync_state_ids {
+            for id in keyed_sync_state_ids_response.keyed_sync_state_ids {
                 delete_keyed_sync_state(config, &bucket.id, &id)
                     .context("Failed to delete keyed sync state")?;
-                info!("Delete keyed sync state {}", id.0)
+                info!("Delete keyed sync state {}", id)
             }
         }
     };
@@ -243,8 +245,9 @@ fn delete_comments_in_period(
     show_progress: bool,
 ) -> Result<()> {
     log::info!(
-        "Deleting comments in source `{}`{} (include-annotated: {})",
-        source.full_name().0,
+        "Deleting comments in source `{}/{}`{} (include-annotated: {})",
+        source.owner,
+        source.name,
         match (timerange.from, timerange.to) {
             (None, None) => "".into(),
             (Some(start), None) => format!(" after {start}"),
@@ -271,29 +274,32 @@ fn delete_comments_in_period(
             Vec::with_capacity(DELETION_BATCH_SIZE + CommentsIter::MAX_PAGE_SIZE);
 
         let delete_batch = |comment_ids: Vec<CommentId>| -> Result<()> {
-            client
-                .delete_comments(&source, &comment_ids)
-                .context("Operation to delete comments failed")?;
+            // Delete comments individually using OpenAPI
+            for comment_id in &comment_ids {
+                delete_comment(config, &source.owner, &source.name)
+                    .context(format!("Operation to delete comment {} failed", comment_id))?;
+            }
             statistics.increment_deleted(comment_ids.len());
             Ok(())
         };
 
-        client
-            .get_comments_iter(
-                &source.full_name(),
-                Some(CommentsIter::MAX_PAGE_SIZE),
-                timerange,
-            )
-            .try_for_each(|page| -> Result<()> {
+        get_comments_iter(
+            config,
+            source.owner.clone(),
+            source.name.clone(),
+            Some(CommentsIter::MAX_PAGE_SIZE),
+            timerange,
+        )
+        .try_for_each(|page| -> Result<()> {
                 let page = page.context("Operation to get comments failed")?;
                 let num_comments = page.len();
                 let comment_ids = page
                     .into_iter()
                     .filter_map(|comment| {
-                        if !include_annotated && comment.has_annotations {
+                        if !include_annotated && comment.has_annotations.unwrap_or(false) {
                             None
                         } else {
-                            Some(comment.id)
+                            Some(CommentId(comment.id))
                         }
                     })
                     .collect::<Vec<_>>();

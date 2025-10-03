@@ -7,10 +7,27 @@
 //! automatically splits the batch into individual requests and retries them, allowing partial
 //! success instead of complete failure.
 
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use anyhow::{Context, Result};
-use openapi::apis::{Error as OpenApiError, ResponseContent};
 use log::debug;
+
+// OpenAPI client types
+use openapi::apis::{Error as OpenApiError, ResponseContent};
+use openapi::models::{
+    // Comments API types
+    AddCommentsRequest,
+    AddCommentsResponse,
+    SyncCommentsRequest,
+    SyncCommentsResponse,
+    sync_comments_response,
+    
+    // Emails API types  
+    AddEmailsToBucketRequest,
+    AddEmailsToBucketResponse,
+    SyncRawEmailsRequest,
+    SyncRawEmailsResponse,
+    sync_raw_emails_response,
+};
 
 /// Result of a split-on-failure operation
 #[derive(Debug, Clone)]
@@ -158,7 +175,7 @@ fn convert_openapi_error<T: Debug>(error: OpenApiError<T>) -> anyhow::Error {
         OpenApiError::Serde(e) => anyhow::Error::new(e).context("JSON serialization error"),
         OpenApiError::Io(e) => anyhow::Error::new(e).context("I/O error"),
         OpenApiError::ResponseError(ResponseContent { status, content, .. }) => {
-            anyhow::anyhow!("API error {}: {}", status, content)
+            anyhow::anyhow!("error in response: status code {}: {}", status, content)
         }
     }
 }
@@ -167,11 +184,13 @@ fn convert_openapi_error<T: Debug>(error: OpenApiError<T>) -> anyhow::Error {
 // Trait implementations for common OpenAPI request/response types
 // =============================================================================
 
-// Comments
-impl SplittableOpenApiRequest for openapi::models::AddCommentsRequest {
+// =============================================================================
+// Comments API implementations
+// =============================================================================
+impl SplittableOpenApiRequest for AddCommentsRequest {
     fn split_request(self) -> Vec<Self> {
         self.comments.into_iter()
-            .map(|comment| openapi::models::AddCommentsRequest::new(vec![comment]))
+            .map(|comment| AddCommentsRequest::new(vec![comment]))
             .collect()
     }
     
@@ -180,10 +199,10 @@ impl SplittableOpenApiRequest for openapi::models::AddCommentsRequest {
     }
 }
 
-impl SplittableOpenApiRequest for openapi::models::SyncCommentsRequest {
+impl SplittableOpenApiRequest for SyncCommentsRequest {
     fn split_request(self) -> Vec<Self> {
         self.comments.into_iter()
-            .map(|comment| openapi::models::SyncCommentsRequest::new(vec![comment]))
+            .map(|comment| SyncCommentsRequest::new(vec![comment]))
             .collect()
     }
     
@@ -192,16 +211,16 @@ impl SplittableOpenApiRequest for openapi::models::SyncCommentsRequest {
     }
 }
 
-impl MergeableOpenApiResponse for openapi::models::AddCommentsResponse {
+impl MergeableOpenApiResponse for AddCommentsResponse {
     fn merge_response(self, _other: Self) -> Self {
-        // AddCommentsResponse only has status, so just return self
+        // AddCommentsResponse only contains status information, no numerical data to merge
         self
     }
 }
 
-impl MergeableOpenApiResponse for openapi::models::SyncCommentsResponse {
+impl MergeableOpenApiResponse for SyncCommentsResponse {
     fn merge_response(self, other: Self) -> Self {
-        openapi::models::SyncCommentsResponse::new(
+        SyncCommentsResponse::new(
             self.status, // Status should be the same for all successful responses
             self.updated + other.updated,
             self.updated_properties_only + other.updated_properties_only,
@@ -212,18 +231,24 @@ impl MergeableOpenApiResponse for openapi::models::SyncCommentsResponse {
     }
     
     fn empty_response() -> Self {
-        openapi::models::SyncCommentsResponse::new(
-            openapi::models::sync_comments_response::Status::Ok,
-            0, 0, 0, 0, 0
+        SyncCommentsResponse::new(
+            sync_comments_response::Status::Ok,
+            0, // updated
+            0, // updated_properties_only
+            0, // updated_text_changed
+            0, // unchanged
+            0, // new
         )
     }
 }
 
-// Emails
-impl SplittableOpenApiRequest for openapi::models::AddEmailsToBucketRequest {
+// =============================================================================
+// Emails API implementations
+// =============================================================================
+impl SplittableOpenApiRequest for AddEmailsToBucketRequest {
     fn split_request(self) -> Vec<Self> {
         self.emails.into_iter()
-            .map(|email| openapi::models::AddEmailsToBucketRequest::new(vec![email]))
+            .map(|email| AddEmailsToBucketRequest::new(vec![email]))
             .collect()
     }
     
@@ -232,19 +257,21 @@ impl SplittableOpenApiRequest for openapi::models::AddEmailsToBucketRequest {
     }
 }
 
-impl MergeableOpenApiResponse for openapi::models::AddEmailsToBucketResponse {
+impl MergeableOpenApiResponse for AddEmailsToBucketResponse {
     fn merge_response(self, _other: Self) -> Self {
-        // AddEmailsToBucketResponse only has status, so just return self
+        // AddEmailsToBucketResponse only contains status information, no numerical data to merge
         self
     }
 }
 
-// Raw emails
-impl SplittableOpenApiRequest for openapi::models::SyncRawEmailsRequest {
+// =============================================================================
+// Raw emails API implementations
+// =============================================================================
+impl SplittableOpenApiRequest for SyncRawEmailsRequest {
     fn split_request(self) -> Vec<Self> {
         self.documents.into_iter()
             .map(|document| {
-                let mut request = openapi::models::SyncRawEmailsRequest::new(vec![document]);
+                let mut request = SyncRawEmailsRequest::new(vec![document]);
                 request.include_comments = self.include_comments;
                 request.transform_tag = self.transform_tag.clone();
                 request.override_user_properties = self.override_user_properties.clone();
@@ -258,20 +285,28 @@ impl SplittableOpenApiRequest for openapi::models::SyncRawEmailsRequest {
     }
 }
 
-impl MergeableOpenApiResponse for openapi::models::SyncRawEmailsResponse {
+impl MergeableOpenApiResponse for SyncRawEmailsResponse {
     fn merge_response(self, other: Self) -> Self {
-        openapi::models::SyncRawEmailsResponse::new(
-            self.status, // Status should be the same
+        // Note: SyncRawEmailsResponse has additional fields (updated_properties_only, updated_text_changed)
+        // that aren't available in this merge context, so we set them to 0
+        SyncRawEmailsResponse::new(
+            self.status, // Status should be the same for all successful responses
             self.updated + other.updated,
+            0, // updated_properties_only - not tracked during split operations
+            0, // updated_text_changed - not tracked during split operations
             self.unchanged + other.unchanged,
             self.new + other.new,
         )
     }
     
     fn empty_response() -> Self {
-        openapi::models::SyncRawEmailsResponse::new(
-            openapi::models::sync_raw_emails_response::Status::Ok,
-            0, 0, 0
+        SyncRawEmailsResponse::new(
+            sync_raw_emails_response::Status::Ok,
+            0, // updated
+            0, // updated_properties_only
+            0, // updated_text_changed
+            0, // unchanged
+            0, // new
         )
     }
 }

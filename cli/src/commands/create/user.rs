@@ -2,15 +2,15 @@ use anyhow::{Context, Result};
 use openapi::{
     apis::{
         configuration::Configuration,
-        users_api::{create_user, send_welcome_email},
+        users_api::create_user,
     },
-    models::{CreateUserRequest, GlobalPermission, ProjectPermission, UserNew, User},
+    models::{CreateUserRequest, UserNew},
 };
 use std::collections::hash_map::HashMap;
 use structopt::StructOpt;
 
 use crate::printer::Printer;
-use crate::utils::ProjectName;
+use crate::utils::{GlobalPermission, ProjectName, ProjectPermission};
 
 #[derive(Debug, StructOpt)]
 pub struct CreateUserArgs {
@@ -50,9 +50,11 @@ pub fn create(config: &Configuration, args: &CreateUserArgs, printer: &Printer) 
     } = args;
 
     let organisation_permissions = match (project, project_permissions_list) {
-        (Some(project), permissions) if !permissions.is_empty() => maplit::hashmap!(
-            project.clone() => permissions.iter().cloned().collect()
-        ),
+        (Some(project), permissions) if !permissions.is_empty() => {
+            let mut map = HashMap::new();
+            map.insert(project.0.clone(), permissions.iter().map(|p| p.0.clone()).collect());
+            map
+        },
         (None, permissions) if permissions.is_empty() => HashMap::new(),
         _ => {
             anyhow::bail!(
@@ -64,8 +66,16 @@ pub fn create(config: &Configuration, args: &CreateUserArgs, printer: &Printer) 
     let user_new = UserNew {
         username: username.clone(),
         email: email.clone(),
-        global_permissions: if global_permissions.is_empty() { None } else { Some(global_permissions.clone()) },
-        organisation_permissions,
+        global_permissions: if global_permissions.is_empty() { 
+            None 
+        } else { 
+            Some(global_permissions.iter().map(|p| p.0.clone()).collect()) 
+        },
+        organisation_permissions: if organisation_permissions.is_empty() { 
+            None 
+        } else { 
+            Some(organisation_permissions) 
+        },
     };
 
     let request = CreateUserRequest {
@@ -85,11 +95,11 @@ pub fn create(config: &Configuration, args: &CreateUserArgs, printer: &Printer) 
     );
 
     if *send_welcome_email {
-        send_welcome_email(config, &user.id)
+        openapi::apis::users_api::send_welcome_email(config, &user.id)
             .context("Operation to send welcome email failed")?;
         log::info!("Welcome email sent for user '{}'", user.username);
     }
 
-    printer.print_resources(&[user])?;
+    printer.print_resources(&[*user])?;
     Ok(())
 }

@@ -13,7 +13,7 @@ Method | HTTP request | Description
 
 ## add_emails_to_bucket
 
-> models::AddEmailsToBucketResponse add_emails_to_bucket(owner, bucket_name, add_emails_to_bucket_request)
+> models::AddEmailsToBucketResponse add_emails_to_bucket(owner, bucket_name, add_emails_to_bucket_request, no_charge)
 Add emails to bucket
 
 Add emails to bucket
@@ -26,6 +26,7 @@ Name | Type | Description  | Required | Notes
 **owner** | **String** |  | [required] |
 **bucket_name** | **String** |  | [required] |
 **add_emails_to_bucket_request** | [**AddEmailsToBucketRequest**](AddEmailsToBucketRequest.md) |  | [required] |
+**no_charge** | Option<**bool**> | If set to true, bypasses billing for this request. **For internal use only** - requires DEBUG permission or the 'billing-no-charge' feature flag to be enabled. |  |
 
 ### Return type
 

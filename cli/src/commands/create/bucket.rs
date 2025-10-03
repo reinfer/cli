@@ -7,7 +7,7 @@ use openapi::{
         configuration::Configuration,
         buckets_api::create_bucket,
     },
-    models::BucketType,
+    models::{bucket_new::BucketType, BucketNew, CreateBucketRequest},
 };
 use structopt::StructOpt;
 
@@ -21,9 +21,9 @@ pub struct CreateBucketArgs {
     /// Set the title of the new bucket
     title: Option<String>,
 
-    #[structopt(default_value, long = "type")]
+    #[structopt(default_value = "emails", long = "type")]
     /// Set the type of the new bucket. Currently, this must be "emails".
-    bucket_type: BucketType,
+    bucket_type: String,
 }
 
 pub fn create(config: &Configuration, args: &CreateBucketArgs, printer: &Printer) -> Result<()> {
@@ -33,12 +33,17 @@ pub fn create(config: &Configuration, args: &CreateBucketArgs, printer: &Printer
         bucket_type,
     } = args;
 
-    let bucket_new = models::BucketNew {
-        title,
-        bucket_type: Some(bucket_type),
+    let parsed_bucket_type = match bucket_type.as_str() {
+        "emails" => BucketType::Emails,
+        _ => anyhow::bail!("Invalid bucket type '{}'. Currently, only 'emails' is supported.", bucket_type),
     };
 
-    let create_request = models::CreateBucketRequest {
+    let bucket_new = BucketNew {
+        title: title.clone(),
+        bucket_type: Some(parsed_bucket_type),
+    };
+
+    let create_request = CreateBucketRequest {
         bucket: Box::new(bucket_new),
     };
 

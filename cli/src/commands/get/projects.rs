@@ -2,13 +2,15 @@ use anyhow::{Context, Result};
 use openapi::{
     apis::{
         configuration::Configuration,
-        projects_api::{get_project, get_projects},
-    },
-    models::ProjectName,
+        projects_api::{get_project, get_all_projects},
+    }
 };
 use structopt::StructOpt;
 
-use crate::printer::Printer;
+use crate::{
+    printer::Printer,
+    utils::ProjectName,
+};
 
 #[derive(Debug, StructOpt)]
 pub struct GetProjectsArgs {
@@ -20,11 +22,11 @@ pub struct GetProjectsArgs {
 pub fn get(config: &Configuration, args: &GetProjectsArgs, printer: &Printer) -> Result<()> {
     let GetProjectsArgs { project } = args;
     let projects = if let Some(project) = project {
-        vec![get_project(config, &project.0)
+        vec![*get_project(config, &project.0)
             .context("Operation to list projects has failed.")?
             .project]
     } else {
-        let mut projects = get_projects(config)
+        let mut projects = get_all_projects(config, None)
             .context("Operation to list projects has failed.")?
             .projects;
         projects.sort_unstable_by(|lhs, rhs| lhs.name.cmp(&rhs.name));

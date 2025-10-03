@@ -13,14 +13,18 @@ use openapi::{
         datasets_api::get_dataset,
         sources_api::{get_source, get_source_by_id},
     },
-    models::{CommentId, DatasetFullName, EitherLabelling, Label, Message, MessageBody, NewComment, NewLabelling, Sentiment, Source, DEFAULT_LABEL_GROUP_NAME},
+    models::{Label, LabelSentiment, Source, CommentNew, GroupLabellingsRequest, Message, MessageRichText, group_labellings_request::Group},
 };
 use scoped_threadpool::Pool;
 use serde::Deserialize;
 use std::sync::{mpsc::channel, Arc};
 use std::path::PathBuf;
 use structopt::StructOpt;
-use crate::utils::resource_identifier::{DatasetIdentifier, SourceIdentifier};
+use crate::utils::{
+    resource_identifier::{DatasetIdentifier, SourceIdentifier},
+    DatasetFullName,
+};
+
 
 const UPLOAD_BATCH_SIZE: usize = 4;
 
@@ -51,7 +55,7 @@ pub struct AicClassificationRecord {
 
 #[allow(clippy::too_many_arguments)]
 fn send_comments_if_needed(
-    comments: &mut Vec<NewComment>,
+    comments: &mut Vec<CommentNew>,
     annotations: &mut Vec<NewAnnotation>,
     force_send: bool,
     pool: &mut Pool,
@@ -142,38 +146,36 @@ pub fn parse(config: &Configuration, args: &ParseAicClassificationCsvArgs, pool:
 
     let headers = reader.headers()?.clone();
 
-    let mut comments: Vec<NewComment> = Vec::new();
+    let mut comments: Vec<CommentNew> = Vec::new();
     let mut annotations: Vec<NewAnnotation> = Vec::new();
     for (idx, row) in reader.records().enumerate() {
         match row {
             Ok(row) => {
                 let record: AicClassificationRecord = row.deserialize(Some(&headers))?;
-                let comment_id = CommentId(idx.to_string());
+                let comment_id_str = idx.to_string();
 
-                comments.push(NewComment {
-                    id: comment_id.clone(),
-                    timestamp: chrono::Utc::now(),
-                    messages: vec![Message {
-                        body: MessageBody {
-                            text: record.input,
-                            ..Default::default()
-                        },
+                comments.push(CommentNew {
+                    id: comment_id_str.clone(),
+                    timestamp: Some(chrono::Utc::now().to_rfc3339()),
+                    messages: Some(vec![Message {
+                        body: Box::new(MessageRichText::new(record.input)),
                         ..Default::default()
-                    }],
+                    }]),
                     ..Default::default()
                 });
                 annotations.push(NewAnnotation {
-                    comment: CommentIdComment { id: comment_id },
-                    labelling: Some(EitherLabelling::Labelling(vec![NewLabelling {
-                        group: DEFAULT_LABEL_GROUP_NAME.clone(),
+                    comment: CommentIdComment { id: comment_id_str },
+                    labelling: Some(vec![GroupLabellingsRequest {
+                        group: Some(Group::Default),
                         assigned: Some(vec![Label {
                             name: record.target,
-                            sentiment: Sentiment::Positive,
+                            sentiment: LabelSentiment::Positive,
                             metadata: None,
                             instructions: None,
                         }]),
                         dismissed: None,
-                    }])),
+                        uninformative: None,
+                    }]),
                     entities: None,
                     moon_forms: None,
                 });
@@ -186,7 +188,7 @@ pub fn parse(config: &Configuration, args: &ParseAicClassificationCsvArgs, pool:
                     config,
                     &source,
                     &statistics,
-                    &dataset.full_name(),
+                    &format!("{}/{}", dataset.owner, dataset.name).parse::<DatasetFullName>()?,
                     *no_charge,
                 )?;
                 statistics.increment_processed()
@@ -206,7 +208,7 @@ pub fn parse(config: &Configuration, args: &ParseAicClassificationCsvArgs, pool:
         config,
         &source,
         &statistics,
-        &dataset.full_name(),
+        &format!("{}/{}", dataset.owner, dataset.name).parse::<DatasetFullName>()?,
         *no_charge,
     )?;
 

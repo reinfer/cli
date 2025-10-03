@@ -32,7 +32,7 @@ pub fn get(config: &Configuration, args: &GetIntegrationsArgs, printer: &Printer
     if let Some(name) = name {
         let response = get_integration(config, name.owner(), name.name())
             .context("Failed to get integration")?;
-        integrations = vec![response.integration];
+        integrations = vec![*response.integration];
     } else {
         let response = get_all_integrations(config)
             .context("Failed to get integrations")?;

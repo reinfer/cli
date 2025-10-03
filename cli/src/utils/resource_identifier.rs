@@ -70,14 +70,6 @@ impl ResourceIdentifier {
             ResourceIdentifier::FullName(_) => None,
         }
     }
-
-    /// Get the full name if this is a FullName resource identifier
-    pub fn full_name(&self) -> Option<&FullName> {
-        match self {
-            ResourceIdentifier::FullName(full_name) => Some(full_name),
-            ResourceIdentifier::Id(_) => None,
-        }
-    }
 }
 
 impl std::fmt::Display for ResourceIdentifier {

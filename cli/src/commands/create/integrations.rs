@@ -8,14 +8,14 @@ use openapi::{
     apis::{
         configuration::Configuration,
         integrations_api::{
-            create_integration, get_all_integrations, get_integration, update_integration,
+            create_integration, get_integration, update_integration,
         },
     },
     models::{CreateIntegrationRequest, IntegrationNew, Integration, UpdateIntegrationRequest},
 };
 use structopt::StructOpt;
 
-use crate::utils::{FullName as IntegrationFullName, resource_identifier::IntegrationIdentifier};
+use crate::utils::FullName as IntegrationFullName;
 
 #[derive(Debug, StructOpt)]
 pub struct CreateIntegrationArgs {
@@ -72,8 +72,8 @@ fn overwrite_integration(
     old_integration: &Integration,
 ) -> Result<()> {
     // Check if the updatable fields are the same
-    let fields_are_same = old_integration.title == new_integration.title
-        && old_integration.configuration == new_integration.configuration
+    let fields_are_same = Some(&old_integration.title) == new_integration.title.as_ref()
+        && Some(Some(&old_integration.configuration)) == new_integration.configuration.as_ref().map(|c| c.as_ref())
         && old_integration.enabled == new_integration.enabled.unwrap_or(true);
 
     if fields_are_same {

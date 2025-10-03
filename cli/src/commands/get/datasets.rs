@@ -53,7 +53,7 @@ pub fn get(
     } = args;
     let mut datasets = if let Some(dataset) = dataset {
         let dataset_response = match &dataset {
-            DatasetIdentifier::Id(id) => {
+            DatasetIdentifier::Id(_id) => {
                 // For now, we'll need to get dataset by ID - this might need a different API call
                 return Err(anyhow::anyhow!("Dataset lookup by ID is not supported. Please use the full name format 'owner/dataset'"));
             }
@@ -62,7 +62,7 @@ pub fn get(
                     .context("Operation to list datasets has failed.")?
             }
         };
-        vec![dataset_response.dataset]
+        vec![*dataset_response.dataset]
     } else {
         let response = get_all_datasets(config)
             .context("Operation to list datasets has failed.")?;
@@ -119,12 +119,12 @@ pub fn get(
                     let response = get_dataset_statistics(config, &dataset.owner, &dataset.name, request)
                         .context("Could not get statistics for dataset")?;
 
-                    // Get validation (equivalent to get_latest_validation)
+                    // Get validation data to show validation status
                     let validation_response = get_validation(config, &dataset.owner, &dataset.name, "latest", None).ok();
 
                     Ok(DatasetWithStats {
                         dataset: dataset.clone(),
-                        stats: response.statistics,
+                        stats: *response.statistics,
                         validation: validation_response,
                     })
                 };
@@ -144,8 +144,26 @@ pub fn get(
             dataset_stats.push(result?);
         }
 
-        printer.print_resources(&dataset_stats)
+        // Convert to PrintableDatasetWithStats for display
+        let printable_datasets: Vec<crate::printer::PrintableDatasetWithStats> = dataset_stats
+            .into_iter()
+            .map(|ds| crate::printer::PrintableDatasetWithStats {
+                dataset: ds.dataset,
+                stats: Some(ds.stats),
+                validation: ds.validation,
+            })
+            .collect();
+        printer.print_resources(&printable_datasets)
     } else {
-        printer.print_resources(&datasets)
+        // Convert to PrintableDatasetWithStats for display (without stats)
+        let printable_datasets: Vec<crate::printer::PrintableDatasetWithStats> = datasets
+            .into_iter()
+            .map(|dataset| crate::printer::PrintableDatasetWithStats {
+                dataset,
+                stats: None,
+                validation: None, // No validation without stats request
+            })
+            .collect();
+        printer.print_resources(&printable_datasets)
     }
 }

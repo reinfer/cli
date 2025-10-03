@@ -12,8 +12,8 @@ use pst::ParsePstArgs;
 use openapi::{
     apis::{
         configuration::Configuration,
-        comments_api::sync_comments,
-        emails_api::{add_emails_to_bucket, sync_raw_emails},
+        comments_api::{sync_comments, sync_raw_emails},
+        emails_api::add_emails_to_bucket,
         buckets_api::{get_bucket, get_bucket_by_id},
     },
     models::{
@@ -177,7 +177,7 @@ fn upload_batch_of_new_emails(
     };
     
     let request = AddEmailsToBucketRequest::new(emails.to_vec());
-    add_emails_to_bucket(config, &bucket_info.owner, &bucket_info.name, request)
+    add_emails_to_bucket(config, &bucket_info.owner, &bucket_info.name, request, Some(no_charge))
         .context("Failed to add emails to bucket")?;
     
     statistics.add_uploaded(emails.len());
@@ -195,7 +195,7 @@ fn upload_batch_of_documents(
     let mut request = SyncRawEmailsRequest::new(documents.to_vec());
     request.transform_tag = Some(transform_tag.as_str().to_string());
     
-    sync_raw_emails(config, &source.owner, &source.name, request)
+    sync_raw_emails(config, &source.owner, &source.name, request, Some(no_charge))
         .context("Failed to sync raw emails")?;
     
     statistics.add_uploaded(documents.len());
@@ -206,12 +206,12 @@ fn upload_batch_of_comments(
     config: &Configuration,
     source: &Source,
     comments: &[CommentNew],
-    _no_charge: bool,
+    no_charge: bool,
     statistics: &Statistics,
 ) -> Result<()> {
     let request = SyncCommentsRequest::new(comments.to_vec());
 
-    sync_comments(config, &source.owner, &source.name, request)
+    sync_comments(config, &source.owner, &source.name, request, Some(no_charge))
         .context("Failed to sync comments")?;
     
     statistics.add_uploaded(comments.len());

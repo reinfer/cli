@@ -6,7 +6,7 @@ use openapi::{
     apis::{
         configuration::Configuration,
         datasets_api::create_dataset,
-        sources_api::{get_source, get_source_by_id},
+        sources_api::get_source,
     },
     models::{
         CreateDatasetRequest, DatasetNew, DatasetFlag, EntityDefNew, GeneralFieldDefNew,
@@ -178,7 +178,7 @@ pub fn create(config: &Configuration, args: &CreateDatasetArgs, printer: &Printe
             Some(general_fields.clone())
         },
         label_defs: if let Some(label_defs) = label_defs {
-            Some(label_defs.clone())
+            Some(label_defs.to_vec())
         } else {
             None
         },

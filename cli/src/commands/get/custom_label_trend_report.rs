@@ -16,34 +16,28 @@ use csv::Writer;
 use dialoguer::{FuzzySelect, Input, MultiSelect};
 use log::{info, warn};
 use ordered_float::NotNan;
+use structopt::StructOpt;
+
 use openapi::{
     apis::{
         configuration::Configuration,
-        datasets_api::{get_dataset, get_all_datasets_in_project},
-        comments_api::query_comments,
+        datasets_api::{get_all_datasets, get_dataset_statistics, get_dataset_summary},
+        models_api::{get_all_models_in_dataset, get_comment_predictions},
     },
     models::{
-        self, Dataset, LabelDef, CommentFilter, CommentTimestampFilter, 
-        QueryCommentsRequest, QueryCommentsOrderSample, QueryCommentsResponse,
-        GetDatasetStatisticsRequest, UserPropertiesFilter as OpenAPIUserPropertiesFilter,
-        Order,
+        self, AnnotatedComment, CommentFilter, Dataset, GetAllModelsInDatasetRequest,
+        GetCommentPredictionsRequest, GetDatasetStatisticsRequest, LabelDef, LabellingGroup,
+        Order, QueryCommentsOrderSample, QueryCommentsRequest, TimestampRangeFilter,
+        TriggerLabelThreshold, labelling_group::Group, _query_comments_order_sample::Kind,
     },
 };
 
-// For now, we'll need some compatibility types until full migration
-use reinfer_client::{
-    AnnotatedComment, Entities, LabelName, Labelling, ModelVersion, PredictedLabel, 
-    Prediction, TriggerLabelThreshold, DEFAULT_LABEL_GROUP_NAME,
-};
-use structopt::StructOpt;
-
 use crate::{
-    commands::get::comments::get_user_properties_filter_interactively,
+    commands::get::comments::{get_user_properties_filter_interactively, DEFAULT_QUERY_PAGE_SIZE},
     printer::Printer,
     progress::{Options as ProgressOptions, Progress},
+    utils::{get_dataset_query_iter, LabelName, ModelVersion, UserPropertiesFilter, query_comments_csv::query_comments_csv},
 };
-
-use super::comments::DEFAULT_QUERY_PAGE_SIZE;
 
 const PATH_PRINT_SEPERATOR: &str = "\n - ";
 const OUTPUT_FOLDER_PREFIX: &str = "LabelTrendReport";
@@ -61,25 +55,10 @@ struct LabelTrendReportParams {
     pub thresholds: HashMap<LabelName, TriggerLabelThreshold>,
 }
 
-impl LabelTrendReportParams {
-    pub fn get_query_request_params(&self, limit: Option<usize>) -> QueryRequestParams {
-        QueryRequestParams {
-            continuation: None,
-            filter: get_comment_filter(
-                self.start_timestamp,
-                self.end_timestamp,
-                self.user_property_filters.clone(),
-            ),
-            limit,
-            order: OrderEnum::Sample { seed: 42 },
-            ..Default::default()
-        }
-    }
-}
-
 pub fn get_dataset_selection(config: &Configuration) -> Result<Box<Dataset>> {
     info!("Getting datasets...");
-    let datasets = client.get_datasets()?;
+    let datasets_response = get_all_datasets(config)?;
+    let datasets = datasets_response.datasets;
 
     let dataset_selection = FuzzySelect::new()
         .with_prompt("Which dataset do you want to run this report for?")
@@ -87,7 +66,7 @@ pub fn get_dataset_selection(config: &Configuration) -> Result<Box<Dataset>> {
             &datasets
                 .iter()
                 .map(|dataset| format!("{}/{}", dataset.owner, dataset.name))
-                .collect::<Vec<String>>(),
+            .collect::<Vec<String>>(),
         )
         .interact()?;
 
@@ -108,7 +87,7 @@ pub fn pop_label_selection(prompt: &str, label_defs: &mut Vec<LabelDef>) -> Resu
     Ok(label_inclusion_selections
         .iter()
         .rev()
-        .map(|selection| LabelName(label_defs.remove(*selection).name))
+        .map(|selection| LabelName::new(label_defs.remove(*selection).name))
         .collect())
 }
 
@@ -117,10 +96,17 @@ fn get_dataset_info(
     dataset: &Dataset,
 ) -> Result<(models::GetDatasetSummaryResponse, Vec<models::UserModelMetadata>)> {
     info!("Getting dataset summary...");
-    let summary_response = openapi::apis::datasets_api::get_dataset_summary(config, &dataset.owner, &dataset.name, models::GetDatasetSummaryRequest::default())?;
+    let summary_response = get_dataset_summary(config, &dataset.owner, &dataset.name, models::GetDatasetSummaryRequest::default())?;
 
     info!("Getting labellers...");
-    let labellers = client.get_labellers(&dataset.full_name())?;
+    let models_request = GetAllModelsInDatasetRequest::new();
+    let models_response = get_all_models_in_dataset(
+        config, 
+        &dataset.owner, 
+        &dataset.name, 
+        models_request
+    )?;
+    let labellers = models_response.labellers;
 
     if labellers.is_empty() {
         bail!("Cannot get a label trend report for a dataset without any pinned models")
@@ -149,7 +135,6 @@ fn get_threshold_for_label_selections(
                             Err("Please enter a number between 0 and 1")
                         }
                     }
-
                     Err(_) => Err("Please enter a number between 0 and 1"),
                 })
                 .interact()
@@ -163,7 +148,7 @@ fn get_threshold_for_label_selections(
             (
                 label_name.clone(),
                 TriggerLabelThreshold {
-                    threshold,
+                    threshold: Some(threshold.into_inner()),
                     name: label_name
                         .0
                         .split(" > ")
@@ -233,11 +218,11 @@ fn get_comment_filter(
     user_property_filters: UserPropertiesFilter,
 ) -> CommentFilter {
     CommentFilter {
-        timestamp: Some(CommentTimestampFilter {
-            minimum: Some(start_timestamp),
-            maximum: Some(end_timestamp),
-        }),
-        user_properties: Some(user_property_filters.clone()),
+        timestamp: Some(Box::new(TimestampRangeFilter {
+            minimum: Some(start_timestamp.to_rfc3339()),
+            maximum: Some(end_timestamp.to_rfc3339()),
+        })),
+        user_properties: Some(serde_json::to_value(user_property_filters).unwrap()),
         ..Default::default()
     }
 }
@@ -247,18 +232,18 @@ pub fn get_comment_count(
     dataset: &Dataset,
     comment_filter: CommentFilter,
 ) -> Result<u64> {
-    let stats_response = openapi::apis::datasets_api::get_dataset_statistics(
+    let stats_response = get_dataset_statistics(
         config,
         &dataset.owner,
         &dataset.name,
         GetDatasetStatisticsRequest {
-            comment_filter: Some(Box::new(comment_filter)),
+            comment_filter: Some(comment_filter),
             ..Default::default()
         },
     )
     .context("Operation to get dataset comment count has failed..")?;
 
-    Ok(stats_response.statistics.total_verbatims as u64)
+    Ok(stats_response.statistics.num_comments as u64)
 }
 
 pub fn get(
@@ -373,8 +358,7 @@ fn get_label_trend_report_from_json(
         ..
     } = params;
 
-    // Convert old query params to OpenAPI format
-    let mut request = QueryCommentsRequest {
+    let request = QueryCommentsRequest {
         continuation: None,
         limit: Some(DEFAULT_QUERY_PAGE_SIZE as i32),
         attribute_filters: None,
@@ -385,47 +369,51 @@ fn get_label_trend_report_from_json(
             params.user_property_filters.clone(),
         )),
         order: Box::new(Order::Sample(Box::new(QueryCommentsOrderSample {
-            kind: openapi::models::_query_comments_order_sample::Kind::Sample,
+            kind: Kind::Sample,
             seed: 42,
         }))),
     };
 
-    let mut total_processed = 0;
+    let query_iter = get_dataset_query_iter(
+        config.clone(),
+        dataset_owner.to_string(),
+        dataset_name.to_string(),
+        request,
+    );
 
-    // Use OpenAPI pagination pattern
-    loop {
-        if total_processed >= MAX_COMMENT_SAMPLE as usize {
-            break;
+    for page_result in query_iter.take(MAX_COMMENT_SAMPLE as usize) {
+        let page = page_result.context("Operation to get comments has failed.")?;
+        if page.is_empty() {
+            return Ok(());
         }
+        statistics.add_comments(page.len());
 
-        let response = query_comments(
+        let uids: Vec<String> = page.iter()
+            .map(|comment| comment.comment.uid.clone())
+            .collect();
+        
+        // Convert thresholds HashMap to Vec<TriggerLabelThreshold> for API request
+        let threshold_labels: Vec<TriggerLabelThreshold> = thresholds.values().cloned().collect();
+        
+        let prediction_request = GetCommentPredictionsRequest {
+            uids,
+            threshold: None, // Could set a global threshold here if needed
+            labels: if threshold_labels.is_empty() {
+                None
+            } else {
+                Some(threshold_labels)
+            },
+        };
+        
+        let predictions_response = get_comment_predictions(
             config,
             dataset_owner,
             dataset_name,
-            request.clone(),
-            None, // limit is already in the request
-            request.continuation.as_deref(),
-            None, // collapse_mode is already in the request
-            None, // order is already in the request
-        )
-        .context("Operation to get comments has failed.")?;
-
-        if response.results.is_empty() {
-            break;
-        }
-
-        let page = response.results;
-        statistics.add_comments(page.len());
-
-        let predictions: Vec<Prediction> = client
-            .get_comment_predictions(
-                dataset_name,
-                model_version,
-                page.iter().map(|comment| &comment.comment.uid),
-                None,
-                Some(thresholds.clone().into_values().collect()),
-            )
-            .context("Operation to get predictions has failed.")?;
+            &model_version.to_string(),
+            prediction_request,
+        ).context("Operation to get predictions has failed.")?;
+        
+        let predictions = predictions_response.predictions;
 
         let comments: Vec<_> = page
             .clone()
@@ -433,62 +421,53 @@ fn get_label_trend_report_from_json(
             .zip(predictions)
             .map(|(comment, prediction)| AnnotatedComment {
                 comment: comment.comment,
-                labelling: Some(vec![Labelling {
-                    group: DEFAULT_LABEL_GROUP_NAME.clone(),
+                labelling: vec![LabellingGroup {
+                    group: Group::Default,
+                    uninformative: None,
                     assigned: Vec::new(),
                     dismissed: Vec::new(),
-                    predicted: prediction.labels.map(|auto_threshold_labels| {
-                        auto_threshold_labels
-                            .iter()
-                            .map(|auto_threshold_label| PredictedLabel {
-                                name: auto_threshold_label.name.clone(),
-                                sentiment: None,
-                                probability: auto_threshold_label.probability,
-                                auto_thresholds: None,
-                            })
-                            .collect()
-                    }),
-                }]),
-                entities: Some(Entities {
+                    predicted: Some(prediction.labels),
+                }],
+                reviewable_blocks: None,
+                entities: prediction.entities.map(|entities| Box::new(models::Entities {
                     assigned: Vec::new(),
                     dismissed: Vec::new(),
-                    predicted: prediction.entities,
-                }),
+                    predicted: entities,
+                })),
                 thread_properties: None,
-                moon_forms: None,
+                trigger_exceptions: None,
                 label_properties: None,
+                moon_forms: None,
+                extractions: None,
+                highlights: None,
+                diagnostics: None,
+                model_version: None,
             })
             .collect();
 
         for comment in comments {
-            let predicted_labels = comment
-                .labelling
-                .context("Could not get labelling for comment")?[0]
-                .predicted
-                .clone()
-                .context("Could not get predicted labels for comment")?
-                .iter()
-                .map(|predicted| predicted.name.to_label_name())
-                .collect();
+            if comment.labelling.is_empty() {
+                continue;
+            }
+            let predicted_labels = if let Some(predicted) = &comment.labelling[0].predicted {
+                predicted.iter()
+                    .map(|predicted| crate::utils::comment_utils::convert_boxed_name_to_label_name(&predicted.name))
+                    .collect()
+            } else {
+                continue;
+            };
 
             count_for_predicted_labels(
                 &predicted_labels,
                 labels_to_include,
                 labels_to_exclude,
                 &ModelVersionSelection::ModelVersion(model_version.clone()),
-                comment.comment.timestamp.date_naive(),
+                comment.comment.timestamp.parse::<chrono::DateTime<chrono::Utc>>().unwrap().date_naive(),
                 report,
             )
         }
 
         statistics.add_predicted(page.len());
-        total_processed += page.len();
-
-        // Update continuation for next iteration
-        request.continuation = response.continuation;
-        if request.continuation.is_none() {
-            break;
-        }
     }
     Ok(())
 }
@@ -501,17 +480,13 @@ fn count_for_predicted_labels(
     timestamp: NaiveDate,
     report: &mut Report,
 ) {
-    if predicted_labels.iter().any(|label| {
-        let name = label;
-        labels_to_exclude.contains(name)
-    }) {
+    if predicted_labels.iter().any(|label| labels_to_exclude.contains(label)) {
         return;
     }
 
     for label in predicted_labels {
         if labels_to_include.contains(label) {
             report.count_label(model_version, timestamp, label);
-            // only count each message once
             return;
         }
     }
@@ -565,11 +540,11 @@ fn has_exceeded_threshold(
     label: &LabelName,
     threshold: &TriggerLabelThreshold,
 ) -> bool {
-    let value_for_label_str: String = record[&label.0].clone();
+    let value_for_label_str: String = record[label.as_str()].clone();
     let value_for_label: f64 = value_for_label_str
         .parse()
         .unwrap_or_else(|_| panic!("Could not parse value '{value_for_label_str}' as f64"));
-    value_for_label > *threshold.threshold
+    value_for_label > threshold.threshold.unwrap_or(0.5)
 }
 
 fn get_label_trend_report_from_csv(
@@ -588,9 +563,29 @@ fn get_label_trend_report_from_csv(
         ..
     } = params;
 
-    let params = params.get_query_request_params(Some(limit as i32));
+    let query_request = QueryCommentsRequest {
+        filter: Some(get_comment_filter(
+            params.start_timestamp,
+            params.end_timestamp,
+            params.user_property_filters.clone(),
+        )),
+        order: Box::new(Order::Sample(Box::new(QueryCommentsOrderSample::new(
+            Kind::Sample,
+            42
+        )))),
+        ..Default::default()
+    };
 
-    let csv_string = client.query_dataset_csv(dataset_name, &params)?;
+    let csv_string = query_comments_csv(
+        config,
+        owner,
+        dataset_name,
+        query_request,
+        Some(limit as i32),
+        None,
+        None,
+        None,
+    )?;
 
     let mut rdr = csv::Reader::from_reader(csv_string.as_bytes());
 
@@ -706,7 +701,7 @@ impl Report {
             wtr.write_record(
                 vec!["date".to_string()]
                     .into_iter()
-                    .chain(self.labels.iter().map(|label| label.0.clone())),
+                    .chain(self.labels.iter().map(|label| label.as_str().to_string())),
             )?;
 
             for date in date_range {

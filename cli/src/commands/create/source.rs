@@ -1,14 +1,14 @@
-use crate::printer::Printer;
-use crate::utils::{BucketIdentifier, FullName, TransformTag};
 use anyhow::{Context, Result};
 use log::info;
 use structopt::StructOpt;
 
+use crate::printer::Printer;
+use crate::utils::{resource_identifier::BucketIdentifier, FullName, transform_tag::TransformTag};
 use openapi::{
     apis::{
+        buckets_api::get_bucket,
         configuration::Configuration,
         sources_api::create_source,
-        buckets_api::get_bucket,
     },
     models,
 };
@@ -41,7 +41,7 @@ pub struct CreateSourceArgs {
 
     #[structopt(long = "kind")]
     /// Set the kind of the new source
-    kind: Option<models::SourceKind>,
+    kind: Option<String>,
 
     #[structopt(long = "transform-tag")]
     /// Set the transform tag of the new source
@@ -60,42 +60,55 @@ pub fn create(config: &Configuration, args: &CreateSourceArgs, printer: &Printer
         transform_tag,
     } = args;
 
-    let bucket_id = match bucket.to_owned() {
-        Some(BucketIdentifier::Id(bucket_id)) => Some(Some(bucket_id)),
-        Some(BucketIdentifier::FullName(_)) => {
-            // Get owner and name from the bucket identifier
-            let owner = bucket.as_ref().unwrap().owner()
-                .ok_or_else(|| anyhow::anyhow!("Failed to extract owner from bucket identifier"))?;
-            let bucket_name = bucket.as_ref().unwrap().name()
-                .ok_or_else(|| anyhow::anyhow!("Failed to extract name from bucket identifier"))?;
-            
-            // Get bucket by full name to get the ID
-            let bucket_response = get_bucket(config, owner, bucket_name)
+    let bucket_id = match bucket {
+        Some(BucketIdentifier::Id(bucket_id)) => Some(bucket_id.clone()),
+        Some(BucketIdentifier::FullName(bucket_name)) => {
+            let bucket_response = get_bucket(config, bucket_name.owner(), bucket_name.name())
                 .context("Failed to get bucket by full name")?;
-            Some(Some(bucket_response.bucket.id))
+            Some(bucket_response.bucket.id)
         }
         None => None,
     };
 
     // Convert language string to Language enum if provided
-    let language_enum = language.as_ref().map(|lang_str| {
-        match lang_str.as_str() {
+    let language_enum = if let Some(lang_str) = language {
+        Some(match lang_str.as_str() {
             "en" => models::Language::En,
             "de" => models::Language::De,
             "xlm" => models::Language::Xlm,
             _ => return Err(anyhow::anyhow!("Unsupported language: '{}'. Supported languages: en, de, xlm", lang_str)),
-        }
-    }).transpose()?;
+        })
+    } else {
+        None
+    };
 
-    // Create the source update request
+    // Parse the kind string if provided
+    let kind_enum = if let Some(kind_str) = kind {
+        Some(match kind_str.as_str() {
+            // Primary source types for communications mining
+            "email" => models::SourceKind::Unknown,
+            "comment" => models::SourceKind::Unknown,
+            // OpenAPI generated variants
+            "call" => models::SourceKind::Call,
+            "chat" => models::SourceKind::Chat,
+            "unknown" => models::SourceKind::Unknown,
+            "ixp_design" => models::SourceKind::IxpDesign,
+            "ixp_runtime" => models::SourceKind::IxpRuntime,
+            _ => return Err(anyhow::anyhow!("Invalid source kind: '{}'. Supported kinds: email, comment, call, chat, unknown, ixp_design, ixp_runtime", kind_str)),
+        })
+    } else {
+        None
+    };
+
+    // Create the source request
     let source_update = models::SourceUpdate {
-        _kind: kind.clone(),
-        language: language_enum,
         title: title.clone(),
         description: description.clone(),
+        language: language_enum,
         should_translate: *should_translate,
+        bucket_id: bucket_id.map(Some), // Convert Option<String> to Option<Option<String>>
         sensitive_properties: None,
-        bucket_id,
+        _kind: kind_enum,
         email_transform_tag: transform_tag.as_ref().map(|t| t.as_str().to_string()),
         email_transform_version: None,
     };
@@ -106,7 +119,7 @@ pub fn create(config: &Configuration, args: &CreateSourceArgs, printer: &Printer
 
     // Call the generated API
     let response = create_source(config, name.owner(), name.name(), create_request)
-        .context("Failed to create source")?;
+        .context("Operation to create a source has failed")?;
 
     let source = *response.source;
     
@@ -116,7 +129,6 @@ pub fn create(config: &Configuration, args: &CreateSourceArgs, printer: &Printer
         source.name,
         source.id
     );
-    
     printer.print_resources(&[source])?;
     Ok(())
 }

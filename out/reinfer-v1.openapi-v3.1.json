@@ -2936,6 +2936,19 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "no_charge",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "If set to true, bypasses billing for this request. **For internal use only** - requires DEBUG permission or the 'billing-no-charge' feature flag to be enabled.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
           }
         ],
         "requestBody": {
@@ -3186,6 +3199,19 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "no_charge",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "If set to true, bypasses billing for this request. **For internal use only** - requires DEBUG permission or the 'billing-no-charge' feature flag to be enabled.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
           }
         ],
         "requestBody": {
@@ -3273,6 +3299,19 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "no_charge",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "If set to true, bypasses billing for this request. **For internal use only** - requires DEBUG permission or the 'billing-no-charge' feature flag to be enabled.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
           }
         ],
         "requestBody": {
@@ -5962,6 +6001,19 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "no_charge",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "If set to true, bypasses billing for this request. **For internal use only** - requires DEBUG permission or the 'billing-no-charge' feature flag to be enabled.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
           }
         ],
         "requestBody": {
@@ -25922,8 +25974,8 @@
         "type": "object",
         "properties": {
           "id": {
-            "title": "ID",
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "name": {
             "title": "Name",
@@ -25994,8 +26046,8 @@
         "type": "object",
         "properties": {
           "id": {
-            "title": "Id",
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "color": {
             "title": "Color",

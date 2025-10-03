@@ -125,7 +125,7 @@ pub enum UploadCommentAttachmentError {
 
 
 /// Add a batch of comments. To overwrite existing comments, you need to specify the latest `context` field.
-pub fn add_comments(configuration: &configuration::Configuration, owner: &str, source_name: &str, add_comments_request: models::AddCommentsRequest) -> Result<models::AddCommentsResponse, Error<AddCommentsError>> {
+pub fn add_comments(configuration: &configuration::Configuration, owner: &str, source_name: &str, add_comments_request: models::AddCommentsRequest, no_charge: Option<bool>) -> Result<models::AddCommentsResponse, Error<AddCommentsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -133,6 +133,9 @@ pub fn add_comments(configuration: &configuration::Configuration, owner: &str, s
     let local_var_uri_str = format!("{}/api/_private/sources/{owner}/{source_name}/comments", local_var_configuration.base_path, owner=crate::apis::urlencode(owner), source_name=crate::apis::urlencode(source_name));
     let mut local_var_req_builder = local_var_client.request(reqwest::Method::PUT, local_var_uri_str.as_str());
 
+    if let Some(ref local_var_str) = no_charge {
+        local_var_req_builder = local_var_req_builder.query(&[("no_charge", &local_var_str.to_string())]);
+    }
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
         local_var_req_builder = local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
     }
@@ -453,7 +456,7 @@ pub fn sniff_csv(configuration: &configuration::Configuration, body: std::path::
 }
 
 /// Sync a batch of comments. Any comments with the same IDs in the source will be overwritten.
-pub fn sync_comments(configuration: &configuration::Configuration, owner: &str, source_name: &str, sync_comments_request: models::SyncCommentsRequest) -> Result<models::SyncCommentsResponse, Error<SyncCommentsError>> {
+pub fn sync_comments(configuration: &configuration::Configuration, owner: &str, source_name: &str, sync_comments_request: models::SyncCommentsRequest, no_charge: Option<bool>) -> Result<models::SyncCommentsResponse, Error<SyncCommentsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -461,6 +464,9 @@ pub fn sync_comments(configuration: &configuration::Configuration, owner: &str, 
     let local_var_uri_str = format!("{}/api/v1/sources/{owner}/{source_name}/sync", local_var_configuration.base_path, owner=crate::apis::urlencode(owner), source_name=crate::apis::urlencode(source_name));
     let mut local_var_req_builder = local_var_client.request(reqwest::Method::POST, local_var_uri_str.as_str());
 
+    if let Some(ref local_var_str) = no_charge {
+        local_var_req_builder = local_var_req_builder.query(&[("no_charge", &local_var_str.to_string())]);
+    }
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
         local_var_req_builder = local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
     }
@@ -527,7 +533,7 @@ pub fn sync_comments_from_csv(configuration: &configuration::Configuration, owne
 }
 
 /// Sync a batch of raw emails. Any comments with the same IDs in the source will be overwritten.
-pub fn sync_raw_emails(configuration: &configuration::Configuration, owner: &str, source_name: &str, sync_raw_emails_request: models::SyncRawEmailsRequest) -> Result<models::SyncRawEmailsResponse, Error<SyncRawEmailsError>> {
+pub fn sync_raw_emails(configuration: &configuration::Configuration, owner: &str, source_name: &str, sync_raw_emails_request: models::SyncRawEmailsRequest, no_charge: Option<bool>) -> Result<models::SyncRawEmailsResponse, Error<SyncRawEmailsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -535,6 +541,9 @@ pub fn sync_raw_emails(configuration: &configuration::Configuration, owner: &str
     let local_var_uri_str = format!("{}/api/v1/sources/{owner}/{source_name}/sync-raw-emails", local_var_configuration.base_path, owner=crate::apis::urlencode(owner), source_name=crate::apis::urlencode(source_name));
     let mut local_var_req_builder = local_var_client.request(reqwest::Method::POST, local_var_uri_str.as_str());
 
+    if let Some(ref local_var_str) = no_charge {
+        local_var_req_builder = local_var_req_builder.query(&[("no_charge", &local_var_str.to_string())]);
+    }
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
         local_var_req_builder = local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
     }

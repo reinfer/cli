@@ -4,12 +4,12 @@ use openapi::{
         configuration::Configuration,
         users_api::{get_user_by_id, get_users},
     },
-    models::{ProjectPermission, User},
+    models,
 };
 use structopt::StructOpt;
 
 use crate::printer::Printer;
-use crate::utils::{full_name::ProjectName, resource_identifier::UserIdentifier, get_current_user};
+use crate::utils::{ProjectName, ProjectPermission, resource_identifier::UserIdentifier, get_current_user};
 
 #[derive(Debug, StructOpt)]
 pub struct GetUsersArgs {
@@ -43,7 +43,7 @@ pub fn get(config: &Configuration, args: &GetUsersArgs, printer: &Printer) -> Re
                 UserIdentifier::Id(id) => {
                     let response = get_user_by_id(config, id)
                         .context("Operation to get user has failed.")?;
-                    response.user
+                    *response.user
                 }
                 UserIdentifier::FullName(_) => {
                     bail!("User lookup by full name is not supported. Please use user ID.")
@@ -64,7 +64,8 @@ pub fn get(config: &Configuration, args: &GetUsersArgs, printer: &Printer) -> Re
                 .get(project_name.as_str())
                 .is_some_and(|user_permissions| {
                     if let Some(project_permission) = project_permission_filter {
-                        user_permissions.contains(project_permission)
+                        let openapi_permission: models::ProjectPermission = project_permission.clone().into();
+                        user_permissions.contains(&openapi_permission)
                     } else {
                         true
                     }

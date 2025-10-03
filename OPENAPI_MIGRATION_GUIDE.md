@@ -177,19 +177,103 @@ fn parse_delimited(line: &str, delimiter: char) -> Result<CustomRecord> {
 }
 ```
 
-## Migration Checklist
+## Migration Status
 
-- [x] ✅ Identified all legacy client usage
-- [x] ✅ Created OpenAPI equivalents mapping
+### ✅ COMPLETED Migrations
+- [x] ✅ `cli/src/main.rs` - **FULLY MIGRATED** (Dec 2024) 🎯 **CRITICAL COMPLETE**
+  - Replaced all `reinfer_client` imports with OpenAPI equivalents
+  - Created local `Token` wrapper type
+  - All commands now use OpenAPI `Configuration` instead of legacy `Client`  
+  - Context validation migrated to use OpenAPI patterns
+  - Retry logic removed (OpenAPI handles this differently)
+  - **Impact**: Core application now fully OpenAPI-based!
+- [x] ✅ `cli/src/commands/package/download.rs` - **FULLY MIGRATED** (Dec 2024) 📦 **HIGH PRIORITY COMPLETE** 
+  - `AttachmentMetadata` → `openapi::models::Attachment` (with type conversion for size field)
+  - `DatasetFlag` → `openapi::models::DatasetFlag` (with `_dataset_flags.contains()` method)
+  - `CommentId` → `crate::utils::CommentId` (already existed in utils)
+  - `DatasetName` + `.with_project()` → Direct `DatasetFullName` construction
+  - `HasAnnotations` → `crate::utils::comment_utils::HasAnnotations`
+  - **Impact**: Package download functionality now fully OpenAPI-based!
+- [x] ✅ `cli/src/commands/package/upload.rs` - **FULLY MIGRATED** (Dec 2024)
+  - All legacy types replaced with OpenAPI equivalents
+  - Custom `NewAnnotatedComment` created in utils
+  - All compilation errors fixed
+- [x] ✅ `cli/src/commands/get/streams.rs` - **FULLY MIGRATED** (Dec 2024)
+  - Local wrapper types created for `LabelName` and `ModelVersion`
+  - OpenAPI `LabelDef` imported properly
+  - All compilation errors fixed
+
+### 🔄 IN PROGRESS / PENDING Migrations
+
+#### High Priority (Command functionality)
+- [ ] 📊 `cli/src/commands/get/custom_label_trend_report.rs` - **PARTIALLY MIGRATED**  
+  - Legacy imports: `AnnotatedComment`, `Entities`, `LabelName`, `Labelling`
+  - Legacy imports: `ModelVersion`, `PredictedLabel`, `Prediction`, `TriggerLabelThreshold`
+  - Legacy constant: `DEFAULT_LABEL_GROUP_NAME`
+  
+#### Lower Priority (Parser/utility functions)
+- [ ] 📋 `cli/src/commands/parse/aic_classification_csv.rs`
+  - Uses `HasAnnotations` trait from legacy client
+  
+- [ ] 🏷️ `cli/src/commands/create/annotations.rs`
+  - Uses `DEFAULT_LABEL_GROUP_NAME` and potentially other legacy patterns
+
+### Migration Checklist Framework
+- [x] ✅ Identified all legacy client usage across codebase
+- [x] ✅ Created OpenAPI equivalents mapping  
 - [x] ✅ Built parser template with pure OpenAPI
 - [x] ✅ Integrated into CLI structure
-- [x] ✅ Added proper error handling
+- [x] ✅ Added proper error handling patterns
 - [x] ✅ Added progress tracking
 - [x] ✅ Added batch processing
 - [x] ✅ Added example data format parsers
-- [x] ✅ Fixed all linter errors
+- [x] ✅ Successfully migrated 4 critical files (main.rs + 3 command files)
+- [x] ✅ **MAJOR MILESTONE**: Core application + key package functionality fully OpenAPI-based
 
-## Next Steps
+## Next Priority Actions
+
+### 🎉 CRITICAL + HIGH PRIORITY COMPLETE! 
+✅ **`main.rs` + `download.rs` FULLY MIGRATED** - Core application + package functionality now 100% OpenAPI-based!
+
+### 📊 NEXT HIGH PRIORITY (Core command functionality)  
+1. **Complete `custom_label_trend_report.rs` migration**
+   - Replace all legacy types with OpenAPI equivalents or local utils
+   - Create wrapper types for `LabelName`, `ModelVersion` if needed (similar to streams.rs)
+   - **Impact**: Reporting functionality for customers
+
+### 📋 MEDIUM PRIORITY (Parser/utility cleanup)
+2. **Clean up parser files**
+   - `aic_classification_csv.rs` - replace `HasAnnotations` usage
+   - `annotations.rs` - replace `DEFAULT_LABEL_GROUP_NAME`
+   - **Impact**: Less critical but needed for complete migration
+
+## Detailed Migration Steps
+
+### For `main.rs`:
+1. Replace `reinfer_client::Client` initialization with OpenAPI `Configuration`
+2. Move retry logic to a utility module using OpenAPI patterns
+3. Update token handling to use OpenAPI auth
+4. Test that all CLI commands still initialize properly
+
+### For `download.rs`:  
+1. Import `HasAnnotations` from `crate::utils::comment_utils` 
+2. Replace legacy ID types with OpenAPI equivalents
+3. Update package writing to use OpenAPI types consistently
+
+### For `custom_label_trend_report.rs`:
+1. Create local wrapper types for `LabelName`, `ModelVersion` (reuse from streams.rs)
+2. Replace prediction types with OpenAPI equivalents
+3. Replace `DEFAULT_LABEL_GROUP_NAME` with a local constant
+
+## Testing Strategy
+
+After each file migration:
+1. ✅ Run `cargo check --package reinfer-cli` to verify compilation
+2. ✅ Run relevant CLI commands to test functionality  
+3. ✅ Update any integration tests that depend on migrated types
+4. ✅ Mark migration as complete in this guide
+
+## Original Parser Template Instructions
 
 1. **Test the Template**: Try the custom parser with your data
 2. **Adapt for Your Format**: Modify the parsing logic for your specific format

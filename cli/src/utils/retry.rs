@@ -8,7 +8,7 @@ where
 {
     let max_retries = 3;
     let base_wait = Duration::from_secs(5);  
-    let backoff_factor = 2.0;               
+    let backoff_factor: f64 = 2.0;               
     
     for attempt in 0..max_retries {
         match request_fn() {
@@ -25,21 +25,26 @@ where
                 return Ok(response);
             }
             Err(e) => {
-                if should_retry_error(&e) && attempt < max_retries - 1 {
+                // Check if the error is a reqwest::Error we should retry
+                let should_retry = e.downcast_ref::<reqwest::Error>()
+                    .map(should_retry_error)
+                    .unwrap_or(false);
+                    
+                if should_retry && attempt < max_retries - 1 {
                     let wait_factor = backoff_factor.powi(attempt as i32);
                     let duration = base_wait.mul_f64(wait_factor);
                     log::warn!("{} - retrying after {:?}.", e, duration);
                     std::thread::sleep(duration);
                     continue;
                 } else {
-                    return Err(anyhow::anyhow!(e));
+                    return Err(e);
                 }
             }
         }
     }
     
     // Final attempt (matches legacy client behavior)
-    request_fn().map_err(|e| anyhow::anyhow!(e))
+    request_fn()
 }
 
 /// Determine if an HTTP status code should trigger a retry

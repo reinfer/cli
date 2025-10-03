@@ -102,7 +102,7 @@ fn update_users_from_reader(
 
         // Update user
         let request = UpdateUserRequest {
-            user: user_line.update,
+            user: Box::new(user_line.update),
         };
 
         update_user(config, &user_line.id, request)

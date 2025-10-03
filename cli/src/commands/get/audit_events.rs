@@ -6,11 +6,12 @@ use openapi::{
         configuration::Configuration,
         audit_events_api::query_audit_events,
     },
-    models::{AuditEvent, QueryAuditEventsRequest, QueryAuditEventsFilter, TimestampRangeFilter},
+    models::{QueryAuditEventsRequest, QueryAuditEventsFilter, TimestampRangeFilter},
 };
 use structopt::StructOpt;
 
 use crate::printer::Printer;
+use crate::utils::AuditEventsResponseExt;
 
 #[derive(Debug, StructOpt)]
 pub struct GetAuditEventsArgs {
@@ -30,7 +31,7 @@ pub fn get(config: &Configuration, args: &GetAuditEventsArgs, printer: &Printer)
     } = args;
 
     let mut continuation = None;
-    let mut all_audit_events = Vec::new();
+    let mut all_printable_events = Vec::new();
 
     loop {
         // Build the timestamp filter if timestamps are provided
@@ -59,15 +60,20 @@ pub fn get(config: &Configuration, args: &GetAuditEventsArgs, printer: &Printer)
 
         let response = query_audit_events(config, request)?;
         
-        all_audit_events.extend(response.audit_events);
+        // Check continuation before moving response
+        let has_continuation = response.continuation.is_some();
+        continuation = response.continuation.clone();
+        
+        // Use the clean iterator interface - same as legacy API!
+        let mut printable_events: Vec<_> = response.into_iter_printable().collect();
+        all_printable_events.append(&mut printable_events);
 
-        if response.continuation.is_none() {
+        if !has_continuation {
             break;
         } else {
-            info!("Downloaded {} events", all_audit_events.len());
-            continuation = response.continuation;
+            info!("Downloaded {} events", all_printable_events.len());
         }
     }
 
-    printer.print_resources(all_audit_events.iter())
+    printer.print_resources(&all_printable_events)
 }

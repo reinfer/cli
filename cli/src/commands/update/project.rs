@@ -48,6 +48,6 @@ pub fn update(config: &Configuration, args: &UpdateProjectArgs, printer: &Printe
     
     let project = response.project;
     info!("Project `{}` updated successfully", project.name);
-    printer.print_resources(&[project])?;
+    printer.print_resources(&[*project])?;
     Ok(())
 }

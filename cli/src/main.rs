@@ -1,4 +1,6 @@
 #![deny(clippy::all)]
+
+// Module declarations
 mod args;
 mod commands;
 mod config;
@@ -7,31 +9,48 @@ mod progress;
 mod thousands;
 mod utils;
 
+// External crate imports
 use anyhow::{anyhow, Context, Result};
-use commands::{
-    auth,
-    package,
-};
-use openapi::apis::configuration::Configuration;
 use log::{error, warn};
 use once_cell::sync::Lazy;
-use reinfer_client::{
-    retry::{RetryConfig, RetryStrategy},
-    Client, Config as ClientConfig, ProjectName, Token, DEFAULT_ENDPOINT,
-};
+use openapi::apis::configuration::Configuration;
+use reqwest::Url;
 use scoped_threadpool::Pool;
 use std::{env, fs, io, path::PathBuf, process};
 use structopt::{clap::Shell as ClapShell, StructOpt};
 
+// Internal crate imports
 use crate::{
     args::{Args, Command, Shell},
-    commands::{config as config_command, create, delete, get, parse, update},
+    commands::{
+        auth,
+        config as config_command,
+        create,
+        delete,
+        get,
+        package,
+        parse,
+        update,
+    },
     config::ReinferConfig,
     printer::Printer,
-    utils::get_current_user,
+    utils::{
+        get_current_user,
+        refresh_permissions,
+        utils::{init_env_logger, read_token_from_stdin},
+        ProjectName,
+    },
 };
 
 const NUM_THREADS_ENV_VARIABLE_NAME: &str = "REINFER_CLI_NUM_THREADS";
+
+// OpenAPI equivalent constants  
+static DEFAULT_ENDPOINT: Lazy<Url> =
+    Lazy::new(|| Url::parse("https://reinfer.dev").expect("Default URL is well-formed"));
+
+// Simple wrapper for tokens (replaces reinfer_client::Token)
+#[derive(Debug, Clone)]
+pub struct Token(pub String);
 
 static DEFAULT_PROJECT_NAME: Lazy<ProjectName> =
     Lazy::new(|| ProjectName("DefaultProject".to_string()));
@@ -68,22 +87,22 @@ fn run(args: Args) -> Result<()> {
         }
         Command::Get { get_args } => get::run(
             get_args,
-            client_from_args(&args, &cli_config)?,
+            &config_from_args(&args, &cli_config)?,
             &printer,
             &mut pool,
         ),
         Command::Delete { delete_args } => {
-            delete::run(delete_args, client_from_args(&args, &cli_config)?)
+            delete::run(delete_args, &config_from_args(&args, &cli_config)?)
         }
         Command::Create { create_args } => create::run(
             create_args,
-            get_client_and_refresh_permission(&args, &cli_config)?,
+            &get_config_and_refresh_permission(&args, &cli_config)?,
             &printer,
             &mut pool,
         ),
         Command::Update { update_args } => update::run(
             update_args,
-            get_client_and_refresh_permission(&args, &cli_config)?,
+            &get_config_and_refresh_permission(&args, &cli_config)?,
             &printer,
         ),
         Command::Parse { parse_args } => {
@@ -102,85 +121,7 @@ fn run(args: Args) -> Result<()> {
     }
 }
 
-fn get_client_and_refresh_permission(args: &Args, config: &ReinferConfig) -> Result<Client> {
-    let client = client_from_args(args, config)?;
-    
-    // Create OpenAPI config for refresh permissions (same as get_config_and_refresh_permission)
-    let openapi_config = config_from_args(args, config)?;
-    
-    // Use the new OpenAPI implementation for refresh permissions
-    utils::refresh_permissions::refresh_user_permissions(&openapi_config)?;
-    
-    Ok(client)
-}
-
-fn client_from_args(args: &Args, config: &ReinferConfig) -> Result<Client> {
-    let current_context = if let Some(context_name) = args.context.as_ref() {
-        let context = config.get_context(context_name);
-        if context.is_none() {
-            return Err(anyhow!("Unknown context `{}`.", context_name));
-        };
-        context
-    } else {
-        config.get_current_context()
-    };
-
-    let endpoint = args
-        .endpoint
-        .clone()
-        .or_else(|| current_context.map(|context| context.endpoint.clone()))
-        .unwrap_or_else(|| DEFAULT_ENDPOINT.clone());
-
-    let args_or_config_token = args
-        .token
-        .clone()
-        .or_else(|| current_context.and_then(|context| context.token.clone()));
-
-    let token = Token(if let Some(token) = args_or_config_token {
-        token
-    } else {
-        utils::read_token_from_stdin()?.unwrap_or_default()
-    });
-
-    let accept_invalid_certificates = args
-        .accept_invalid_certificates
-        .or_else(|| current_context.map(|context| context.accept_invalid_certificates))
-        .unwrap_or(false);
-
-    if accept_invalid_certificates {
-        warn!(concat!(
-            "TLS certificate verification is disabled. ",
-            "Do NOT use this over an insecure network."
-        ));
-    }
-
-    let proxy = args
-        .proxy
-        .clone()
-        .or_else(|| current_context.and_then(|context| context.proxy.clone()));
-
-    // Retry everything but the very first request.
-    // Retry wait schedule is [5s, 10s, 20s, fail]. (Plus the time for each attempt to timeout.)
-    let retry_config = RetryConfig {
-        strategy: RetryStrategy::Always,
-        max_retry_count: 3,
-        base_wait: std::time::Duration::from_secs_f64(5.0),
-        backoff_factor: 2.0,
-    };
-
-    let client = Client::new(ClientConfig {
-        endpoint,
-        token,
-        accept_invalid_certificates,
-        proxy,
-        retry_config: Some(retry_config),
-    })
-    .context("Failed to initialise the HTTP client.")?;
-
-    check_if_context_is_a_required_field(config, &client, args)?;
-
-    Ok(client)
-}
+// Legacy functions removed - all commands now use OpenAPI Configuration
 
 /// Create OpenAPI Configuration with EXACT same settings as client_from_args()
 fn config_from_args(args: &Args, config: &ReinferConfig) -> Result<Configuration> {
@@ -208,7 +149,7 @@ fn config_from_args(args: &Args, config: &ReinferConfig) -> Result<Configuration
     let token = Token(if let Some(token) = args_or_config_token {
         token
     } else {
-        utils::read_token_from_stdin()?.unwrap_or_default()
+        read_token_from_stdin()?.unwrap_or_default()
     });
 
     let accept_invalid_certificates = args
@@ -225,7 +166,6 @@ fn config_from_args(args: &Args, config: &ReinferConfig) -> Result<Configuration
 
     // Create OpenAPI config with EXACT same TLS behavior as legacy client
     let mut builder = reqwest::blocking::Client::builder()
-        .gzip(true)
         .danger_accept_invalid_certs(accept_invalid_certificates)  // ← SAME as legacy!
         .timeout(std::time::Duration::from_secs(240));
 
@@ -245,8 +185,19 @@ fn config_from_args(args: &Args, config: &ReinferConfig) -> Result<Configuration
 
     let mut openapi_config = Configuration::default();
     openapi_config.base_path = endpoint.to_string();
+    
+    // Set API key for generated OpenAPI client (not bearer_access_token)
+    openapi_config.api_key = Some(openapi::apis::configuration::ApiKey {
+        prefix: Some("Bearer".to_string()),
+        key: token.0.clone(),
+    });
+    
+    // Also set bearer_access_token for custom endpoints (like get_current_user)
     openapi_config.bearer_access_token = Some(token.0);
     openapi_config.client = client;  // ← Use our TLS-configured client
+
+    // Check context requirements (mirrors legacy client behavior)
+    check_if_context_is_a_required_field(config, &openapi_config, args)?;
 
     Ok(openapi_config)
 }
@@ -256,7 +207,7 @@ fn get_config_and_refresh_permission(args: &Args, config: &ReinferConfig) -> Res
     let openapi_config = config_from_args(args, config)?;
     
     // Refresh permissions using the same Configuration's TLS settings  
-    utils::refresh_permissions::refresh_user_permissions(&openapi_config)?;
+    refresh_permissions::refresh_user_permissions(&openapi_config)?;
     
     Ok(openapi_config)
 }
@@ -276,11 +227,11 @@ fn check_if_context_is_a_required_field(
         ));
     }
 
-    let current_user = client.get_current_user()?;
+    let current_user = get_current_user(openapi_config)?;
 
     if DOMAINS_THAT_REQUIRE_CONTEXT
         .iter()
-        .any(|domain| current_user.email.0.to_lowercase().ends_with(domain))
+        .any(|domain| current_user.email.to_lowercase().ends_with(domain))
         && context_is_none
     {
         return Err(anyhow!(
@@ -318,7 +269,7 @@ fn find_configuration(args: &Args) -> Result<PathBuf> {
 
 fn main() {
     let args = Args::from_args();
-    utils::init_env_logger(args.verbose);
+    init_env_logger(args.verbose);
 
     if let Err(error) = run(args) {
         error!("An error occurred:");

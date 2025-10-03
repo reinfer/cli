@@ -1,3 +1,38 @@
+//! Command for creating comments with annotations and audio
+
+// Standard library imports
+use std::{
+    collections::HashSet,
+    fs::File,
+    io::{self, BufRead, BufReader, Seek},
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+};
+
+// External crate imports
+use anyhow::{anyhow, ensure, Context, Result};
+use colored::Colorize;
+use log::{debug, info};
+use scoped_threadpool::Pool;
+use structopt::StructOpt;
+
+// OpenAPI imports
+use openapi::{
+    apis::{
+        attachments_api::upload_comment_attachment,
+        comments_api::{add_comments, set_comment_audio, sync_comments},
+        configuration::Configuration,
+        datasets_api::get_dataset,
+        sources_api::{get_source, get_source_by_id},
+    },
+    models,
+};
+
+// Local crate imports
 use crate::{
     commands::{
         create::annotations::{
@@ -8,41 +43,30 @@ use crate::{
     progress::{Options as ProgressOptions, Progress},
     utils::{
         CommentId, full_name::FullName, SourceId, SourceIdentifier, DatasetIdentifier,
+        add_comments_with_split_on_failure, sync_comments_with_split_on_failure, 
+        handle_split_on_failure_result,
     },
 };
-use anyhow::{anyhow, ensure, Context, Result};
-use colored::Colorize;
-use log::{debug, info};
-use openapi::{
-    apis::{
-        configuration::Configuration,
-        comments_api::{add_comments, set_comment_audio, sync_comments},
-        attachments_api::upload_comment_attachment,
-        sources_api::{get_source, get_source_by_id},
-        datasets_api::get_dataset,
-    },
-    models,
-};
-use scoped_threadpool::Pool;
-use std::{
-    collections::HashSet,
-    fs::File,
-    io::{self, BufRead, BufReader, Seek},
-    path::{Path, PathBuf},
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
-};
-
-use structopt::StructOpt;
 
 use super::annotations::AttachmentStatistic;
 
-// Temporary type alias for compatibility with annotations module
-// TODO: Migrate annotations module to use FullName instead
-type DatasetFullName = FullName;
+// ============================================================================
+// Type Definitions
+// ============================================================================
 
+/// Struct to parse JSON that contains comment data, annotations, and audio_path
+#[derive(Debug, serde::Deserialize)]
+struct CommentWithAnnotationsAndAudio {
+    pub comment: models::CommentNew,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub labelling: Option<Vec<models::LabellingGroup>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entities: Option<models::Entities>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub audio_path: Option<PathBuf>,
+}
+
+/// Command line arguments for creating comments
 #[derive(Debug, StructOpt)]
 pub struct CreateCommentsArgs {
     #[structopt(short = "f", long = "file", parse(from_os_str))]
@@ -90,13 +114,18 @@ pub struct CreateCommentsArgs {
     resume_on_error: bool,
 
     #[structopt(short = "a", long = "attachments", parse(from_os_str))]
-    /// Path to folder containing the attachemtns to upload
+    /// Path to folder containing the attachments to upload
     attachments_dir: Option<PathBuf>,
 }
 
+// ============================================================================
+// Main Entry Point
+// ============================================================================
+
+/// Create comments from file or stdin with annotations and audio support
 pub fn create(config: &Configuration, args: &CreateCommentsArgs, pool: &mut Pool) -> Result<()> {
     if !args.no_charge && !args.yes {
-        ensure_uip_user_consents_to_ai_unit_charge(&config.base_path)?;
+        ensure_uip_user_consents_to_ai_unit_charge(&config.base_path.parse()?)?;
     }
 
     ensure!(args.batch_size > 0, "--batch-size must be greater than 0");
@@ -141,7 +170,7 @@ pub fn create(config: &Configuration, args: &CreateCommentsArgs, pool: &mut Pool
                     ));
                 }
             };
-            Some(format!("{}/{}", dataset.owner, dataset.name))
+            Some(FullName::from_str(&format!("{}/{}", dataset.owner, dataset.name))?)
         },
         None => None,
     };
@@ -151,8 +180,8 @@ pub fn create(config: &Configuration, args: &CreateCommentsArgs, pool: &mut Pool
             info!(
                 "Uploading comments from file `{}` to source `{}` [id: {}]",
                 comments_path.display(),
-                source_name.0,
-                source.id.0,
+                source_name,
+                source.id,
             );
             let mut file =
                 BufReader::new(File::open(comments_path).with_context(|| {
@@ -209,7 +238,7 @@ pub fn create(config: &Configuration, args: &CreateCommentsArgs, pool: &mut Pool
         None => {
             info!(
                 "Uploading comments from stdin to source `{}` [id: {}]",
-                source_name.0, source.id.0,
+                source_name, source.id,
             );
             ensure!(
                 args.allow_duplicates,
@@ -261,6 +290,11 @@ pub fn create(config: &Configuration, args: &CreateCommentsArgs, pool: &mut Pool
     Ok(())
 }
 
+// ============================================================================
+// JSON Parsing and Validation
+// ============================================================================
+
+/// Iterator that parses JSONL comments with annotations and audio paths
 fn read_comments_iter<'a>(
     mut comments: impl BufRead + 'a,
     statistics: Option<&'a Statistics>,
@@ -285,46 +319,54 @@ fn read_comments_iter<'a>(
             Err(e) => return Some(Err(e)),
         }
 
-        Some(parse_comment_line(line.trim_end(), line_number))
+        Some(
+            serde_json::from_str::<CommentWithAnnotationsAndAudio>(line.trim_end())
+                .with_context(|| {
+                    format!("Could not parse comment at line {line_number} from input stream")
+                })
+                .map(|parsed| {
+                    let comment = parsed.comment;
+                    let labelling = parsed.labelling;
+                    let entities = parsed.entities;
+                    let audio_path = parsed.audio_path;
+                    
+                    // Extract annotations if present
+                    let annotations = if labelling.is_some() || entities.is_some() {
+                        // Create annotations from the parsed data
+                        let mut new_annotations = Vec::new();
+                        
+                        // Convert to NewAnnotation format for annotations processing
+                        let annotation = NewAnnotation {
+                            comment: crate::commands::create::annotations::CommentIdComment {
+                                id: comment.id.clone(),
+                            },
+                            labelling: labelling.map(|lg_vec| 
+                                lg_vec.into_iter()
+                                    .map(|lg| crate::utils::comment_utils::convert_labelling_group(lg))
+                                    .collect()
+                            ),
+                            entities: entities.map(|e| 
+                                crate::utils::comment_utils::convert_entities(e)
+                            ),
+                            moon_forms: None,
+                        };
+                        new_annotations.push(annotation);
+                        Some(new_annotations)
+                    } else {
+                        None
+                    };
+
+                    (
+                        comment,
+                        annotations,
+                        audio_path,
+                    )
+                }),
+        )
     })
 }
 
-fn parse_comment_line(
-    line: &str,
-    line_number: u32,
-) -> Result<(models::CommentNew, Option<Vec<NewAnnotation>>, Option<PathBuf>)> {
-    // First try to parse as NewAnnotatedComment (from old API)
-    if let Ok(annotated_comment) = serde_json::from_str::<serde_json::Value>(line) {
-        // Check if it has the structure of NewAnnotatedComment
-        if annotated_comment.get("comment").is_some() {
-            // Parse as NewAnnotatedComment
-            let comment_new: models::CommentNew = serde_json::from_value(
-                annotated_comment.get("comment").unwrap().clone()
-            ).with_context(|| {
-                format!("Could not parse comment from NewAnnotatedComment at line {line_number}")
-            })?;
-            
-            // Extract annotations (simplified - just return None for now)
-            // TODO: Implement proper annotation extraction from NewAnnotatedComment structure
-            let annotations = None;
-            
-            // Extract audio path
-            let audio_path = annotated_comment.get("audio_path")
-                .and_then(|v| v.as_str())
-                .map(|s| PathBuf::from(s));
-            
-            return Ok((comment_new, annotations, audio_path));
-        }
-    }
-    
-    // Fall back to parsing as CommentNew
-    let comment_new = serde_json::from_str::<models::CommentNew>(line).with_context(|| {
-        format!("Could not parse comment at line {line_number} from input stream")
-    })?;
-    
-    Ok((comment_new, None, None))
-}
-
+/// Check for duplicate comment IDs in the input stream
 fn check_no_duplicate_ids(comments: impl BufRead) -> Result<()> {
     let mut seen = HashSet::new();
     for read_comment_result in read_comments_iter(comments, None) {
@@ -339,6 +381,11 @@ fn check_no_duplicate_ids(comments: impl BufRead) -> Result<()> {
     Ok(())
 }
 
+// ============================================================================
+// Upload Functions
+// ============================================================================
+
+/// Upload a single attachment file for a comment
 fn upload_local_attachment(
     comment_id: &CommentId,
     attachment: &mut models::Attachment,
@@ -349,7 +396,7 @@ fn upload_local_attachment(
 ) -> Result<()> {
     let local_attachemnt = LocalAttachmentPath {
         index,
-        name: attachment.name.clone().unwrap_or_default(),
+        name: attachment.name.clone(),
         parent_dir: attachments_dir.join(comment_id.as_ref()),
     };
 
@@ -368,6 +415,7 @@ fn upload_local_attachment(
     }
 }
 
+/// Upload all attachments for a batch of comments
 fn upload_attachments_for_comments(
     config: &Configuration,
     comments: &mut [models::CommentNew],
@@ -378,23 +426,25 @@ fn upload_attachments_for_comments(
 ) -> Result<()> {
     for comment in comments.iter_mut() {
         let comment_id = CommentId::from_str(&comment.id)?;
-        for (index, attachment) in comment.attachments.iter_mut().enumerate() {
-            match upload_local_attachment(
-                &comment_id,
-                attachment,
-                index,
-                config,
-                attachments_dir,
-                source_id,
-            ) {
-                Ok(_) => {
-                    statistics.add_attachment();
-                }
-                Err(err) => {
-                    if resume_on_error {
-                        statistics.add_failed_attachment();
-                    } else {
-                        return Err(err);
+        if let Some(attachments) = &mut comment.attachments {
+            for (index, attachment) in attachments.iter_mut().enumerate() {
+                match upload_local_attachment(
+                    &comment_id,
+                    attachment,
+                    index,
+                    config,
+                    attachments_dir,
+                    source_id,
+                ) {
+                    Ok(_) => {
+                        statistics.add_attachment();
+                    }
+                    Err(err) => {
+                        if resume_on_error {
+                            statistics.add_failed_attachment();
+                        } else {
+                            return Err(err);
+                        }
                     }
                 }
             }
@@ -403,6 +453,7 @@ fn upload_attachments_for_comments(
     Ok(())
 }
 
+/// Upload a batch of comments with their audio files
 #[allow(clippy::too_many_arguments)]
 fn upload_batch_of_comments(
     config: &Configuration,
@@ -415,11 +466,11 @@ fn upload_batch_of_comments(
     attachments_dir: &Option<PathBuf>,
     resume_on_error: bool,
 ) -> Result<()> {
-    let mut uploaded = 0;
-    let mut new = 0;
-    let mut updated = 0;
-    let mut unchanged = 0;
-    let mut failed = 0;
+    let mut uploaded: usize = 0;
+    let mut new: usize = 0;
+    let mut updated: usize = 0;
+    let mut unchanged: usize = 0;
+    let mut failed: usize = 0;
 
     // Upload comments
     if !comments_to_put.is_empty() {
@@ -437,17 +488,20 @@ fn upload_batch_of_comments(
         }
 
         if resume_on_error {
-            // Use split-on-failure for resilience
-            let result = crate::utils::openapi_split_on_failure::execute_with_split_on_failure(
-                |req| add_comments(config, &source.owner, &source.name, req),
-                models::AddCommentsRequest::new(comments_to_put.to_vec()),
-                "add_comments"
+            // Use cleaner wrapper function for split-on-failure
+            let result = add_comments_with_split_on_failure(
+                config,
+                &source.owner,
+                &source.name,
+                comments_to_put.to_vec(),
+                Some(no_charge)
             ).context("Could not put batch of comments")?;
             
             failed += result.num_failed;
+            handle_split_on_failure_result(result, comments_to_put.len(), "add_comments");
         } else {
             let request = models::AddCommentsRequest::new(comments_to_put.to_vec());
-            add_comments(config, &source.owner, &source.name, request)
+            add_comments(config, &source.owner, &source.name, request, Some(no_charge))
                 .context("Could not put batch of comments")?;
         }
         uploaded += comments_to_put.len() - failed;
@@ -467,25 +521,28 @@ fn upload_batch_of_comments(
             )?;
         }
         let result = if resume_on_error {
-            // Use split-on-failure for resilience
-            let split_result = crate::utils::openapi_split_on_failure::execute_with_split_on_failure(
-                |req| sync_comments(config, &source.owner, &source.name, req),
-                models::SyncCommentsRequest::new(comments_to_sync.to_vec()),
-                "sync_comments"
+            // Use cleaner wrapper function for split-on-failure
+            let split_result = sync_comments_with_split_on_failure(
+                config,
+                &source.owner,
+                &source.name,
+                comments_to_sync.to_vec(),
+                Some(no_charge)
             ).context("Could not sync batch of comments")?;
             
             failed += split_result.num_failed;
+            handle_split_on_failure_result(split_result.clone(), comments_to_sync.len(), "sync_comments");
             split_result.response
         } else {
             let request = models::SyncCommentsRequest::new(comments_to_sync.to_vec());
-            sync_comments(config, &source.owner, &source.name, request)
+            sync_comments(config, &source.owner, &source.name, request, Some(no_charge))
                 .context("Could not sync batch of comments")?
         };
 
         uploaded += comments_to_sync.len() - failed;
-        new += result.new;
-        updated += result.updated;
-        unchanged += result.unchanged;
+        new += result.new as usize;
+        updated += result.updated as usize;
+        unchanged += result.unchanged as usize;
     }
 
     statistics.add_comments(StatisticsUpdate {
@@ -519,6 +576,7 @@ fn upload_batch_of_comments(
     Ok(())
 }
 
+/// Main function to process and upload comments from a reader (file or stdin)
 #[allow(clippy::too_many_arguments)]
 fn upload_comments_from_reader(
     config: &Configuration,
@@ -600,7 +658,7 @@ fn upload_comments_from_reader(
                     resume_on_error,
                 )?;
 
-                // Use FullName directly (DatasetFullName is now an alias for FullName)
+                // Upload annotations to dataset if provided
                 let dataset_full_name = dataset_name.clone();
                 upload_batch_of_annotations(
                     &mut annotations,
@@ -631,7 +689,7 @@ fn upload_comments_from_reader(
 
     if let Some(dataset_name) = dataset_name {
         if !annotations.is_empty() {
-            // Use FullName directly (DatasetFullName is now an alias for FullName)
+            // Upload annotations to dataset if provided
             let dataset_full_name = dataset_name.clone();
             upload_batch_of_annotations(
                 &mut annotations,
@@ -647,6 +705,11 @@ fn upload_comments_from_reader(
     Ok(())
 }
 
+// ============================================================================
+// Statistics and Progress Tracking
+// ============================================================================
+
+/// Update data for statistics tracking
 #[derive(Debug)]
 pub struct StatisticsUpdate {
     uploaded: usize,
@@ -656,6 +719,7 @@ pub struct StatisticsUpdate {
     failed: usize,
 }
 
+/// Thread-safe statistics tracking for comment uploads
 #[derive(Debug)]
 pub struct Statistics {
     bytes_read: AtomicUsize,
@@ -769,8 +833,7 @@ impl Statistics {
     }
 }
 
-/// Detailed statistics - only make sense if using --overwrite (i.e. exclusively sync endpoint)
-/// as the PUT endpoint doesn't return any statistics.
+/// Generate detailed progress statistics (only available when using --overwrite/sync endpoint)
 fn detailed_statistics(statistics: &Statistics) -> (u64, String) {
     let bytes_read = statistics.bytes_read();
     let num_uploaded = statistics.num_uploaded();
@@ -830,7 +893,7 @@ fn detailed_statistics(statistics: &Statistics) -> (u64, String) {
     )
 }
 
-/// Basic statistics always applicable (just counts of quantities sent to the platform).
+/// Generate basic progress statistics (always available)
 fn basic_statistics(statistics: &Statistics) -> (u64, String) {
     let bytes_read = statistics.bytes_read();
     let num_uploaded = statistics.num_uploaded();
@@ -882,6 +945,7 @@ fn basic_statistics(statistics: &Statistics) -> (u64, String) {
     )
 }
 
+/// Create a progress bar with appropriate statistics formatter
 fn progress_bar(
     total_bytes: u64,
     statistics: &Arc<Statistics>,
@@ -898,6 +962,10 @@ fn progress_bar(
         ProgressOptions { bytes_units: true },
     )
 }
+
+// ============================================================================
+// Tests
+// ============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -929,3 +997,5 @@ mod tests {
             .contains("Duplicate comments with id"));
     }
 }
+
+

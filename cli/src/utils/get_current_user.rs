@@ -46,9 +46,9 @@ pub fn get_current_user(config: &Configuration) -> Result<User> {
     
     // Send the request with retry logic (similar to refresh_permissions)
     let response = retry_request(|| {
-        request.try_clone()
+        Ok(request.try_clone()
             .context("Failed to clone request for retry")?
-            .send()
+            .send()?)
     })?;
     
     // Check if the response is successful

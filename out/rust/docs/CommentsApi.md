@@ -21,7 +21,7 @@ Method | HTTP request | Description
 
 ## add_comments
 
-> models::AddCommentsResponse add_comments(owner, source_name, add_comments_request)
+> models::AddCommentsResponse add_comments(owner, source_name, add_comments_request, no_charge)
 Add a batch of comments
 
 Add a batch of comments. To overwrite existing comments, you need to specify the latest `context` field.
@@ -34,6 +34,7 @@ Name | Type | Description  | Required | Notes
 **owner** | **String** |  | [required] |
 **source_name** | **String** |  | [required] |
 **add_comments_request** | [**AddCommentsRequest**](AddCommentsRequest.md) |  | [required] |
+**no_charge** | Option<**bool**> | If set to true, bypasses billing for this request. **For internal use only** - requires DEBUG permission or the 'billing-no-charge' feature flag to be enabled. |  |
 
 ### Return type
 
@@ -284,7 +285,7 @@ Name | Type | Description  | Required | Notes
 
 ## sync_comments
 
-> models::SyncCommentsResponse sync_comments(owner, source_name, sync_comments_request)
+> models::SyncCommentsResponse sync_comments(owner, source_name, sync_comments_request, no_charge)
 Sync a batch of comments
 
 Sync a batch of comments. Any comments with the same IDs in the source will be overwritten.
@@ -297,6 +298,7 @@ Name | Type | Description  | Required | Notes
 **owner** | **String** |  | [required] |
 **source_name** | **String** |  | [required] |
 **sync_comments_request** | [**SyncCommentsRequest**](SyncCommentsRequest.md) |  | [required] |
+**no_charge** | Option<**bool**> | If set to true, bypasses billing for this request. **For internal use only** - requires DEBUG permission or the 'billing-no-charge' feature flag to be enabled. |  |
 
 ### Return type
 
@@ -348,7 +350,7 @@ Name | Type | Description  | Required | Notes
 
 ## sync_raw_emails
 
-> models::SyncRawEmailsResponse sync_raw_emails(owner, source_name, sync_raw_emails_request)
+> models::SyncRawEmailsResponse sync_raw_emails(owner, source_name, sync_raw_emails_request, no_charge)
 Sync a batch of raw emails
 
 Sync a batch of raw emails. Any comments with the same IDs in the source will be overwritten.
@@ -361,6 +363,7 @@ Name | Type | Description  | Required | Notes
 **owner** | **String** |  | [required] |
 **source_name** | **String** |  | [required] |
 **sync_raw_emails_request** | [**SyncRawEmailsRequest**](SyncRawEmailsRequest.md) |  | [required] |
+**no_charge** | Option<**bool**> | If set to true, bypasses billing for this request. **For internal use only** - requires DEBUG permission or the 'billing-no-charge' feature flag to be enabled. |  |
 
 ### Return type
 

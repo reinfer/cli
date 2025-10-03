@@ -4,7 +4,6 @@ use openapi::{
         buckets_api::{get_bucket, get_bucket_by_id, list_keyed_sync_states},
         configuration::Configuration,
     },
-    models::Bucket,
 };
 use structopt::StructOpt;
 

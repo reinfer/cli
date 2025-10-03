@@ -1,285 +1,285 @@
-// // use chrono::{DateTime, Utc};
-// use serde::{Deserialize, Serialize};
-// use serde_with::{DeserializeFromStr, SerializeDisplay};
-// use std::{
-//     fmt::{Display, Formatter, Result as FmtResult},
-//     str::FromStr,
-// };
+// use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use serde_with::{DeserializeFromStr, SerializeDisplay};
+use std::{
+    fmt::{Display, Formatter, Result as FmtResult},
+    str::FromStr,
+};
 
-// use crate::{
-//     error::{Error, Result},
-//     resources::bucket::Id as BucketId,
-//     // resources::user::Username,
-//     CommentFilter,
-// };
+use crate::{
+    error::{Error, Result},
+    resources::bucket::Id as BucketId,
+    // resources::user::Username,
+    CommentFilter,
+};
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct TransformTag(pub String);
+
+pub use openapi::models::Source;
+pub type Id = String;
+
+impl FromStr for TransformTag {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Self> {
+        Ok(Self(string.to_owned()))
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct StatisticsRequestParams {
+    pub comment_filter: CommentFilter,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct Source {
+    pub id: Id,
+    pub owner: Username,
+    pub name: Name,
+    pub title: String,
+    pub description: String,
+    pub language: String,
+    pub should_translate: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub bucket_id: Option<BucketId>,
+
+    #[serde(rename = "_kind")]
+    pub kind: SourceKind,
+    #[serde(default, rename = "email_transform_tag")]
+    pub transform_tag: Option<TransformTag>,
+}
+
+impl Source {
+    pub fn full_name(&self) -> FullName {
+        FullName(format!("{}/{}", self.owner.0, self.name.0))
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct Name(pub String);
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct FullName(pub String);
+
+impl FromStr for FullName {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Self> {
+        if string.split('/').count() == 2 {
+            Ok(FullName(string.into()))
+        } else {
+            Err(Error::BadSourceIdentifier {
+                identifier: string.into(),
+            })
+        }
+    }
+}
 
 // #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-// pub struct TransformTag(pub String);
+// pub struct Id(pub String);
 
-// pub use openapi::models::Source;
-// pub type Id = String;
+// TODO(mcobzarenco)[3963]: Make `Identifier` into a trait (ensure it still implements
+// `FromStr` so we can take T: Identifier as a clap command line argument).
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub enum Identifier {
+    Id(Id),
+    FullName(FullName),
+}
 
-// impl FromStr for TransformTag {
-//     type Err = Error;
+impl From<Id> for Identifier {
+    fn from(id: Id) -> Self {
+        Identifier::Id(id)
+    }
+}
 
-//     fn from_str(string: &str) -> Result<Self> {
-//         Ok(Self(string.to_owned()))
-//     }
-// }
+impl From<FullName> for Identifier {
+    fn from(full_name: FullName) -> Self {
+        Identifier::FullName(full_name)
+    }
+}
 
-// #[derive(Debug, Clone, Serialize, Default)]
-// pub struct StatisticsRequestParams {
-//     pub comment_filter: CommentFilter,
-// }
+impl From<&Source> for Identifier {
+    fn from(source: &Source) -> Self {
+        Identifier::FullName(source.full_name())
+    }
+}
 
-// // #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-// // pub struct Source {
-// //     pub id: Id,
-// //     pub owner: Username,
-// //     pub name: Name,
-// //     pub title: String,
-// //     pub description: String,
-// //     pub language: String,
-// //     pub should_translate: bool,
-// //     pub created_at: DateTime<Utc>,
-// //     pub updated_at: DateTime<Utc>,
-// //     pub bucket_id: Option<BucketId>,
+impl FromStr for Identifier {
+    type Err = Error;
 
-// //     #[serde(rename = "_kind")]
-// //     pub kind: SourceKind,
-// //     #[serde(default, rename = "email_transform_tag")]
-// //     pub transform_tag: Option<TransformTag>,
-// // }
+    fn from_str(string: &str) -> Result<Self> {
+        if string.chars().all(|c| c.is_ascii_hexdigit()) {
+            Ok(Identifier::Id(Id(string.into())))
+        } else {
+            FullName::from_str(string).map(Identifier::FullName)
+        }
+    }
+}
 
-// // impl Source {
-// //     pub fn full_name(&self) -> FullName {
-// //         FullName(format!("{}/{}", self.owner.0, self.name.0))
-// //     }
-// // }
+impl Display for Identifier {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
+        write!(
+            formatter,
+            "{}",
+            match self {
+                Identifier::Id(id) => &id.0,
+                Identifier::FullName(full_name) => &full_name.0,
+            }
+        )
+    }
+}
 
-// #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-// pub struct Name(pub String);
+#[derive(Debug, Clone, SerializeDisplay, DeserializeFromStr, PartialEq, Eq, Hash)]
+pub enum SourceKind {
+    Call,
+    Chat,
+    Unknown(Box<str>),
+    IxpRuntime,
+    IxpDesignTime,
+}
 
-// #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-// pub struct FullName(pub String);
+impl FromStr for SourceKind {
+    type Err = Error;
 
-// impl FromStr for FullName {
-//     type Err = Error;
+    fn from_str(string: &str) -> Result<Self> {
+        Ok(match string {
+            "call" => SourceKind::Call,
+            "chat" => SourceKind::Chat,
+            "ixp_runtime" => SourceKind::IxpRuntime,
+            "ixp_design" => SourceKind::IxpDesignTime,
+            value => SourceKind::Unknown(value.into()),
+        })
+    }
+}
 
-//     fn from_str(string: &str) -> Result<Self> {
-//         if string.split('/').count() == 2 {
-//             Ok(FullName(string.into()))
-//         } else {
-//             Err(Error::BadSourceIdentifier {
-//                 identifier: string.into(),
-//             })
-//         }
-//     }
-// }
+impl Display for SourceKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                SourceKind::Call => "call",
+                SourceKind::Chat => "chat",
+                SourceKind::Unknown(value) => value.as_ref(),
+                SourceKind::IxpRuntime => "ixp_runtime",
+                SourceKind::IxpDesignTime => "ixp_design",
+            }
+        )
+    }
+}
 
-// // #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-// // pub struct Id(pub String);
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
+pub struct NewSource<'request> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<&'request str>,
 
-// // TODO(mcobzarenco)[3963]: Make `Identifier` into a trait (ensure it still implements
-// // `FromStr` so we can take T: Identifier as a clap command line argument).
-// #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-// pub enum Identifier {
-//     Id(Id),
-//     FullName(FullName),
-// }
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<&'request str>,
 
-// impl From<Id> for Identifier {
-//     fn from(id: Id) -> Self {
-//         Identifier::Id(id)
-//     }
-// }
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub language: Option<&'request str>,
 
-// impl From<FullName> for Identifier {
-//     fn from(full_name: FullName) -> Self {
-//         Identifier::FullName(full_name)
-//     }
-// }
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub should_translate: Option<bool>,
 
-// impl From<&Source> for Identifier {
-//     fn from(source: &Source) -> Self {
-//         Identifier::FullName(source.full_name())
-//     }
-// }
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bucket_id: Option<BucketId>,
 
-// impl FromStr for Identifier {
-//     type Err = Error;
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sensitive_properties: Option<Vec<&'request str>>,
 
-//     fn from_str(string: &str) -> Result<Self> {
-//         if string.chars().all(|c| c.is_ascii_hexdigit()) {
-//             Ok(Identifier::Id(Id(string.into())))
-//         } else {
-//             FullName::from_str(string).map(Identifier::FullName)
-//         }
-//     }
-// }
+    #[serde(skip_serializing_if = "Option::is_none", rename = "_kind")]
+    pub kind: Option<&'request SourceKind>,
 
-// impl Display for Identifier {
-//     fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
-//         write!(
-//             formatter,
-//             "{}",
-//             match self {
-//                 Identifier::Id(id) => &id.0,
-//                 Identifier::FullName(full_name) => &full_name.0,
-//             }
-//         )
-//     }
-// }
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "email_transform_tag"
+    )]
+    pub transform_tag: Option<&'request TransformTag>,
+}
 
-// #[derive(Debug, Clone, SerializeDisplay, DeserializeFromStr, PartialEq, Eq, Hash)]
-// pub enum SourceKind {
-//     Call,
-//     Chat,
-//     Unknown(Box<str>),
-//     IxpRuntime,
-//     IxpDesignTime,
-// }
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
+pub(crate) struct CreateRequest<'request> {
+    pub source: NewSource<'request>,
+}
 
-// impl FromStr for SourceKind {
-//     type Err = Error;
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub(crate) struct CreateResponse {
+    pub source: Source,
+}
 
-//     fn from_str(string: &str) -> Result<Self> {
-//         Ok(match string {
-//             "call" => SourceKind::Call,
-//             "chat" => SourceKind::Chat,
-//             "ixp_runtime" => SourceKind::IxpRuntime,
-//             "ixp_design" => SourceKind::IxpDesignTime,
-//             value => SourceKind::Unknown(value.into()),
-//         })
-//     }
-// }
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub(crate) struct GetAvailableResponse {
+    pub sources: Vec<Source>,
+}
 
-// impl Display for SourceKind {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         write!(
-//             f,
-//             "{}",
-//             match self {
-//                 SourceKind::Call => "call",
-//                 SourceKind::Chat => "chat",
-//                 SourceKind::Unknown(value) => value.as_ref(),
-//                 SourceKind::IxpRuntime => "ixp_runtime",
-//                 SourceKind::IxpDesignTime => "ixp_design",
-//             }
-//         )
-//     }
-// }
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub(crate) struct GetResponse {
+    pub source: Source,
+}
 
-// #[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
-// pub struct NewSource<'request> {
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub title: Option<&'request str>,
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
+pub struct UpdateSource<'request> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<&'request str>,
 
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub description: Option<&'request str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<&'request str>,
 
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub language: Option<&'request str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub should_translate: Option<bool>,
 
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub should_translate: Option<bool>,
+    pub bucket_id: Option<BucketId>,
 
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub bucket_id: Option<BucketId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sensitive_properties: Option<Vec<&'request str>>,
 
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub sensitive_properties: Option<Vec<&'request str>>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "email_transform_tag"
+    )]
+    pub transform_tag: Option<&'request TransformTag>,
+}
 
-//     #[serde(skip_serializing_if = "Option::is_none", rename = "_kind")]
-//     pub kind: Option<&'request SourceKind>,
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
+pub(crate) struct UpdateRequest<'request> {
+    pub source: UpdateSource<'request>,
+}
 
-//     #[serde(
-//         skip_serializing_if = "Option::is_none",
-//         rename = "email_transform_tag"
-//     )]
-//     pub transform_tag: Option<&'request TransformTag>,
-// }
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub(crate) struct UpdateResponse {
+    pub source: Source,
+}
 
-// #[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
-// pub(crate) struct CreateRequest<'request> {
-//     pub source: NewSource<'request>,
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-// #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-// pub(crate) struct CreateResponse {
-//     pub source: Source,
-// }
+    #[test]
+    fn source_kind_roundtrips() {
+        assert_eq!(SourceKind::Call, SourceKind::from_str("call").unwrap());
+        assert_eq!(
+            &serde_json::ser::to_string(&SourceKind::Call).unwrap(),
+            "\"call\""
+        );
 
-// #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-// pub(crate) struct GetAvailableResponse {
-//     pub sources: Vec<Source>,
-// }
+        assert_eq!(SourceKind::Chat, SourceKind::from_str("chat").unwrap());
+        assert_eq!(
+            &serde_json::ser::to_string(&SourceKind::Chat).unwrap(),
+            "\"chat\""
+        );
+    }
 
-// #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-// pub(crate) struct GetResponse {
-//     pub source: Source,
-// }
+    #[test]
+    fn unknown_source_kind_roundtrips() {
+        let kind = SourceKind::from_str("unknown").unwrap();
+        match &kind {
+            SourceKind::Unknown(error) => assert_eq!(&**error, "unknown"),
+            _ => panic!("Expected error to be parsed as Unknown(..)"),
+        }
 
-// #[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
-// pub struct UpdateSource<'request> {
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub title: Option<&'request str>,
-
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub description: Option<&'request str>,
-
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub should_translate: Option<bool>,
-
-//     pub bucket_id: Option<BucketId>,
-
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     pub sensitive_properties: Option<Vec<&'request str>>,
-
-//     #[serde(
-//         skip_serializing_if = "Option::is_none",
-//         rename = "email_transform_tag"
-//     )]
-//     pub transform_tag: Option<&'request TransformTag>,
-// }
-
-// #[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
-// pub(crate) struct UpdateRequest<'request> {
-//     pub source: UpdateSource<'request>,
-// }
-
-// #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-// pub(crate) struct UpdateResponse {
-//     pub source: Source,
-// }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-//     #[test]
-//     fn source_kind_roundtrips() {
-//         assert_eq!(SourceKind::Call, SourceKind::from_str("call").unwrap());
-//         assert_eq!(
-//             &serde_json::ser::to_string(&SourceKind::Call).unwrap(),
-//             "\"call\""
-//         );
-
-//         assert_eq!(SourceKind::Chat, SourceKind::from_str("chat").unwrap());
-//         assert_eq!(
-//             &serde_json::ser::to_string(&SourceKind::Chat).unwrap(),
-//             "\"chat\""
-//         );
-//     }
-
-//     #[test]
-//     fn unknown_source_kind_roundtrips() {
-//         let kind = SourceKind::from_str("unknown").unwrap();
-//         match &kind {
-//             SourceKind::Unknown(error) => assert_eq!(&**error, "unknown"),
-//             _ => panic!("Expected error to be parsed as Unknown(..)"),
-//         }
-
-//         assert_eq!(&serde_json::ser::to_string(&kind).unwrap(), "\"unknown\"")
-//     }
-// }
+        assert_eq!(&serde_json::ser::to_string(&kind).unwrap(), "\"unknown\"")
+    }
+}

@@ -1,6 +1,7 @@
 use std::{thread::sleep, time::Duration};
 
 use crate::printer::Printer;
+use crate::commands::auth::refresh_user_permissions;
 use anyhow::{anyhow, Context, Result};
 use log::info;
 use openapi::{
@@ -39,7 +40,7 @@ pub fn create(config: &Configuration, args: &CreateProjectArgs, printer: &Printe
         user_ids,
     } = args;
 
-    let project = create_project_with_wait(config, name, description, title, user_ids)?;
+    let project = create_project_with_wait(config, name.clone(), description.clone(), title.clone(), user_ids.clone())?;
 
     info!("New project `{}` created successfully", project.name);
     printer.print_resources(&[project])?;
@@ -74,7 +75,7 @@ pub fn create_project_with_wait(
     // Block until project is created
     let mut project_found = false;
     for _ in 0..10 {
-        refresh_user_permissions(client, false)?;
+        refresh_user_permissions(config, false)?;
         let projects_response = get_all_projects(config, None)
             .context("Failed to get projects")?;
         
@@ -85,7 +86,7 @@ pub fn create_project_with_wait(
         sleep(Duration::from_secs(1));
     }
 
-    refresh_user_permissions(client, false)?; 
+    refresh_user_permissions(config, false)?; 
     if !project_found {
         return Err(anyhow!(
             "Could not create project, timed out waiting for it to exist"

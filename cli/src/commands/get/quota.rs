@@ -5,7 +5,7 @@ use openapi::{
         configuration::Configuration,
         quotas_api::{get_quotas_for_tenant, get_tenant_quota},
     },
-    models,
+    models::Quota,
 };
 use structopt::StructOpt;
 
@@ -19,13 +19,15 @@ pub struct GetQuotaArgs {
 pub fn get(config: &Configuration, args: &GetQuotaArgs, printer: &Printer) -> Result<()> {
     let GetQuotaArgs { tenant_id } = args;
 
-    let openapi_quotas = if let Some(tenant_id) = tenant_id {
+    let quotas: Vec<Quota> = if let Some(tenant_id) = tenant_id {
         get_quotas_for_tenant(config, tenant_id)
             .context("Failed to get quotas for tenant")?
+            .quotas
     } else {
         get_tenant_quota(config)
             .context("Failed to get tenant quotas")?
+            .quotas
     };
 
-    printer.print_resources(&openapi_quotas.quotas)
+    printer.print_resources(&quotas)
 }

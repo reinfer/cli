@@ -7,7 +7,7 @@ use openapi::{
         buckets_api::{get_bucket, get_bucket_by_id, get_bucket_statistics},
         emails_api::{get_bucket_emails, get_email_from_bucket_by_id},
     },
-    models::{GetBucketEmailsRequest, BucketStatistics, Count},
+    models::{GetBucketEmailsRequest, Count},
 };
 use std::{
     fs::File,
@@ -90,7 +90,8 @@ fn download_email(
     let response = get_email_from_bucket_by_id(config, &bucket.owner, &bucket.name, &id)
         .context("Failed to get email")?;
 
-    print_resources_as_json(response.email, &mut writer)
+    // GetEmailFromBucketByIdResponse has 'emails' field (Vec), not 'email'
+    print_resources_as_json(response.emails.into_iter(), &mut writer)
 }
 
 fn download_emails(
@@ -134,12 +135,15 @@ fn download_emails(
         let response = get_bucket_emails(config, &bucket.owner, &bucket.name, request)
             .context("Operation to get emails has failed.")?;
 
-        statistics.add_emails(response.emails.len());
+        let emails_count = response.emails.len();
+        let has_emails = !response.emails.is_empty();
+        
+        statistics.add_emails(emails_count);
         print_resources_as_json(response.emails.into_iter(), &mut writer)?;
 
         // Server only returns a continuation token when len == limit
         continuation = response.continuation;
-        if continuation.is_none() || response.emails.is_empty() {
+        if continuation.is_none() || !has_emails {
             break;
         }
     }

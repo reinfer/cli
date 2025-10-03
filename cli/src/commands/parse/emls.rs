@@ -11,21 +11,19 @@ use std::{
 
 use crate::commands::{
     ensure_uip_user_consents_to_ai_unit_charge,
-    parse::{get_files_in_directory, get_progress_bar, Statistics},
+    parse::{get_files_in_directory, get_progress_bar, Statistics, upload_batch_of_new_emails},
 };
 use openapi::{
     apis::{
         configuration::Configuration,
         buckets_api::get_bucket,
-        emails_api::add_emails_to_bucket,
     },
     models::{
         Attachment, 
         EmailNew,
-        AddEmailsToBucketRequest,
     },
 };
-use crate::utils::resource_identifier::BucketIdentifier;
+use crate::utils::{resource_identifier::BucketIdentifier, full_name::FullName};
 use structopt::StructOpt;
 
 const UPLOAD_BATCH_SIZE: usize = 4;
@@ -58,14 +56,14 @@ pub fn parse(config: &Configuration, args: &ParseEmlArgs, pool: &mut Pool) -> Re
     } = args;
 
     if !no_charge && !yes {
-        ensure_uip_user_consents_to_ai_unit_charge(&config.base_path)?;
+        ensure_uip_user_consents_to_ai_unit_charge(&config.base_path.parse()?)?;
     }
 
     let eml_paths = get_files_in_directory(directory, "eml", true)?;
     let statistics = Arc::new(Statistics::new());
     let _progress = get_progress_bar(eml_paths.len() as u64, &statistics);
 
-    let bucket_response = get_bucket(config, bucket.owner(), bucket.name())
+    let bucket_response = get_bucket(config, bucket.owner().unwrap(), bucket.name().unwrap())
         .with_context(|| format!("Unable to get bucket {}", args.bucket))?;
     let bucket = bucket_response.bucket;
 
@@ -86,16 +84,15 @@ pub fn parse(config: &Configuration, args: &ParseEmlArgs, pool: &mut Pool) -> Re
         pool.scoped(|scope| {
             for chunk in chunks {
                 scope.execute(|| {
-                    let request = AddEmailsToBucketRequest {
-                        emails: chunk.to_vec(),
-                    };
-                    let result = add_emails_to_bucket(config, &bucket.owner, &bucket.name, request)
-                        .context("Could not upload batch of emails");
+                    // Create BucketIdentifier from existing bucket info
+                    let bucket_id = BucketIdentifier::FullName(
+                        FullName(format!("{}/{}", bucket.owner, bucket.name))
+                    );
+                    
+                    let result = upload_batch_of_new_emails(config, &bucket_id, chunk, *no_charge, &statistics);
 
                     if let Err(error) = result {
                         error_sender.send(error).expect("Could not send error");
-                    } else {
-                        statistics.add_uploaded(chunk.len());
                     }
                 });
             }

@@ -23,7 +23,7 @@ use openapi::{
         buckets_api::{get_bucket, get_bucket_by_id},
         emails_api::add_emails_to_bucket,
     },
-    models::{AddEmailsToBucketRequest, Attachment, EmailId, EmailMetadataNew, EmailNew},
+    models::{AddEmailsToBucketRequest, Attachment, EmailMetadataNew, EmailNew},
 };
 
 // Local crate imports
@@ -250,7 +250,7 @@ pub fn parse(config: &Configuration, args: &ParsePstArgs) -> Result<()> {
             if args.resume_on_error {
                 // Use OpenAPI split-on-failure for resilience
                 let result = crate::utils::openapi_split_on_failure::execute_with_split_on_failure(
-                    |req| add_emails_to_bucket(config, &bucket.owner, &bucket.name, req),
+                    |req| add_emails_to_bucket(config, &bucket.owner, &bucket.name, req, Some(args.no_charge)),
                     AddEmailsToBucketRequest::new(emails),
                     "add_emails_to_bucket"
                 ).context("Could not upload batch of emails")?;
@@ -259,7 +259,7 @@ pub fn parse(config: &Configuration, args: &ParsePstArgs) -> Result<()> {
                 statistics.add_failed_to_upload(result.num_failed);
             } else {
                 let request = AddEmailsToBucketRequest::new(emails);
-                add_emails_to_bucket(config, &bucket.owner, &bucket.name, request)
+                add_emails_to_bucket(config, &bucket.owner, &bucket.name, request, Some(args.no_charge))
                     .context("Could not upload batch of emails")?;
                 statistics.add_uploaded(batch_len);
             };
@@ -358,7 +358,7 @@ pub fn pst_message_to_new_email(pst_message: PstMessage, mailbox: String) -> Res
 
     // Get Message ID
     let message_id = PstMessage::expect_header(&parsed_headers, "Message-ID")?;
-    let id = EmailId(message_id);
+    let id = message_id;
 
     // Get timestamp
 
@@ -388,6 +388,11 @@ pub fn pst_message_to_new_email(pst_message: PstMessage, mailbox: String) -> Res
     // Get Metadata
     let metadata = Some(Box::new(EmailMetadataNew {
         has_attachments: Some(!attachments.is_empty()),
+        folder: if pst_message.folder.0.is_empty() {
+            None
+        } else {
+            Some(pst_message.folder.0.clone())
+        },
         ..Default::default()
     }));
 
@@ -428,7 +433,7 @@ pub fn pst_message_to_new_email(pst_message: PstMessage, mailbox: String) -> Res
     Ok(EmailNew {
         id,
         mailbox,
-        timestamp,
+        timestamp: timestamp.to_rfc3339(),
         mime_content,
         metadata,
         attachments: if attachments.is_empty() {
@@ -443,7 +448,7 @@ pub fn pst_message_to_new_email(pst_message: PstMessage, mailbox: String) -> Res
 mod tests {
 
     use super::*;
-    // Tests temporarily disabled during migration to OpenAPI
+    
     use std::path::Path;
 
     #[test]

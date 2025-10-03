@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use reqwest::Method;
 
-use crate::out::rust::src::apis::configuration::Configuration;
+use openapi::apis::configuration::Configuration;
 use super::retry::retry_request;
 
 /// Request structure for refreshing user permissions
@@ -50,9 +50,9 @@ pub fn refresh_user_permissions(config: &Configuration) -> Result<RefreshUserPer
     
     // Send the request with retry logic (similar to the client's Retry::Yes behavior)
     let response = retry_request(|| {
-        request.try_clone()
+        Ok(request.try_clone()
             .context("Failed to clone request for retry")?
-            .send()
+            .send()?)
     })?;
     
     // Check if the response is successful
@@ -75,12 +75,3 @@ pub fn refresh_user_permissions(config: &Configuration) -> Result<RefreshUserPer
 }
 
 
-/// TLS-aware version of refresh_user_permissions for backwards compatibility
-/// 
-/// This function provides the same interface as the legacy implementation
-/// that was referenced in main.rs
-pub fn refresh_user_permissions_with_tls_option(config: &Configuration) -> Result<RefreshUserPermissionsResponse> {
-    // The TLS configuration should already be handled in the Configuration's client
-    // so we can just call the standard refresh function
-    refresh_user_permissions(config)
-}
