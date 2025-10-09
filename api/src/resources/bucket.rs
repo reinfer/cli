@@ -154,9 +154,6 @@ pub struct GetKeyedSyncStateIdsRequest {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub(crate) struct DeleteKeyedSyncStateResponse {}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub(crate) struct GetKeyedSyncStateIdsResponse {
     pub keyed_sync_state_ids: Vec<KeyedSyncStateId>,
 }
