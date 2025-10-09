@@ -1,5 +1,6 @@
-# Unreleased
+# v0.38.10
 - Support mailbox sync states 
+- Support Gemini IXP model versions.
 
 # v0.38.9
 - Check status code when getting octet stream
