@@ -126,6 +126,7 @@ pub struct LabellingsIter<'a> {
     config: &'a Configuration,
     owner: String,
     dataset_name: String,
+    source_id: String,
     after: Option<String>,
     done: bool,
 }
@@ -135,11 +136,13 @@ impl<'a> LabellingsIter<'a> {
         config: &'a Configuration,
         owner: String,
         dataset_name: String,
+        source_id: String,
     ) -> Self {
         Self {
             config,
             owner,
             dataset_name,
+            source_id,
             after: None,
             done: false,
         }
@@ -154,7 +157,19 @@ impl Iterator for LabellingsIter<'_> {
             return None;
         }
 
-        let response = get_labellings(self.config, &self.owner, &self.dataset_name);
+        let response = get_labellings(
+            self.config, 
+            &self.owner, 
+            &self.dataset_name,
+            None, // id: Option<Vec<String>> - must be None for bulk requests
+            None, // ids: Option<&str> - must be None for bulk requests  
+            Some("true"), // allow_missing: Option<&str> - be permissive
+            Some("false"), // compute_moon_predictions: Option<&str> - disable for speed
+            Some(&self.source_id), // source_id: Option<&str> - for bulk requests
+            self.after.as_deref(), // after: Option<&str> - pagination token
+            Some("100"), // limit: Option<&str> - smaller page size, must be 1-999
+            Some("false") // return_predictions: Option<&str> - we handle predictions separately
+        );
         
         Some(response.map_err(|e| anyhow::Error::from(e)).map(|response| {
             self.after = response.after.clone();
@@ -169,8 +184,9 @@ pub fn get_labellings_iter<'a>(
     config: &'a Configuration,
     owner: String,
     dataset_name: String,
+    source_id: String,
 ) -> LabellingsIter<'a> {
-    LabellingsIter::new(config, owner, dataset_name)
+    LabellingsIter::new(config, owner, dataset_name, source_id)
 }
 
 use crate::utils::user_properties_filter::{UserPropertiesFilter, PropertyFilter, PropertyValue};
@@ -1287,7 +1303,7 @@ fn download_comment_attachments(
 fn get_reviewed_comments_in_bulk(
     config: &Configuration,
     dataset_name: DatasetFullName,
-    _source: Source,
+    source: Source,
     statistics: &Arc<Statistics>,
     mut writer: impl Write,
     options: CommentDownloadOptions,
@@ -1296,6 +1312,7 @@ fn get_reviewed_comments_in_bulk(
         config,
         dataset_name.owner().to_string(),
         dataset_name.name().to_string(),
+        source.id.clone(),
     ) {
         let page = page.context("Operation to get labellings has failed.")?;
 

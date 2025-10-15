@@ -25,8 +25,8 @@ The process consists of three main steps:
 Fetch the latest OpenAPI specification from the platform repository:
 
 ```bash
-# Update from your current branch (edward/rust-client)
-./scripts/update-spec.sh --ref edward/rust-client \
+# Update from your current branch (edward/query_params)
+./scripts/update-spec.sh --ref edward/query_params \
   --repo reinfer/platform \
   --path backend/api/openapi/reinfer-v1.openapi-v3.1.json \
   -o out/reinfer-v1.openapi-v3.1.json

@@ -616,7 +616,7 @@ pub fn get_dataset_user_properties_summary(configuration: &configuration::Config
 }
 
 /// Gets labellings in a dataset for a given set of comment         ids. Note: Calling this endpoint with `compute_moon_predictions` will         be significantly slower.         
-pub fn get_labellings(configuration: &configuration::Configuration, owner: &str, dataset_name: &str) -> Result<models::GetLabellingsResponse, Error<GetLabellingsError>> {
+pub fn get_labellings(configuration: &configuration::Configuration, owner: &str, dataset_name: &str, id: Option<Vec<String>>, ids: Option<&str>, allow_missing: Option<&str>, compute_moon_predictions: Option<&str>, source_id: Option<&str>, after: Option<&str>, limit: Option<&str>, return_predictions: Option<&str>) -> Result<models::GetLabellingsResponse, Error<GetLabellingsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -624,6 +624,33 @@ pub fn get_labellings(configuration: &configuration::Configuration, owner: &str,
     let local_var_uri_str = format!("{}/api/_private/datasets/{owner}/{dataset_name}/labellings", local_var_configuration.base_path, owner=crate::apis::urlencode(owner), dataset_name=crate::apis::urlencode(dataset_name));
     let mut local_var_req_builder = local_var_client.request(reqwest::Method::GET, local_var_uri_str.as_str());
 
+    if let Some(ref local_var_str) = id {
+        local_var_req_builder = match "csv" {
+            "multi" => local_var_req_builder.query(&local_var_str.into_iter().map(|p| ("id".to_owned(), p.to_string())).collect::<Vec<(std::string::String, std::string::String)>>()),
+            _ => local_var_req_builder.query(&[("id", &local_var_str.into_iter().map(|p| p.to_string()).collect::<Vec<String>>().join(",").to_string())]),
+        };
+    }
+    if let Some(ref local_var_str) = ids {
+        local_var_req_builder = local_var_req_builder.query(&[("ids", &local_var_str.to_string())]);
+    }
+    if let Some(ref local_var_str) = allow_missing {
+        local_var_req_builder = local_var_req_builder.query(&[("allow_missing", &local_var_str.to_string())]);
+    }
+    if let Some(ref local_var_str) = compute_moon_predictions {
+        local_var_req_builder = local_var_req_builder.query(&[("compute_moon_predictions", &local_var_str.to_string())]);
+    }
+    if let Some(ref local_var_str) = source_id {
+        local_var_req_builder = local_var_req_builder.query(&[("source_id", &local_var_str.to_string())]);
+    }
+    if let Some(ref local_var_str) = after {
+        local_var_req_builder = local_var_req_builder.query(&[("after", &local_var_str.to_string())]);
+    }
+    if let Some(ref local_var_str) = limit {
+        local_var_req_builder = local_var_req_builder.query(&[("limit", &local_var_str.to_string())]);
+    }
+    if let Some(ref local_var_str) = return_predictions {
+        local_var_req_builder = local_var_req_builder.query(&[("return_predictions", &local_var_str.to_string())]);
+    }
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
         local_var_req_builder = local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
     }

@@ -46,5 +46,6 @@ cp scripts/patches/user_properties_value.rs "$OUT_DIR/src/models/user_properties
 cp scripts/patches/moon_form_group_update.rs "$OUT_DIR/src/models/moon_form_group_update.rs"
 cp scripts/patches/text_format.rs "$OUT_DIR/src/models/text_format.rs"
 cp scripts/patches/inherits_from.rs "$OUT_DIR/src/models/inherits_from.rs"
+cp scripts/patches/message_rich_text_text_markup_inner.rs "$OUT_DIR/src/models/message_rich_text_text_markup_inner.rs"
 
 echo "✔ Done → $OUT_DIR"

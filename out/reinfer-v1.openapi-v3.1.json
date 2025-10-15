@@ -2773,6 +2773,9 @@
         "summary": "Query comments in a dataset",
         "description": "Query comments in a dataset",
         "operationId": "queryComments",
+        "x-uipath-communicationsmining-project-permissions": [
+          "voc-readonly"
+        ],
         "parameters": [
           {
             "name": "owner",
@@ -9674,6 +9677,113 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "id",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "List of comment IDs to get labellings for. Each ID should be in the format 'source_id.comment_id'. Maximum 128 IDs allowed.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated list of comment IDs (old style). Each ID should be in the format 'source_id.comment_id'.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "allow_missing",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Whether to allow missing comments in the response. If true, the response will include partial results even if some comment IDs are not found.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "compute_moon_predictions",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Whether to compute moon predictions for the comments. WARNING: This will make the request significantly slower.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "source_id",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Source ID for bulk requests. When provided, will return labellings for all comments in the source with pagination.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Continuation token for pagination in bulk requests. Use this to fetch the next batch of labellings after a specific point.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Maximum number of labellings to return in bulk requests. Must be between 1 and 999.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "return_predictions",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Whether to return predictions in bulk requests.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
           }
         ],
         "responses": {

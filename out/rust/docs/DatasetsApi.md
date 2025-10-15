@@ -398,7 +398,7 @@ Name | Type | Description  | Required | Notes
 
 ## get_labellings
 
-> models::GetLabellingsResponse get_labellings(owner, dataset_name)
+> models::GetLabellingsResponse get_labellings(owner, dataset_name, id, ids, allow_missing, compute_moon_predictions, source_id, after, limit, return_predictions)
 Get labellings in a dataset
 
 Gets labellings in a dataset for a given set of comment         ids. Note: Calling this endpoint with `compute_moon_predictions` will         be significantly slower.         
@@ -410,6 +410,14 @@ Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
 **owner** | **String** |  | [required] |
 **dataset_name** | **String** |  | [required] |
+**id** | Option<[**Vec<String>**](String.md)> | List of comment IDs to get labellings for. Each ID should be in the format 'source_id.comment_id'. Maximum 128 IDs allowed. |  |
+**ids** | Option<**String**> | Comma-separated list of comment IDs (old style). Each ID should be in the format 'source_id.comment_id'. |  |
+**allow_missing** | Option<**String**> | Whether to allow missing comments in the response. If true, the response will include partial results even if some comment IDs are not found. |  |
+**compute_moon_predictions** | Option<**String**> | Whether to compute moon predictions for the comments. WARNING: This will make the request significantly slower. |  |
+**source_id** | Option<**String**> | Source ID for bulk requests. When provided, will return labellings for all comments in the source with pagination. |  |
+**after** | Option<**String**> | Continuation token for pagination in bulk requests. Use this to fetch the next batch of labellings after a specific point. |  |
+**limit** | Option<**String**> | Maximum number of labellings to return in bulk requests. Must be between 1 and 999. |  |
+**return_predictions** | Option<**String**> | Whether to return predictions in bulk requests. |  |
 
 ### Return type
 

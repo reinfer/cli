@@ -12,23 +12,15 @@ use crate::models;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "kind")]
+#[serde(untagged)]
 pub enum MarkupTableCellChildrenInner {
-    #[serde(rename="text")]
     Text(Box<models::MarkupText>),
-    #[serde(rename="break")]
     Break(Box<models::MarkupBreak>),
-    #[serde(rename="link")]
     Link(Box<models::MarkupLink>),
-    #[serde(rename="style")]
     Style(Box<models::MarkupStyle>),
-    #[serde(rename="paragraph")]
     Paragraph(Box<models::MarkupParagraph>),
-    #[serde(rename="list")]
     List(Box<models::MarkupList>),
-    #[serde(rename="table")]
     Table(Box<models::MarkupTable>),
-    #[serde(rename="image")]
     Image(Box<models::MarkupImage>),
 }
 

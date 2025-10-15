@@ -175,7 +175,7 @@ fn test_delete_comments_in_range() {
         comments_str.as_bytes(),
     );
     assert!(output.is_empty());
-
+    
     let uploaded_all = cli.run(["get", "comments", source.identifier()]);
     assert_eq!(uploaded_all.lines().count(), num_comments);
 
