@@ -12,34 +12,32 @@ use crate::models;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
-pub struct FieldPredictionPreview {
-    #[serde(rename = "name")]
-    pub name: String,
-    #[serde(rename = "spans")]
-    pub spans: Vec<models::DocumentSpan>,
-    #[serde(rename = "id")]
-    pub id: String,
-    #[serde(rename = "field_id")]
-    pub field_id: String,
-    #[serde(rename = "confidence")]
-    pub confidence: Box<models::IxpConfidence>,
-    #[serde(rename = "extraction")]
-    pub extraction: Box<models::Extraction>,
-    #[serde(rename = "value", deserialize_with = "Option::deserialize")]
-    pub value: Option<Box<models::FieldValuePrivate>>,
+pub struct SuggestTaxonomyResponse {
+    #[serde(rename = "status")]
+    pub status: Status,
+    /// Taxonomy suggested for the example documents.
+    #[serde(rename = "taxonomy")]
+    pub taxonomy: Box<models::SuggestedTaxonomy>,
 }
 
-impl FieldPredictionPreview {
-    pub fn new(name: String, spans: Vec<models::DocumentSpan>, id: String, field_id: String, confidence: models::IxpConfidence, extraction: models::Extraction, value: Option<models::FieldValuePrivate>) -> FieldPredictionPreview {
-        FieldPredictionPreview {
-            name,
-            spans,
-            id,
-            field_id,
-            confidence: Box::new(confidence),
-            extraction: Box::new(extraction),
-            value: if let Some(x) = value {Some(Box::new(x))} else {None},
+impl SuggestTaxonomyResponse {
+    pub fn new(status: Status, taxonomy: models::SuggestedTaxonomy) -> SuggestTaxonomyResponse {
+        SuggestTaxonomyResponse {
+            status,
+            taxonomy: Box::new(taxonomy),
         }
+    }
+}
+/// 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum Status {
+    #[serde(rename = "ok")]
+    Ok,
+}
+
+impl Default for Status {
+    fn default() -> Status {
+        Self::Ok
     }
 }
 

@@ -11,6 +11,9 @@
 use crate::models;
 use serde::{Deserialize, Serialize};
 
+/// MoonFormGroupUpdate - Fixed version that properly handles empty dismissed arrays.
+/// The generated version incorrectly expected dismissed to be a single object,
+/// but the API returns it as an array (which can be empty).
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MoonFormGroupUpdate {
     #[serde(rename = "group")]
@@ -19,8 +22,8 @@ pub struct MoonFormGroupUpdate {
     pub assigned: Vec<models::MoonFormLabelAnnotationUpdate>,
     #[serde(rename = "drafted", skip_serializing_if = "Option::is_none")]
     pub drafted: Option<Vec<models::MoonFormLabelAnnotationUpdate>>,
-    #[serde(rename = "dismissed", skip_serializing_if = "Option::is_none")]
-    pub dismissed: Option<Box<models::MoonFormDismissedUpdate>>,
+    #[serde(rename = "dismissed", default)]
+    pub dismissed: Vec<models::MoonFormLabelAnnotationUpdate>,
 }
 
 impl MoonFormGroupUpdate {
@@ -29,11 +32,11 @@ impl MoonFormGroupUpdate {
             group,
             assigned,
             drafted: None,
-            dismissed: None,
+            dismissed: Vec::new(),
         }
     }
 }
-/// 
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum Group {
     #[serde(rename = "default")]
@@ -45,4 +48,3 @@ impl Default for Group {
         Self::Default
     }
 }
-

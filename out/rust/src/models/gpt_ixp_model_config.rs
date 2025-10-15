@@ -33,10 +33,12 @@ pub struct GptIxpModelConfig {
     pub flags: Vec<models::GptIxpFlag>,
     #[serde(rename = "iterative_config", default, with = "::serde_with::rust::double_option", skip_serializing_if = "Option::is_none")]
     pub iterative_config: Option<Option<Box<models::IterativeConfig>>>,
+    #[serde(rename = "attribution_method")]
+    pub attribution_method: models::AttributionMethod,
 }
 
 impl GptIxpModelConfig {
-    pub fn new(flags: Vec<models::GptIxpFlag>) -> GptIxpModelConfig {
+    pub fn new(flags: Vec<models::GptIxpFlag>, attribution_method: models::AttributionMethod) -> GptIxpModelConfig {
         GptIxpModelConfig {
             kind: None,
             model_version: None,
@@ -48,6 +50,7 @@ impl GptIxpModelConfig {
             seed: None,
             flags,
             iterative_config: None,
+            attribution_method,
         }
     }
 }

@@ -20,8 +20,8 @@ pub struct GetFieldGroupHistoryResponse {
     #[serde(rename = "versions")]
     pub versions: Vec<models::FieldGroupVersionEntry>,
     /// To be used with older_than_version for next page. If None, there are no more versions.
-    #[serde(rename = "oldest_version", skip_serializing_if = "Option::is_none")]
-    pub oldest_version: Option<i32>,
+    #[serde(rename = "oldest_version", default, with = "::serde_with::rust::double_option", skip_serializing_if = "Option::is_none")]
+    pub oldest_version: Option<Option<i32>>,
 }
 
 impl GetFieldGroupHistoryResponse {

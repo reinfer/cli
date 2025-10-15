@@ -21,7 +21,7 @@ pub struct UserModelMetadata {
     pub model_id: String,
     /// The name of the model
     #[serde(rename = "model_name")]
-    pub model_name: models::ModelKind,
+    pub model_name: models::ModelName,
     /// The fingerprint of the model
     #[serde(rename = "fingerprint")]
     pub fingerprint: String,
@@ -57,7 +57,7 @@ pub struct UserModelMetadata {
 }
 
 impl UserModelMetadata {
-    pub fn new(version: i32, model_id: String, model_name: models::ModelKind, fingerprint: String, trained_time: String, training_duration: f64, input_updated_at: String, validated: bool, pinned: bool, reviewed_counts: std::collections::HashMap<String, i32>, used_by_triggers: bool, settings: models::UserModelMetadataSettings, freshness: models::Freshness, flags: Vec<models::UserModelMetadataFlag>) -> UserModelMetadata {
+    pub fn new(version: i32, model_id: String, model_name: models::ModelName, fingerprint: String, trained_time: String, training_duration: f64, input_updated_at: String, validated: bool, pinned: bool, reviewed_counts: std::collections::HashMap<String, i32>, used_by_triggers: bool, settings: models::UserModelMetadataSettings, freshness: models::Freshness, flags: Vec<models::UserModelMetadataFlag>) -> UserModelMetadata {
         UserModelMetadata {
             version,
             model_id,

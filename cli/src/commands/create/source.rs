@@ -119,7 +119,20 @@ pub fn create(config: &Configuration, args: &CreateSourceArgs, printer: &Printer
 
     // Call the generated API
     let response = create_source(config, name.owner(), name.name(), create_request)
-        .context("Operation to create a source has failed")?;
+        .map_err(|e| {
+            match e {
+                openapi::apis::Error::ResponseError(response_content) => {
+                    // Try to parse the error response to get the detailed message
+                    let detailed_error = if let Ok(error_resp) = serde_json::from_str::<openapi::models::ErrorResponse>(&response_content.content) {
+                        error_resp.message
+                    } else {
+                        response_content.content
+                    };
+                    anyhow::anyhow!("Operation to create a source has failed: {}", detailed_error)
+                },
+                _ => anyhow::anyhow!("Operation to create a source has failed: {}", e)
+            }
+        })?;
 
     let source = *response.source;
     

@@ -6,7 +6,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **version** | **i32** | The version of the model | 
 **model_id** | **String** | The type of model | 
-**model_name** | [**models::ModelKind**](ModelKind.md) | The name of the model | 
+**model_name** | [**models::ModelName**](ModelName.md) | The name of the model | 
 **fingerprint** | **String** | The fingerprint of the model | 
 **trained_time** | **String** | Timestamp when the model was trained | 
 **training_duration** | **f64** | Duration of training in seconds | 

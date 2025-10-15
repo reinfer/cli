@@ -163,7 +163,7 @@ fn test_delete_comments_in_range() {
     let dataset1 = TestDataset::new_args(&[&format!("--source={}", source.identifier())]);
 
     // Upload our test data
-    let output = cli.run_with_stdin(
+    let output: String = cli.run_with_stdin(
         [
             "create",
             "comments",
@@ -304,3 +304,4 @@ fn get_comments_with_delay(cli: &TestCli, command: &[&str], expected_count: usiz
 
     retry(ExponentialBackoff::default(), run_command).unwrap()
 }
+

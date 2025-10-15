@@ -8,6 +8,7 @@ Name | Type | Description | Notes
 **id** | **String** |  | 
 **confidence** | [**models::IxpConfidence**](IxpConfidence.md) |  | 
 **text_spans** | [**Vec<models::TextSpan>**](TextSpan.md) |  | 
+**spans** | [**Vec<models::DocumentSpan>**](DocumentSpan.md) |  | 
 **document_spans** | [**Vec<models::DocumentSpan>**](DocumentSpan.md) |  | 
 **value** | Option<[**models::FieldValuePrivate**](FieldValuePrivate.md)> |  | 
 

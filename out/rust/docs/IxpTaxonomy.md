@@ -5,7 +5,6 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | Option<**String**> |  | [optional]
-**taxonomy_id** | Option<**String**> |  | [optional]
 **name** | **String** |  | 
 **instructions** | Option<**String**> |  | 
 **field_groups** | [**Vec<models::IxpFieldGroup>**](IxpFieldGroup.md) |  | 

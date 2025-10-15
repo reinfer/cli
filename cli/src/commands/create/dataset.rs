@@ -198,7 +198,20 @@ pub fn create(config: &Configuration, args: &CreateDatasetArgs, printer: &Printe
     };
 
     let response = create_dataset(config, name.owner(), name.name(), create_request)
-        .context("Operation to create a dataset has failed.")?;
+        .map_err(|e| {
+            match e {
+                openapi::apis::Error::ResponseError(response_content) => {
+                    // Try to parse the error response to get the detailed message
+                    let detailed_error = if let Ok(error_resp) = serde_json::from_str::<openapi::models::ErrorResponse>(&response_content.content) {
+                        error_resp.message
+                    } else {
+                        response_content.content
+                    };
+                    anyhow!("Operation to create a dataset has failed: {}", detailed_error)
+                },
+                _ => anyhow!("Operation to create a dataset has failed: {}", e)
+            }
+        })?;
 
     let dataset = *response.dataset;
     info!(

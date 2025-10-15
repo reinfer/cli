@@ -4,8 +4,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**id** | Option<**String**> |  | [optional]
-**field_group_id** | Option<**String**> |  | [optional]
+**id** | **String** |  | 
 **parent** | Option<**String**> |  | 
 **name** | **String** |  | 
 **instructions** | Option<**String**> |  | [optional]

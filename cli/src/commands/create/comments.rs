@@ -24,7 +24,7 @@ use structopt::StructOpt;
 use openapi::{
     apis::{
         attachments_api::upload_comment_attachment,
-        comments_api::{add_comments, set_comment_audio, sync_comments},
+        comments_api::{add_comments, sync_comments},
         configuration::Configuration,
         datasets_api::get_dataset,
         sources_api::{get_source, get_source_by_id},
@@ -44,7 +44,7 @@ use crate::{
     utils::{
         CommentId, full_name::FullName, SourceId, SourceIdentifier, DatasetIdentifier,
         add_comments_with_split_on_failure, sync_comments_with_split_on_failure, 
-        handle_split_on_failure_result,
+        handle_split_on_failure_result, set_comment_audio,
     },
 };
 
@@ -59,9 +59,11 @@ use super::annotations::AttachmentStatistic;
 struct CommentWithAnnotationsAndAudio {
     pub comment: models::CommentNew,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub labelling: Option<Vec<models::LabellingGroup>>,
+    pub labelling: Option<Vec<models::GroupLabellingsRequest>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub entities: Option<models::Entities>,
+    pub entities: Option<models::EntitiesNew>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub moon_forms: Option<Vec<models::MoonFormGroupUpdate>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub audio_path: Option<PathBuf>,
 }
@@ -328,10 +330,11 @@ fn read_comments_iter<'a>(
                     let comment = parsed.comment;
                     let labelling = parsed.labelling;
                     let entities = parsed.entities;
+                    let moon_forms = parsed.moon_forms;
                     let audio_path = parsed.audio_path;
                     
                     // Extract annotations if present
-                    let annotations = if labelling.is_some() || entities.is_some() {
+                    let annotations = if labelling.is_some() || entities.is_some() || moon_forms.is_some() {
                         // Create annotations from the parsed data
                         let mut new_annotations = Vec::new();
                         
@@ -340,15 +343,9 @@ fn read_comments_iter<'a>(
                             comment: crate::commands::create::annotations::CommentIdComment {
                                 id: comment.id.clone(),
                             },
-                            labelling: labelling.map(|lg_vec| 
-                                lg_vec.into_iter()
-                                    .map(|lg| crate::utils::comment_utils::convert_labelling_group(lg))
-                                    .collect()
-                            ),
-                            entities: entities.map(|e| 
-                                crate::utils::comment_utils::convert_entities(e)
-                            ),
-                            moon_forms: None,
+                            labelling,
+                            entities,
+                            moon_forms,
                         };
                         new_annotations.push(annotation);
                         Some(new_annotations)

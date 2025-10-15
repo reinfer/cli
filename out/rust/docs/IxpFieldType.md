@@ -5,7 +5,6 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **String** |  | 
-**field_type_id** | **String** |  | 
 **name** | **String** |  | 
 **instructions** | Option<**String**> |  | 
 **data_type** | [**models::DataType**](Data_type.md) |  | 

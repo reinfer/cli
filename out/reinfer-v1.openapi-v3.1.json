@@ -3501,6 +3501,35 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "id",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "List of comment IDs to delete. Use multiple 'id' query parameters like ?id=abc123&id=def456. Maximum 128 comment IDs.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated list of comment IDs to delete. Example: ?ids=abc123,def456. Maximum 128 comment IDs.",
+            "allowEmptyValue": false,
+            "allowReserved": false,
+            "deprecated": false,
+            "explode": false,
+            "required": false
           }
         ],
         "responses": {
@@ -7520,6 +7549,90 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportTaxonomyResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "Client error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false,
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/api/_private/ixp/projects/{owner}/{dataset_name}/suggest-taxonomy": {
+      "post": {
+        "tags": [
+          "IxpProjects"
+        ],
+        "summary": "Suggest an IXP Taxonomy from context",
+        "description": "Suggest an IXP Taxonomy from context",
+        "operationId": "suggestTaxonomy",
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "deprecated": false,
+            "allowEmptyValue": false,
+            "explode": false,
+            "allowReserved": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dataset_name",
+            "in": "path",
+            "required": true,
+            "deprecated": false,
+            "allowEmptyValue": false,
+            "explode": false,
+            "allowReserved": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestTaxonomyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Suggest an IXP Taxonomy from context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestTaxonomyResponse"
                 }
               }
             }
@@ -18886,8 +18999,8 @@
         ],
         "additionalProperties": false
       },
-      "FolderStatus": {
-        "title": "FolderStatus",
+      "SyncStatus": {
+        "title": "SyncStatus",
         "description": "An enumeration.",
         "enum": [
           "IN_PROGRESS",
@@ -18895,8 +19008,9 @@
         ],
         "type": "string"
       },
-      "KeyedSyncState": {
-        "title": "KeyedSyncState",
+      "KeyedFolderSyncState": {
+        "title": "KeyedFolderSyncState",
+        "description": "Sync state for a specific folder within a mailbox.",
         "type": "object",
         "properties": {
           "mailbox_name": {
@@ -18915,10 +19029,10 @@
             }
           },
           "status": {
-            "$ref": "#/components/schemas/FolderStatus"
+            "$ref": "#/components/schemas/SyncStatus"
           },
           "synced_until": {
-            "title": "Synced Utils",
+            "title": "Synced Until",
             "type": [
               "string",
               "null"
@@ -18957,6 +19071,56 @@
         ],
         "additionalProperties": false
       },
+      "KeyedMailboxSyncState": {
+        "title": "KeyedMailboxSyncState",
+        "description": "Sync state for an entire mailbox (not folder-specific).",
+        "type": "object",
+        "properties": {
+          "mailbox_name": {
+            "title": "Mailbox Name",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SyncStatus"
+          },
+          "synced_until": {
+            "title": "Synced Until",
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^(\\+?(?:1[4-9]\\d{2}|[2-9]\\d{3})(?!\\d{2}\\b))((-?)((0[1-9]|1[0-2])(\\3([12]\\d|0[1-9]|3[01]))?|W([0-4]\\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\\d|[12]\\d{2}|3([0-5]\\d|6[1-6])))([T\\s]((([01]\\d|2[0-3])((:?)[0-5]\\d)?|24\\:?00)([\\.,]\\d+(?!:))?)?(\\17[0-5]\\d([\\.,]\\d+)?)?([zZ]|([\\+-])([01]\\d|2[0-3]):?([0-5]\\d)?)?)?)?$",
+            "examples": [
+              "2023-02-02T16:04:52.337954Z"
+            ]
+          },
+          "last_synced_at": {
+            "title": "Last Synced At",
+            "pattern": "^(\\+?(?:1[4-9]\\d{2}|[2-9]\\d{3})(?!\\d{2}\\b))((-?)((0[1-9]|1[0-2])(\\3([12]\\d|0[1-9]|3[01]))?|W([0-4]\\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\\d|[12]\\d{2}|3([0-5]\\d|6[1-6])))([T\\s]((([01]\\d|2[0-3])((:?)[0-5]\\d)?|24\\:?00)([\\.,]\\d+(?!:))?)?(\\17[0-5]\\d([\\.,]\\d+)?)?([zZ]|([\\+-])([01]\\d|2[0-3]):?([0-5]\\d)?)?)?)?$",
+            "examples": [
+              "2023-02-02T16:04:52.337954Z"
+            ],
+            "type": "string"
+          },
+          "fingerprint": {
+            "title": "Fingerprint",
+            "pattern": "^(\\+?(?:1[4-9]\\d{2}|[2-9]\\d{3})(?!\\d{2}\\b))((-?)((0[1-9]|1[0-2])(\\3([12]\\d|0[1-9]|3[01]))?|W([0-4]\\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\\d|[12]\\d{2}|3([0-5]\\d|6[1-6])))([T\\s]((([01]\\d|2[0-3])((:?)[0-5]\\d)?|24\\:?00)([\\.,]\\d+(?!:))?)?(\\17[0-5]\\d([\\.,]\\d+)?)?([zZ]|([\\+-])([01]\\d|2[0-3]):?([0-5]\\d)?)?)?)?$",
+            "examples": [
+              "2023-02-02T16:04:52.337954Z"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "mailbox_name",
+          "status",
+          "last_synced_at"
+        ],
+        "additionalProperties": false
+      },
       "ListKeyedSyncStatesResponse": {
         "title": "ListKeyedSyncStatesResponse",
         "type": "object",
@@ -18972,7 +19136,14 @@
             "title": "Keyed Sync States",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/KeyedSyncState"
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/KeyedFolderSyncState"
+                },
+                {
+                  "$ref": "#/components/schemas/KeyedMailboxSyncState"
+                }
+              ]
             }
           }
         },
@@ -19037,7 +19208,15 @@
             "type": "string"
           },
           "keyed_sync_state": {
-            "$ref": "#/components/schemas/KeyedSyncState"
+            "title": "Keyed Sync State",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KeyedFolderSyncState"
+              },
+              {
+                "$ref": "#/components/schemas/KeyedMailboxSyncState"
+              }
+            ]
           }
         },
         "required": [
@@ -19063,8 +19242,8 @@
         ],
         "additionalProperties": false
       },
-      "KeyedSyncStateUpdate": {
-        "title": "KeyedSyncStateUpdate",
+      "KeyedFolderSyncStateUpdate": {
+        "title": "KeyedFolderSyncStateUpdate",
         "type": "object",
         "properties": {
           "mailbox_name": {
@@ -19083,10 +19262,10 @@
             }
           },
           "status": {
-            "$ref": "#/components/schemas/FolderStatus"
+            "$ref": "#/components/schemas/SyncStatus"
           },
           "synced_until": {
-            "title": "Synced Utils",
+            "title": "Synced Until",
             "type": [
               "string",
               "null"
@@ -19124,12 +19303,68 @@
         ],
         "additionalProperties": false
       },
+      "KeyedMailboxSyncStateUpdate": {
+        "title": "KeyedMailboxSyncStateUpdate",
+        "type": "object",
+        "properties": {
+          "mailbox_name": {
+            "title": "Mailbox Name",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SyncStatus"
+          },
+          "synced_until": {
+            "title": "Synced Until",
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^(\\+?(?:1[4-9]\\d{2}|[2-9]\\d{3})(?!\\d{2}\\b))((-?)((0[1-9]|1[0-2])(\\3([12]\\d|0[1-9]|3[01]))?|W([0-4]\\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\\d|[12]\\d{2}|3([0-5]\\d|6[1-6])))([T\\s]((([01]\\d|2[0-3])((:?)[0-5]\\d)?|24\\:?00)([\\.,]\\d+(?!:))?)?(\\17[0-5]\\d([\\.,]\\d+)?)?([zZ]|([\\+-])([01]\\d|2[0-3]):?([0-5]\\d)?)?)?)?$",
+            "examples": [
+              "2023-02-02T16:04:52.337954Z"
+            ]
+          },
+          "last_synced_at": {
+            "title": "Last Synced At",
+            "type": "string",
+            "pattern": "^(\\+?(?:1[4-9]\\d{2}|[2-9]\\d{3})(?!\\d{2}\\b))((-?)((0[1-9]|1[0-2])(\\3([12]\\d|0[1-9]|3[01]))?|W([0-4]\\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\\d|[12]\\d{2}|3([0-5]\\d|6[1-6])))([T\\s]((([01]\\d|2[0-3])((:?)[0-5]\\d)?|24\\:?00)([\\.,]\\d+(?!:))?)?(\\17[0-5]\\d([\\.,]\\d+)?)?([zZ]|([\\+-])([01]\\d|2[0-3]):?([0-5]\\d)?)?)?)?$",
+            "examples": [
+              "2023-02-02T16:04:52.337954Z"
+            ]
+          },
+          "fingerprint": {
+            "title": "Fingerprint",
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^(\\+?(?:1[4-9]\\d{2}|[2-9]\\d{3})(?!\\d{2}\\b))((-?)((0[1-9]|1[0-2])(\\3([12]\\d|0[1-9]|3[01]))?|W([0-4]\\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\\d|[12]\\d{2}|3([0-5]\\d|6[1-6])))([T\\s]((([01]\\d|2[0-3])((:?)[0-5]\\d)?|24\\:?00)([\\.,]\\d+(?!:))?)?(\\17[0-5]\\d([\\.,]\\d+)?)?([zZ]|([\\+-])([01]\\d|2[0-3]):?([0-5]\\d)?)?)?)?$",
+            "examples": [
+              "2023-02-02T16:04:52.337954Z"
+            ]
+          }
+        },
+        "required": [
+          "mailbox_name",
+          "status"
+        ],
+        "additionalProperties": false
+      },
       "StoreKeyedSyncStateRequest": {
         "title": "StoreKeyedSyncStateRequest",
         "type": "object",
         "properties": {
           "keyed_sync_state": {
-            "$ref": "#/components/schemas/KeyedSyncStateUpdate"
+            "title": "Keyed Sync State",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KeyedFolderSyncStateUpdate"
+              },
+              {
+                "$ref": "#/components/schemas/KeyedMailboxSyncStateUpdate"
+              }
+            ]
           }
         },
         "required": [
@@ -22355,6 +22590,13 @@
               "$ref": "#/components/schemas/TextSpan"
             }
           },
+          "spans": {
+            "title": "Document Spans",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentSpan"
+            }
+          },
           "document_spans": {
             "title": "Document Spans",
             "type": "array",
@@ -22379,6 +22621,7 @@
           "id",
           "confidence",
           "text_spans",
+          "spans",
           "document_spans",
           "value"
         ],
@@ -26269,7 +26512,8 @@
         "title": "GptModelVersion",
         "description": "An enumeration.",
         "enum": [
-          "gpt_4o_2024_05_13"
+          "gpt_4o_2024_05_13",
+          "gemini_2_5_flash"
         ],
         "type": "string"
       },
@@ -26381,6 +26625,15 @@
         },
         "additionalProperties": false
       },
+      "AttributionMethod": {
+        "title": "AttributionMethod",
+        "description": "An enumeration.",
+        "enum": [
+          "table_heuristic",
+          "word_ids"
+        ],
+        "type": "string"
+      },
       "GptIxpModelConfig": {
         "title": "GptIxpModelConfig",
         "type": "object",
@@ -26471,10 +26724,14 @@
                 "type": "null"
               }
             ]
+          },
+          "attribution_method": {
+            "$ref": "#/components/schemas/AttributionMethod"
           }
         },
         "required": [
-          "flags"
+          "flags",
+          "attribution_method"
         ],
         "additionalProperties": false
       },
@@ -28015,11 +28272,18 @@
           "comment_id": {
             "title": "Comment Id",
             "type": "string"
+          },
+          "attachment_ref": {
+            "title": "Attachment reference",
+            "pattern": "^[A-Za-z0-9-_]{,128}\\Z",
+            "examples": [],
+            "type": "string"
           }
         },
         "required": [
           "status",
-          "comment_id"
+          "comment_id",
+          "attachment_ref"
         ],
         "additionalProperties": false
       },
@@ -29752,178 +30016,6 @@
         ],
         "type": "string"
       },
-      "BoolFieldValuePreview": {
-        "title": "BoolFieldValuePreview",
-        "type": "object",
-        "properties": {
-          "kind": {
-            "title": "kind",
-            "enum": [
-              "boolean"
-            ],
-            "type": "string"
-          },
-          "formatted": {
-            "title": "Formatted",
-            "type": "string"
-          },
-          "value": {
-            "title": "Value",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "kind",
-          "formatted",
-          "value"
-        ],
-        "additionalProperties": false
-      },
-      "TextFieldValuePreview": {
-        "title": "TextFieldValuePreview",
-        "type": "object",
-        "properties": {
-          "kind": {
-            "title": "kind",
-            "enum": [
-              "text"
-            ],
-            "type": "string"
-          },
-          "formatted": {
-            "title": "Formatted",
-            "type": "string"
-          }
-        },
-        "required": [
-          "kind",
-          "formatted"
-        ],
-        "additionalProperties": false
-      },
-      "FieldPredictionPreview": {
-        "title": "FieldPredictionPreview",
-        "type": "object",
-        "properties": {
-          "name": {
-            "title": "Field Name",
-            "maxLength": 64,
-            "examples": [
-              "my-field-name"
-            ],
-            "type": "string"
-          },
-          "spans": {
-            "title": "Spans",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DocumentSpan"
-            }
-          },
-          "id": {
-            "title": "Field ID",
-            "pattern": "^\\{?[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\}?$",
-            "examples": [
-              "57ffeb98-180a-4f48-8e3e-c6de0b51c747"
-            ],
-            "type": "string"
-          },
-          "field_id": {
-            "title": "Field ID",
-            "pattern": "^\\{?[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\}?$",
-            "examples": [
-              "57ffeb98-180a-4f48-8e3e-c6de0b51c747"
-            ],
-            "type": "string"
-          },
-          "confidence": {
-            "$ref": "#/components/schemas/IxpConfidence"
-          },
-          "extraction": {
-            "title": "Extraction",
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/BoolFieldValuePreview"
-              },
-              {
-                "$ref": "#/components/schemas/TextFieldValuePreview"
-              }
-            ]
-          },
-          "value": {
-            "title": "Value",
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/FieldValuePrivate"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "name",
-          "spans",
-          "id",
-          "field_id",
-          "confidence",
-          "extraction",
-          "value"
-        ],
-        "additionalProperties": false
-      },
-      "FieldGroupPredictionPreview": {
-        "title": "FieldGroupPredictionPreview",
-        "type": "object",
-        "properties": {
-          "name": {
-            "title": "Field Group Name",
-            "example": "Policy > Amendment",
-            "maxLength": 64,
-            "examples": [
-              "my-field-group-name"
-            ],
-            "type": "string"
-          },
-          "id": {
-            "title": "Field Group Id",
-            "type": "string",
-            "pattern": "^\\{?[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\}?$",
-            "examples": [
-              "57ffeb98-180a-4f48-8e3e-c6de0b51c747"
-            ]
-          },
-          "field_group_id": {
-            "title": "Field Group Id",
-            "type": "string",
-            "pattern": "^\\{?[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\}?$",
-            "examples": [
-              "57ffeb98-180a-4f48-8e3e-c6de0b51c747"
-            ]
-          },
-          "occurrence_confidence": {
-            "$ref": "#/components/schemas/IxpConfidence"
-          },
-          "extraction_confidence": {
-            "$ref": "#/components/schemas/IxpConfidence"
-          },
-          "fields": {
-            "title": "Fields",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FieldPredictionPreview"
-            }
-          }
-        },
-        "required": [
-          "name",
-          "occurrence_confidence",
-          "extraction_confidence",
-          "fields"
-        ],
-        "additionalProperties": false
-      },
       "TextFieldFlag": {
         "title": "TextFieldFlag",
         "description": "An enumeration.",
@@ -29990,19 +30082,79 @@
         ],
         "additionalProperties": false
       },
+      "DateFieldDataType": {
+        "title": "DateFieldDataType",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "title": "kind",
+            "enum": [
+              "date"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "additionalProperties": false
+      },
+      "MonetaryQuantityFieldDataType": {
+        "title": "MonetaryQuantityFieldDataType",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "title": "kind",
+            "enum": [
+              "monetary"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "additionalProperties": false
+      },
+      "NumberFieldDataType": {
+        "title": "NumberFieldDataType",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "title": "kind",
+            "enum": [
+              "number"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "additionalProperties": false
+      },
+      "ChoiceFieldDataType": {
+        "title": "ChoiceFieldDataType",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "title": "kind",
+            "enum": [
+              "choice"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "additionalProperties": false
+      },
       "IxpFieldType": {
         "title": "IxpFieldType",
         "type": "object",
         "properties": {
           "id": {
-            "title": "Field Type Id",
-            "pattern": "^\\{?[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\}?$",
-            "examples": [
-              "57ffeb98-180a-4f48-8e3e-c6de0b51c747"
-            ],
-            "type": "string"
-          },
-          "field_type_id": {
             "title": "Field Type Id",
             "pattern": "^\\{?[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\}?$",
             "examples": [
@@ -30034,13 +30186,24 @@
               },
               {
                 "$ref": "#/components/schemas/BoolFieldDataType"
+              },
+              {
+                "$ref": "#/components/schemas/DateFieldDataType"
+              },
+              {
+                "$ref": "#/components/schemas/MonetaryQuantityFieldDataType"
+              },
+              {
+                "$ref": "#/components/schemas/NumberFieldDataType"
+              },
+              {
+                "$ref": "#/components/schemas/ChoiceFieldDataType"
               }
             ]
           }
         },
         "required": [
           "id",
-          "field_type_id",
           "name",
           "instructions",
           "data_type"
@@ -30071,7 +30234,7 @@
             "title": "Field Group Prediction",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/FieldGroupPredictionPreview"
+              "$ref": "#/components/schemas/FieldGroupPredictionPrivate"
             }
           },
           "field_types": {
@@ -30153,14 +30316,6 @@
             ],
             "type": "string"
           },
-          "field_id": {
-            "title": "Field id",
-            "pattern": "^\\{?[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\}?$",
-            "examples": [
-              "57ffeb98-180a-4f48-8e3e-c6de0b51c747"
-            ],
-            "type": "string"
-          },
           "name": {
             "title": "Name",
             "maxLength": 64,
@@ -30189,7 +30344,6 @@
         },
         "required": [
           "id",
-          "field_id",
           "name",
           "instructions",
           "field_type_id"
@@ -30202,19 +30356,11 @@
         "properties": {
           "id": {
             "title": "Field Group Id",
-            "type": "string",
             "pattern": "^\\{?[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\}?$",
             "examples": [
               "57ffeb98-180a-4f48-8e3e-c6de0b51c747"
-            ]
-          },
-          "field_group_id": {
-            "title": "Field Group Id",
-            "type": "string",
-            "pattern": "^\\{?[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\}?$",
-            "examples": [
-              "57ffeb98-180a-4f48-8e3e-c6de0b51c747"
-            ]
+            ],
+            "type": "string"
           },
           "parent": {
             "title": "Parent ID",
@@ -30252,6 +30398,7 @@
           }
         },
         "required": [
+          "id",
           "parent",
           "name",
           "fields"
@@ -30263,14 +30410,6 @@
         "type": "object",
         "properties": {
           "id": {
-            "title": "Taxonomy Id",
-            "type": "string",
-            "pattern": "^\\{?[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\}?$",
-            "examples": [
-              "57ffeb98-180a-4f48-8e3e-c6de0b51c747"
-            ]
-          },
-          "taxonomy_id": {
             "title": "Taxonomy Id",
             "type": "string",
             "pattern": "^\\{?[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\}?$",
@@ -30601,6 +30740,80 @@
         ],
         "additionalProperties": false
       },
+      "SuggestTaxonomyRequest": {
+        "title": "SuggestTaxonomyRequest",
+        "type": "object",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "description": "Description of what the user wants to extract.",
+            "maxLength": 1024,
+            "type": "string"
+          },
+          "documents": {
+            "title": "Example Documents",
+            "description": "Attachment references for example uploaded documents.",
+            "minItems": 0,
+            "maxItems": 8,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9-_]{,128}\\Z",
+              "examples": []
+            }
+          }
+        },
+        "required": [
+          "description",
+          "documents"
+        ],
+        "additionalProperties": false
+      },
+      "SuggestedTaxonomy": {
+        "title": "SuggestedTaxonomy",
+        "type": "object",
+        "properties": {
+          "field_types": {
+            "title": "Field Types",
+            "description": "Taxonomy Field Types.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EntityDef"
+            }
+          },
+          "label_group": {
+            "description": "Label group containing Field Groups and Fields.",
+            "$ref": "#/components/schemas/LabelGroup"
+          }
+        },
+        "required": [
+          "field_types",
+          "label_group"
+        ],
+        "additionalProperties": false
+      },
+      "SuggestTaxonomyResponse": {
+        "title": "SuggestTaxonomyResponse",
+        "type": "object",
+        "properties": {
+          "status": {
+            "title": "Status",
+            "enum": [
+              "ok"
+            ],
+            "type": "string"
+          },
+          "taxonomy": {
+            "description": "Taxonomy suggested for the example documents.",
+            "$ref": "#/components/schemas/SuggestedTaxonomy"
+          }
+        },
+        "required": [
+          "status",
+          "taxonomy"
+        ],
+        "additionalProperties": false
+      },
       "CreateLabelGroupRequest": {
         "title": "CreateLabelGroupRequest",
         "type": "object",
@@ -30758,13 +30971,14 @@
         },
         "additionalProperties": false
       },
-      "ModelKind": {
-        "title": "ModelKind",
+      "ModelName": {
+        "title": "ModelName",
         "description": "An enumeration.",
         "enum": [
           "cm",
           "doc_path_ixp",
-          "gpt_ixp"
+          "gpt_ixp",
+          "gemini_ixp"
         ],
         "type": "string"
       },
@@ -30826,7 +31040,7 @@
           },
           "model_name": {
             "description": "The name of the model",
-            "$ref": "#/components/schemas/ModelKind"
+            "$ref": "#/components/schemas/ModelName"
           },
           "fingerprint": {
             "title": "Fingerprint",
@@ -34447,8 +34661,11 @@
           "timestamp": {
             "title": "Timestamp",
             "description": "When this version was saved",
-            "type": "string",
-            "format": "date-time"
+            "pattern": "^(\\+?(?:1[4-9]\\d{2}|[2-9]\\d{3})(?!\\d{2}\\b))((-?)((0[1-9]|1[0-2])(\\3([12]\\d|0[1-9]|3[01]))?|W([0-4]\\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\\d|[12]\\d{2}|3([0-5]\\d|6[1-6])))([T\\s]((([01]\\d|2[0-3])((:?)[0-5]\\d)?|24\\:?00)([\\.,]\\d+(?!:))?)?(\\17[0-5]\\d([\\.,]\\d+)?)?([zZ]|([\\+-])([01]\\d|2[0-3]):?([0-5]\\d)?)?)?)?$",
+            "examples": [
+              "2023-02-02T16:04:52.337954Z"
+            ],
+            "type": "string"
           },
           "snapshot": {
             "description": "Snapshot of the field group at this version",
@@ -34486,7 +34703,10 @@
           "oldest_version": {
             "title": "Oldest Model Version",
             "description": "To be used with older_than_version for next page. If None, there are no more versions.",
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           }
         },
         "required": [
@@ -34549,8 +34769,11 @@
           "timestamp": {
             "title": "Timestamp",
             "description": "When this version was saved",
-            "type": "string",
-            "format": "date-time"
+            "pattern": "^(\\+?(?:1[4-9]\\d{2}|[2-9]\\d{3})(?!\\d{2}\\b))((-?)((0[1-9]|1[0-2])(\\3([12]\\d|0[1-9]|3[01]))?|W([0-4]\\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\\d|[12]\\d{2}|3([0-5]\\d|6[1-6])))([T\\s]((([01]\\d|2[0-3])((:?)[0-5]\\d)?|24\\:?00)([\\.,]\\d+(?!:))?)?(\\17[0-5]\\d([\\.,]\\d+)?)?([zZ]|([\\+-])([01]\\d|2[0-3]):?([0-5]\\d)?)?)?)?$",
+            "examples": [
+              "2023-02-02T16:04:52.337954Z"
+            ],
+            "type": "string"
           },
           "snapshot": {
             "description": "Snapshot of the field definition at this version",
@@ -34588,7 +34811,10 @@
           "oldest_version": {
             "title": "Oldest Model Version",
             "description": "To be used with older_than_version for next page. If None, there are no more versions.",
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           }
         },
         "required": [

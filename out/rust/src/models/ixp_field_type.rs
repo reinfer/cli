@@ -15,8 +15,6 @@ use serde::{Deserialize, Serialize};
 pub struct IxpFieldType {
     #[serde(rename = "id")]
     pub id: String,
-    #[serde(rename = "field_type_id")]
-    pub field_type_id: String,
     #[serde(rename = "name")]
     pub name: String,
     #[serde(rename = "instructions", deserialize_with = "Option::deserialize")]
@@ -26,10 +24,9 @@ pub struct IxpFieldType {
 }
 
 impl IxpFieldType {
-    pub fn new(id: String, field_type_id: String, name: String, instructions: Option<String>, data_type: models::DataType) -> IxpFieldType {
+    pub fn new(id: String, name: String, instructions: Option<String>, data_type: models::DataType) -> IxpFieldType {
         IxpFieldType {
             id,
-            field_type_id,
             name,
             instructions,
             data_type: Box::new(data_type),

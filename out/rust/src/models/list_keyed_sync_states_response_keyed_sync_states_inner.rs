@@ -12,34 +12,34 @@ use crate::models;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Extraction {
-    #[serde(rename = "kind")]
-    pub kind: Kind,
-    #[serde(rename = "formatted")]
-    pub formatted: String,
-    #[serde(rename = "value")]
-    pub value: bool,
+pub struct ListKeyedSyncStatesResponseKeyedSyncStatesInner {
+    #[serde(rename = "mailbox_name")]
+    pub mailbox_name: String,
+    #[serde(rename = "folder_id")]
+    pub folder_id: String,
+    #[serde(rename = "folder_path")]
+    pub folder_path: Vec<String>,
+    #[serde(rename = "status")]
+    pub status: models::SyncStatus,
+    #[serde(rename = "synced_until", skip_serializing_if = "Option::is_none")]
+    pub synced_until: Option<String>,
+    #[serde(rename = "last_synced_at")]
+    pub last_synced_at: String,
+    #[serde(rename = "fingerprint", skip_serializing_if = "Option::is_none")]
+    pub fingerprint: Option<String>,
 }
 
-impl Extraction {
-    pub fn new(kind: Kind, formatted: String, value: bool) -> Extraction {
-        Extraction {
-            kind,
-            formatted,
-            value,
+impl ListKeyedSyncStatesResponseKeyedSyncStatesInner {
+    pub fn new(mailbox_name: String, folder_id: String, folder_path: Vec<String>, status: models::SyncStatus, last_synced_at: String) -> ListKeyedSyncStatesResponseKeyedSyncStatesInner {
+        ListKeyedSyncStatesResponseKeyedSyncStatesInner {
+            mailbox_name,
+            folder_id,
+            folder_path,
+            status,
+            synced_until: None,
+            last_synced_at,
+            fingerprint: None,
         }
-    }
-}
-/// 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub enum Kind {
-    #[serde(rename = "text")]
-    Text,
-}
-
-impl Default for Kind {
-    fn default() -> Kind {
-        Self::Text
     }
 }
 

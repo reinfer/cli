@@ -271,9 +271,8 @@ fn test_create_source_with_invalid_transform_tag_fails() {
         "not-a-valid-transform-tag.0.ABCDEFGH",
     ]);
     assert!(
-        output.contains("422 Unprocessable Entity") && 
         output.contains("The value 'not-a-valid-transform-tag.0.ABCDEFGH' is not a valid transform tag."),
-        "{}",
+        "Expected detailed transform tag validation error, got: {}",
         output,
     );
 }

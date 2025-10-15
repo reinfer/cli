@@ -26,7 +26,7 @@ pub mod query_comments_csv;
 pub mod utils;
 
 // Re-export the type aliases for convenience
-pub use api_utils::{upload_ixp_document_bytes, get_document_bytes};
+pub use api_utils::{upload_ixp_document_bytes, get_document_bytes, set_comment_audio};
 pub use attachment_utils::AttachmentExt;
 pub use audit_events_iterator::AuditEventsResponseExt;
 pub use comment_timestamp_filter::CommentTimestampFilter;

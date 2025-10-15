@@ -5,7 +5,6 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **String** |  | 
-**field_id** | **String** |  | 
 **name** | **String** |  | 
 **instructions** | Option<**String**> |  | 
 **field_type_id** | **String** | The ID of the field type | 

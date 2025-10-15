@@ -18,13 +18,13 @@ pub struct IxpTaxonomyExtraction {
     #[serde(rename = "id", skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     #[serde(rename = "field_groups")]
-    pub field_groups: Vec<models::FieldGroupPredictionPreview>,
+    pub field_groups: Vec<models::FieldGroupPredictionPrivate>,
     #[serde(rename = "field_types")]
     pub field_types: Vec<models::IxpFieldType>,
 }
 
 impl IxpTaxonomyExtraction {
-    pub fn new(name: String, field_groups: Vec<models::FieldGroupPredictionPreview>, field_types: Vec<models::IxpFieldType>) -> IxpTaxonomyExtraction {
+    pub fn new(name: String, field_groups: Vec<models::FieldGroupPredictionPrivate>, field_types: Vec<models::IxpFieldType>) -> IxpTaxonomyExtraction {
         IxpTaxonomyExtraction {
             name,
             id: None,

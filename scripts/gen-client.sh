@@ -40,4 +40,11 @@ docker run --rm \
     -o "/work/$OUT_DIR" \
     --additional-properties=library=reqwest,supportAsync=false
 
+cp scripts/patches/name.rs "$OUT_DIR/src/models/name.rs"
+cp scripts/patches/model_config.rs "$OUT_DIR/src/models/model_config.rs"
+cp scripts/patches/user_properties_value.rs "$OUT_DIR/src/models/user_properties_value.rs"
+cp scripts/patches/moon_form_group_update.rs "$OUT_DIR/src/models/moon_form_group_update.rs"
+cp scripts/patches/text_format.rs "$OUT_DIR/src/models/text_format.rs"
+cp scripts/patches/inherits_from.rs "$OUT_DIR/src/models/inherits_from.rs"
+
 echo "✔ Done → $OUT_DIR"

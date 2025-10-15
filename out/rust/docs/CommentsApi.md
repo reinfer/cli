@@ -54,7 +54,7 @@ Name | Type | Description  | Required | Notes
 
 ## delete_comment
 
-> models::DeleteCommentResponse delete_comment(owner, source_name)
+> models::DeleteCommentResponse delete_comment(owner, source_name, id, ids)
 Delete a comment by ID
 
 Delete a comment by ID
@@ -66,6 +66,8 @@ Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
 **owner** | **String** |  | [required] |
 **source_name** | **String** |  | [required] |
+**id** | Option<[**Vec<String>**](String.md)> | List of comment IDs to delete. Use multiple 'id' query parameters like ?id=abc123&id=def456. Maximum 128 comment IDs. |  |
+**ids** | Option<**String**> | Comma-separated list of comment IDs to delete. Example: ?ids=abc123,def456. Maximum 128 comment IDs. |  |
 
 ### Return type
 

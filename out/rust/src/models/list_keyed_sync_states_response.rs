@@ -16,11 +16,11 @@ pub struct ListKeyedSyncStatesResponse {
     #[serde(rename = "status")]
     pub status: Status,
     #[serde(rename = "keyed_sync_states")]
-    pub keyed_sync_states: Vec<models::KeyedSyncState>,
+    pub keyed_sync_states: Vec<models::ListKeyedSyncStatesResponseKeyedSyncStatesInner>,
 }
 
 impl ListKeyedSyncStatesResponse {
-    pub fn new(status: Status, keyed_sync_states: Vec<models::KeyedSyncState>) -> ListKeyedSyncStatesResponse {
+    pub fn new(status: Status, keyed_sync_states: Vec<models::ListKeyedSyncStatesResponseKeyedSyncStatesInner>) -> ListKeyedSyncStatesResponse {
         ListKeyedSyncStatesResponse {
             status,
             keyed_sync_states,

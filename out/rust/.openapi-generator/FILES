@@ -44,6 +44,7 @@ docs/AttachmentsApi.md
 docs/Attribute.md
 docs/AttributeFilter.md
 docs/AttributeFilterAttribute.md
+docs/AttributionMethod.md
 docs/AuditEvent.md
 docs/AuditEventsApi.md
 docs/AuditEventsDataset.md
@@ -59,7 +60,6 @@ docs/BinaryLabelHealthWarningKind.md
 docs/Binning.md
 docs/BoolFieldDataPrivate.md
 docs/BoolFieldDataType.md
-docs/BoolFieldValuePreview.md
 docs/Breakdown.md
 docs/Bucket.md
 docs/BucketNew.md
@@ -78,6 +78,7 @@ docs/ByLabelsTop.md
 docs/ByLabelsTopContainer.md
 docs/CaptureThreshold.md
 docs/ChoiceFieldDataPrivate.md
+docs/ChoiceFieldDataType.md
 docs/ClientSecretApplicationModel.md
 docs/ClientSecretApplicationModelKind.md
 docs/CmModelConfig.md
@@ -164,6 +165,7 @@ docs/DatasetUserPropertiesSummaryNumber.md
 docs/DatasetUserPropertiesSummaryString.md
 docs/DatasetsApi.md
 docs/DateFieldDataPrivate.md
+docs/DateFieldDataType.md
 docs/DeleteAlertResponse.md
 docs/DeleteAlertSubscriptionReponse.md
 docs/DeleteBucketResponse.md
@@ -257,7 +259,6 @@ docs/ExportedComment.md
 docs/ExportedLabel.md
 docs/ExportedLabels.md
 docs/ExportedPredictions.md
-docs/Extraction.md
 docs/ExtractionFieldDefinition.md
 docs/ExtractionPrediction.md
 docs/FetchFromGxStreamRequest.md
@@ -268,11 +269,9 @@ docs/FieldAnnotationPrivate.md
 docs/FieldChoiceApi.md
 docs/FieldChoiceNewApi.md
 docs/FieldGroupAnnotationPrivate.md
-docs/FieldGroupPredictionPreview.md
 docs/FieldGroupPredictionPrivate.md
 docs/FieldGroupSnapshot.md
 docs/FieldGroupVersionEntry.md
-docs/FieldPredictionPreview.md
 docs/FieldPredictionPrivate.md
 docs/FieldSnapshot.md
 docs/FieldType.md
@@ -281,7 +280,6 @@ docs/FieldValuePrivate.md
 docs/FieldVersionEntry.md
 docs/FilesApi.md
 docs/Filter.md
-docs/FolderStatus.md
 docs/Freshness.md
 docs/FullParticipantFilter.md
 docs/GeminiTableOnlyConfig.md
@@ -442,8 +440,12 @@ docs/IxpTaxonomy.md
 docs/IxpTaxonomyExtraction.md
 docs/IxpUploadDocumentResponse.md
 docs/IxpUploadedDocument.md
+docs/KeyedFolderSyncState.md
+docs/KeyedFolderSyncStateUpdate.md
+docs/KeyedMailboxSyncState.md
+docs/KeyedMailboxSyncStateUpdate.md
 docs/KeyedSyncState.md
-docs/KeyedSyncStateUpdate.md
+docs/KeyedSyncState1.md
 docs/Label.md
 docs/LabelAction.md
 docs/LabelCollection.md
@@ -485,6 +487,7 @@ docs/LabellingGroup.md
 docs/Language.md
 docs/LegacyEntityPatternApi.md
 docs/ListKeyedSyncStatesResponse.md
+docs/ListKeyedSyncStatesResponseKeyedSyncStatesInner.md
 docs/Locales.md
 docs/LocalesPreferences.md
 docs/LowerBoundBucketCount.md
@@ -522,7 +525,7 @@ docs/ModelConfig.md
 docs/ModelDefinition.md
 docs/ModelFamily.md
 docs/ModelFamilyApi.md
-docs/ModelKind.md
+docs/ModelName.md
 docs/ModelRating.md
 docs/ModelRatingAction.md
 docs/ModelRatingFactor.md
@@ -530,6 +533,7 @@ docs/ModelRatingFactorKind.md
 docs/ModelTaxonomy.md
 docs/ModelsApi.md
 docs/MonetaryFieldDataPrivate.md
+docs/MonetaryQuantityFieldDataType.md
 docs/MoonFormCaptureFieldsAnnotation.md
 docs/MoonFormCaptureFieldsAnnotationNew.md
 docs/MoonFormCaptureFieldsPrediction.md
@@ -556,6 +560,7 @@ docs/NpsSummary.md
 docs/NtlmApplicationModel.md
 docs/NtlmApplicationModelKind.md
 docs/NullableStringArrayFilter.md
+docs/NumberFieldDataType.md
 docs/NumberOneOfFilter.md
 docs/NumberRangeFilter.md
 docs/NumberRangeFilterWithKind.md
@@ -712,7 +717,10 @@ docs/StringUserPropertyCount.md
 docs/StringUserPropertyCountSingle.md
 docs/StringUserPropertyCountsSettings.md
 docs/StringUserPropertySummary.md
+docs/SuggestTaxonomyRequest.md
+docs/SuggestTaxonomyResponse.md
 docs/SuggestedLabel.md
+docs/SuggestedTaxonomy.md
 docs/SyncAnnotationsRequest.md
 docs/SyncAnnotationsResponse.md
 docs/SyncCommentsFromCsvResponse.md
@@ -720,6 +728,7 @@ docs/SyncCommentsRequest.md
 docs/SyncCommentsResponse.md
 docs/SyncRawEmailsRequest.md
 docs/SyncRawEmailsResponse.md
+docs/SyncStatus.md
 docs/TaggedIxpModelVersion.md
 docs/TaggedUserModelVersion.md
 docs/TaggedUserModelVersionName.md
@@ -733,7 +742,6 @@ docs/TextConfig.md
 docs/TextFieldDataPrivate.md
 docs/TextFieldDataType.md
 docs/TextFieldFlag.md
-docs/TextFieldValuePreview.md
 docs/TextFormat.md
 docs/TextImageInputConfig.md
 docs/TextSpan.md
@@ -974,6 +982,7 @@ src/models/attachment.rs
 src/models/attribute.rs
 src/models/attribute_filter.rs
 src/models/attribute_filter_attribute.rs
+src/models/attribution_method.rs
 src/models/audit_event.rs
 src/models/binary_label_health_action.rs
 src/models/binary_label_health_action_kind.rs
@@ -982,7 +991,6 @@ src/models/binary_label_health_warning_kind.rs
 src/models/binning.rs
 src/models/bool_field_data_private.rs
 src/models/bool_field_data_type.rs
-src/models/bool_field_value_preview.rs
 src/models/breakdown.rs
 src/models/bucket.rs
 src/models/bucket_new.rs
@@ -997,6 +1005,7 @@ src/models/by_labels_include.rs
 src/models/by_labels_top.rs
 src/models/capture_threshold.rs
 src/models/choice_field_data_private.rs
+src/models/choice_field_data_type.rs
 src/models/client_secret_application_model.rs
 src/models/client_secret_application_model_kind.rs
 src/models/cm_model_config.rs
@@ -1076,6 +1085,7 @@ src/models/dataset_update.rs
 src/models/dataset_update_entity_defs_inner.rs
 src/models/dataset_user_properties_summary.rs
 src/models/date_field_data_private.rs
+src/models/date_field_data_type.rs
 src/models/delete_alert_response.rs
 src/models/delete_alert_subscription_reponse.rs
 src/models/delete_bucket_response.rs
@@ -1162,7 +1172,6 @@ src/models/exported_comment.rs
 src/models/exported_label.rs
 src/models/exported_labels.rs
 src/models/exported_predictions.rs
-src/models/extraction.rs
 src/models/extraction_field_definition.rs
 src/models/extraction_prediction.rs
 src/models/fetch_from_gx_stream_request.rs
@@ -1173,11 +1182,9 @@ src/models/field_annotation_private.rs
 src/models/field_choice_api.rs
 src/models/field_choice_new_api.rs
 src/models/field_group_annotation_private.rs
-src/models/field_group_prediction_preview.rs
 src/models/field_group_prediction_private.rs
 src/models/field_group_snapshot.rs
 src/models/field_group_version_entry.rs
-src/models/field_prediction_preview.rs
 src/models/field_prediction_private.rs
 src/models/field_snapshot.rs
 src/models/field_type.rs
@@ -1185,7 +1192,6 @@ src/models/field_uipath_context_model.rs
 src/models/field_value_private.rs
 src/models/field_version_entry.rs
 src/models/filter.rs
-src/models/folder_status.rs
 src/models/freshness.rs
 src/models/full_participant_filter.rs
 src/models/gemini_table_only_config.rs
@@ -1342,8 +1348,12 @@ src/models/ixp_taxonomy.rs
 src/models/ixp_taxonomy_extraction.rs
 src/models/ixp_upload_document_response.rs
 src/models/ixp_uploaded_document.rs
+src/models/keyed_folder_sync_state.rs
+src/models/keyed_folder_sync_state_update.rs
+src/models/keyed_mailbox_sync_state.rs
+src/models/keyed_mailbox_sync_state_update.rs
 src/models/keyed_sync_state.rs
-src/models/keyed_sync_state_update.rs
+src/models/keyed_sync_state_1.rs
 src/models/label.rs
 src/models/label_action.rs
 src/models/label_collection.rs
@@ -1382,6 +1392,7 @@ src/models/labelling_group.rs
 src/models/language.rs
 src/models/legacy_entity_pattern_api.rs
 src/models/list_keyed_sync_states_response.rs
+src/models/list_keyed_sync_states_response_keyed_sync_states_inner.rs
 src/models/locales.rs
 src/models/locales_preferences.rs
 src/models/markup_break.rs
@@ -1417,13 +1428,14 @@ src/models/mod.rs
 src/models/model_config.rs
 src/models/model_definition.rs
 src/models/model_family.rs
-src/models/model_kind.rs
+src/models/model_name.rs
 src/models/model_rating.rs
 src/models/model_rating_action.rs
 src/models/model_rating_factor.rs
 src/models/model_rating_factor_kind.rs
 src/models/model_taxonomy.rs
 src/models/monetary_field_data_private.rs
+src/models/monetary_quantity_field_data_type.rs
 src/models/moon_form_capture_fields_annotation.rs
 src/models/moon_form_capture_fields_annotation_new.rs
 src/models/moon_form_capture_fields_prediction.rs
@@ -1450,6 +1462,7 @@ src/models/nps_summary.rs
 src/models/ntlm_application_model.rs
 src/models/ntlm_application_model_kind.rs
 src/models/nullable_string_array_filter.rs
+src/models/number_field_data_type.rs
 src/models/number_one_of_filter.rs
 src/models/number_range_filter.rs
 src/models/number_range_filter_with_kind.rs
@@ -1583,7 +1596,10 @@ src/models/string_user_property_count.rs
 src/models/string_user_property_count_single.rs
 src/models/string_user_property_counts_settings.rs
 src/models/string_user_property_summary.rs
+src/models/suggest_taxonomy_request.rs
+src/models/suggest_taxonomy_response.rs
 src/models/suggested_label.rs
+src/models/suggested_taxonomy.rs
 src/models/sync_annotations_request.rs
 src/models/sync_annotations_response.rs
 src/models/sync_comments_from_csv_response.rs
@@ -1591,6 +1607,7 @@ src/models/sync_comments_request.rs
 src/models/sync_comments_response.rs
 src/models/sync_raw_emails_request.rs
 src/models/sync_raw_emails_response.rs
+src/models/sync_status.rs
 src/models/tagged_ixp_model_version.rs
 src/models/tagged_user_model_version.rs
 src/models/tagged_user_model_version_name.rs
@@ -1603,7 +1620,6 @@ src/models/text_config.rs
 src/models/text_field_data_private.rs
 src/models/text_field_data_type.rs
 src/models/text_field_flag.rs
-src/models/text_field_value_preview.rs
 src/models/text_format.rs
 src/models/text_image_input_config.rs
 src/models/text_span.rs

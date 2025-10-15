@@ -20,17 +20,17 @@ pub struct KeyedSyncState {
     #[serde(rename = "folder_path")]
     pub folder_path: Vec<String>,
     #[serde(rename = "status")]
-    pub status: models::FolderStatus,
-    #[serde(rename = "synced_until", default, with = "::serde_with::rust::double_option", skip_serializing_if = "Option::is_none")]
-    pub synced_until: Option<Option<String>>,
+    pub status: models::SyncStatus,
+    #[serde(rename = "synced_until", skip_serializing_if = "Option::is_none")]
+    pub synced_until: Option<String>,
     #[serde(rename = "last_synced_at")]
     pub last_synced_at: String,
-    #[serde(rename = "fingerprint", default, with = "::serde_with::rust::double_option", skip_serializing_if = "Option::is_none")]
-    pub fingerprint: Option<Option<String>>,
+    #[serde(rename = "fingerprint", skip_serializing_if = "Option::is_none")]
+    pub fingerprint: Option<String>,
 }
 
 impl KeyedSyncState {
-    pub fn new(mailbox_name: String, folder_id: String, folder_path: Vec<String>, status: models::FolderStatus, last_synced_at: String) -> KeyedSyncState {
+    pub fn new(mailbox_name: String, folder_id: String, folder_path: Vec<String>, status: models::SyncStatus, last_synced_at: String) -> KeyedSyncState {
         KeyedSyncState {
             mailbox_name,
             folder_id,

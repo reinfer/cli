@@ -11,29 +11,29 @@
 use crate::models;
 use serde::{Deserialize, Serialize};
 
-/// FolderStatus : An enumeration.
-/// An enumeration.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub enum FolderStatus {
-    #[serde(rename = "IN_PROGRESS")]
-    InProgress,
-    #[serde(rename = "UP_TO_DATE")]
-    UpToDate,
-
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
+pub struct DateFieldDataType {
+    #[serde(rename = "kind")]
+    pub kind: Kind,
 }
 
-impl std::fmt::Display for FolderStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::InProgress => write!(f, "IN_PROGRESS"),
-            Self::UpToDate => write!(f, "UP_TO_DATE"),
+impl DateFieldDataType {
+    pub fn new(kind: Kind) -> DateFieldDataType {
+        DateFieldDataType {
+            kind,
         }
     }
 }
+/// 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum Kind {
+    #[serde(rename = "date")]
+    Date,
+}
 
-impl Default for FolderStatus {
-    fn default() -> FolderStatus {
-        Self::InProgress
+impl Default for Kind {
+    fn default() -> Kind {
+        Self::Date
     }
 }
 

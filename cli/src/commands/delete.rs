@@ -8,6 +8,8 @@ use std::sync::{
 };
 use structopt::StructOpt;
 
+use crate::utils::resource_identifier::ResourceIdentifier;
+
 use crate::utils::{SourceIdentifier, CommentsIterTimerange, CommentId, BucketIdentifier, DatasetIdentifier, ProjectName, resource_identifier::UserIdentifier};
 use crate::progress::{Options as ProgressOptions, Progress};
 use crate::commands::get::comments::{get_comments_iter, CommentsIter};
@@ -20,7 +22,7 @@ use openapi::{
         buckets_api::{get_bucket, query_keyed_sync_state_ids, delete_keyed_sync_state, delete_bucket},
         projects_api::{delete_project},
         users_api::delete_user,
-        datasets_api::delete_dataset_by_id,
+        datasets_api::{delete_dataset_by_id, delete_dataset_v1},
     },
     models::{
         Source,
@@ -154,7 +156,7 @@ pub fn run(delete_args: &DeleteArgs, config: &Configuration) -> Result<()> {
             for comment_id in comments {
                 let owner = source.owner().ok_or_else(|| anyhow::anyhow!("Source must be specified by full name"))?;
                 let name = source.name().ok_or_else(|| anyhow::anyhow!("Source must be specified by full name"))?;
-                delete_comment(config, owner, name)
+                delete_comment(config, owner, name, None, Some(&comment_id.0))
                     .context(format!("Operation to delete comment {} has failed.", comment_id))?;
             }
             log::info!("Deleted comments.");
@@ -192,9 +194,16 @@ pub fn run(delete_args: &DeleteArgs, config: &Configuration) -> Result<()> {
             .context("Operation to delete comments has failed.")?;
         }
         DeleteArgs::Dataset { dataset } => {
-            let dataset_id = dataset.id().ok_or_else(|| anyhow::anyhow!("Dataset must be specified by ID"))?;
-            delete_dataset_by_id(config, dataset_id)
-                .context("Operation to delete dataset has failed.")?;
+            match dataset {
+                ResourceIdentifier::Id(dataset_id) => {
+                    delete_dataset_by_id(config, dataset_id)
+                        .context("Operation to delete dataset has failed.")?;
+                }
+                ResourceIdentifier::FullName(full_name) => {
+                    delete_dataset_v1(config, &full_name.owner(), &full_name.name())
+                        .context("Operation to delete dataset has failed.")?;
+                }
+            }
             log::info!("Deleted dataset.");
         }
         DeleteArgs::Bucket { bucket } => {
@@ -205,7 +214,20 @@ pub fn run(delete_args: &DeleteArgs, config: &Configuration) -> Result<()> {
         }
         DeleteArgs::Project { project, force } => {
             delete_project(config, project.as_str(), Some(*force))
-                .context("Operation to delete project has failed.")?;
+                .map_err(|e| {
+                    match e {
+                        openapi::apis::Error::ResponseError(response_content) => {
+                            // Try to parse the error response to get the detailed message
+                            let detailed_error = if let Ok(error_resp) = serde_json::from_str::<openapi::models::ErrorResponse>(&response_content.content) {
+                                error_resp.message
+                            } else {
+                                response_content.content
+                            };
+                            anyhow::anyhow!("Operation to delete project has failed: {}", detailed_error)
+                        },
+                        _ => anyhow::anyhow!("Operation to delete project has failed: {}", e)
+                    }
+                })?;
             log::info!("Deleted project.");
         }
         DeleteArgs::KeyedSyncStates {
@@ -276,7 +298,7 @@ fn delete_comments_in_period(
         let delete_batch = |comment_ids: Vec<CommentId>| -> Result<()> {
             // Delete comments individually using OpenAPI
             for comment_id in &comment_ids {
-                delete_comment(config, &source.owner, &source.name)
+                delete_comment(config, &source.owner, &source.name, None, Some(&comment_id.0))
                     .context(format!("Operation to delete comment {} failed", comment_id))?;
             }
             statistics.increment_deleted(comment_ids.len());

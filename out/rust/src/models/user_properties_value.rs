@@ -11,14 +11,25 @@
 use crate::models;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
-pub struct UserPropertiesValue {
+/// UserPropertiesValue - Fixed version that properly handles the API's mixed-type user property values.
+/// This replaces the broken generated empty struct with proper support for string/number/boolean values,
+/// matching the legacy reinfer_client's PropertyValue enum pattern.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum UserPropertiesValue {
+    String(String),
+    Number(f64),
+    Boolean(bool),
+}
+
+impl Default for UserPropertiesValue {
+    fn default() -> Self {
+        UserPropertiesValue::String(String::new())
+    }
 }
 
 impl UserPropertiesValue {
     pub fn new() -> UserPropertiesValue {
-        UserPropertiesValue {
-        }
+        UserPropertiesValue::String(String::new())
     }
 }
-

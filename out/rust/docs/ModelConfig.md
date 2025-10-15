@@ -15,6 +15,7 @@ Name | Type | Description | Notes
 **seed** | Option<**i32**> |  | [optional]
 **flags** | [**Vec<models::GptIxpFlag>**](GptIxpFlag.md) |  | 
 **iterative_config** | Option<[**models::IterativeConfig**](IterativeConfig.md)> |  | [optional]
+**attribution_method** | [**models::AttributionMethod**](AttributionMethod.md) |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

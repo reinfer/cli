@@ -15,8 +15,6 @@ use serde::{Deserialize, Serialize};
 pub struct IxpTaxonomy {
     #[serde(rename = "id", skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    #[serde(rename = "taxonomy_id", skip_serializing_if = "Option::is_none")]
-    pub taxonomy_id: Option<String>,
     #[serde(rename = "name")]
     pub name: String,
     #[serde(rename = "instructions", deserialize_with = "Option::deserialize")]
@@ -31,7 +29,6 @@ impl IxpTaxonomy {
     pub fn new(name: String, instructions: Option<String>, field_groups: Vec<models::IxpFieldGroup>, field_types: Vec<models::IxpFieldType>) -> IxpTaxonomy {
         IxpTaxonomy {
             id: None,
-            taxonomy_id: None,
             name,
             instructions,
             field_groups,

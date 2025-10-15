@@ -21,6 +21,8 @@ pub struct FieldPredictionPrivate {
     pub confidence: Box<models::IxpConfidence>,
     #[serde(rename = "text_spans")]
     pub text_spans: Vec<models::TextSpan>,
+    #[serde(rename = "spans")]
+    pub spans: Vec<models::DocumentSpan>,
     #[serde(rename = "document_spans")]
     pub document_spans: Vec<models::DocumentSpan>,
     #[serde(rename = "value", deserialize_with = "Option::deserialize")]
@@ -28,12 +30,13 @@ pub struct FieldPredictionPrivate {
 }
 
 impl FieldPredictionPrivate {
-    pub fn new(name: String, id: String, confidence: models::IxpConfidence, text_spans: Vec<models::TextSpan>, document_spans: Vec<models::DocumentSpan>, value: Option<models::FieldValuePrivate>) -> FieldPredictionPrivate {
+    pub fn new(name: String, id: String, confidence: models::IxpConfidence, text_spans: Vec<models::TextSpan>, spans: Vec<models::DocumentSpan>, document_spans: Vec<models::DocumentSpan>, value: Option<models::FieldValuePrivate>) -> FieldPredictionPrivate {
         FieldPredictionPrivate {
             name,
             id,
             confidence: Box::new(confidence),
             text_spans,
+            spans,
             document_spans,
             value: if let Some(x) = value {Some(Box::new(x))} else {None},
         }

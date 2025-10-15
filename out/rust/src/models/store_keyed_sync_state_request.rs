@@ -14,11 +14,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct StoreKeyedSyncStateRequest {
     #[serde(rename = "keyed_sync_state")]
-    pub keyed_sync_state: Box<models::KeyedSyncStateUpdate>,
+    pub keyed_sync_state: Box<models::KeyedSyncState1>,
 }
 
 impl StoreKeyedSyncStateRequest {
-    pub fn new(keyed_sync_state: models::KeyedSyncStateUpdate) -> StoreKeyedSyncStateRequest {
+    pub fn new(keyed_sync_state: models::KeyedSyncState1) -> StoreKeyedSyncStateRequest {
         StoreKeyedSyncStateRequest {
             keyed_sync_state: Box::new(keyed_sync_state),
         }

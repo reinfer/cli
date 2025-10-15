@@ -17,13 +17,16 @@ pub struct UploadDocumentResponse {
     pub status: Status,
     #[serde(rename = "comment_id")]
     pub comment_id: String,
+    #[serde(rename = "attachment_ref")]
+    pub attachment_ref: String,
 }
 
 impl UploadDocumentResponse {
-    pub fn new(status: Status, comment_id: String) -> UploadDocumentResponse {
+    pub fn new(status: Status, comment_id: String, attachment_ref: String) -> UploadDocumentResponse {
         UploadDocumentResponse {
             status,
             comment_id,
+            attachment_ref,
         }
     }
 }

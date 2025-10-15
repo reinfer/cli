@@ -7,7 +7,7 @@ Name | Type | Description | Notes
 **mailbox_name** | **String** |  | 
 **folder_id** | **String** |  | 
 **folder_path** | **Vec<String>** |  | 
-**status** | [**models::FolderStatus**](FolderStatus.md) |  | 
+**status** | [**models::SyncStatus**](SyncStatus.md) |  | 
 **synced_until** | Option<**String**> |  | [optional]
 **last_synced_at** | **String** |  | 
 **fingerprint** | Option<**String**> |  | [optional]

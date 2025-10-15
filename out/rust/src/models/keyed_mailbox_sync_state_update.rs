@@ -12,30 +12,27 @@ use crate::models;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
-pub struct FieldGroupPredictionPreview {
-    #[serde(rename = "name")]
-    pub name: String,
-    #[serde(rename = "id", skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-    #[serde(rename = "field_group_id", skip_serializing_if = "Option::is_none")]
-    pub field_group_id: Option<String>,
-    #[serde(rename = "occurrence_confidence")]
-    pub occurrence_confidence: Box<models::IxpConfidence>,
-    #[serde(rename = "extraction_confidence")]
-    pub extraction_confidence: Box<models::IxpConfidence>,
-    #[serde(rename = "fields")]
-    pub fields: Vec<models::FieldPredictionPreview>,
+pub struct KeyedMailboxSyncStateUpdate {
+    #[serde(rename = "mailbox_name")]
+    pub mailbox_name: String,
+    #[serde(rename = "status")]
+    pub status: models::SyncStatus,
+    #[serde(rename = "synced_until", default, with = "::serde_with::rust::double_option", skip_serializing_if = "Option::is_none")]
+    pub synced_until: Option<Option<String>>,
+    #[serde(rename = "last_synced_at", skip_serializing_if = "Option::is_none")]
+    pub last_synced_at: Option<String>,
+    #[serde(rename = "fingerprint", default, with = "::serde_with::rust::double_option", skip_serializing_if = "Option::is_none")]
+    pub fingerprint: Option<Option<String>>,
 }
 
-impl FieldGroupPredictionPreview {
-    pub fn new(name: String, occurrence_confidence: models::IxpConfidence, extraction_confidence: models::IxpConfidence, fields: Vec<models::FieldPredictionPreview>) -> FieldGroupPredictionPreview {
-        FieldGroupPredictionPreview {
-            name,
-            id: None,
-            field_group_id: None,
-            occurrence_confidence: Box::new(occurrence_confidence),
-            extraction_confidence: Box::new(extraction_confidence),
-            fields,
+impl KeyedMailboxSyncStateUpdate {
+    pub fn new(mailbox_name: String, status: models::SyncStatus) -> KeyedMailboxSyncStateUpdate {
+        KeyedMailboxSyncStateUpdate {
+            mailbox_name,
+            status,
+            synced_until: None,
+            last_synced_at: None,
+            fingerprint: None,
         }
     }
 }

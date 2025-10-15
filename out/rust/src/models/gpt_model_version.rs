@@ -17,6 +17,8 @@ use serde::{Deserialize, Serialize};
 pub enum GptModelVersion {
     #[serde(rename = "gpt_4o_2024_05_13")]
     Gpt4o20240513,
+    #[serde(rename = "gemini_2_5_flash")]
+    Gemini25Flash,
 
 }
 
@@ -24,6 +26,7 @@ impl std::fmt::Display for GptModelVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::Gpt4o20240513 => write!(f, "gpt_4o_2024_05_13"),
+            Self::Gemini25Flash => write!(f, "gemini_2_5_flash"),
         }
     }
 }

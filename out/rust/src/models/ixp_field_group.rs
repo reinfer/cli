@@ -13,10 +13,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct IxpFieldGroup {
-    #[serde(rename = "id", skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-    #[serde(rename = "field_group_id", skip_serializing_if = "Option::is_none")]
-    pub field_group_id: Option<String>,
+    #[serde(rename = "id")]
+    pub id: String,
     #[serde(rename = "parent", deserialize_with = "Option::deserialize")]
     pub parent: Option<String>,
     #[serde(rename = "name")]
@@ -28,10 +26,9 @@ pub struct IxpFieldGroup {
 }
 
 impl IxpFieldGroup {
-    pub fn new(parent: Option<String>, name: String, fields: Vec<models::IxpField>) -> IxpFieldGroup {
+    pub fn new(id: String, parent: Option<String>, name: String, fields: Vec<models::IxpField>) -> IxpFieldGroup {
         IxpFieldGroup {
-            id: None,
-            field_group_id: None,
+            id,
             parent,
             name,
             instructions: None,

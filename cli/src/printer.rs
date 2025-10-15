@@ -3,7 +3,7 @@ use colored::Colorize;
 use prettytable::{format, row, Row, Table};
 use openapi::models::{
     AuditEvent, Bucket, BucketStatistics, Count, Dataset, Integration, KeyedSyncState, 
-    Project, Quota, Source, SourceStatistics, Statistics, Trigger, User,
+    Project, Quota, Source, SourceStatistics, Statistics, Trigger, User, ListKeyedSyncStatesResponseKeyedSyncStatesInner
 };
 use serde::{Serialize, Serializer};
 
@@ -359,14 +359,35 @@ impl DisplayTable for KeyedSyncState {
 
     fn to_table_row(&self) -> Row {
         let synced_until_str = if let Some(synced_until) = &self.synced_until {
-            if let Some(until) = synced_until {
-                chrono::DateTime::parse_from_rfc3339(until)
-                    .unwrap_or_else(|_| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()))
-                    .to_rfc2822()
-                    .normal()
-            } else {
-                "N/A".dimmed()
-            }
+            chrono::DateTime::parse_from_rfc3339(synced_until)
+                .unwrap_or_else(|_| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()))
+                .to_rfc2822()
+                .normal()
+        } else {
+            "N/A".dimmed()
+        };
+        
+        row![
+            self.mailbox_name,
+            self.folder_path.join("/"),
+            self.status,
+            synced_until_str,
+            self.last_synced_at
+        ]
+    }
+}
+
+impl DisplayTable for ListKeyedSyncStatesResponseKeyedSyncStatesInner {
+    fn to_table_headers() -> Row {
+        row![bFg => "Mailbox Name", "Folder Path", "Status", "Synced Until", "Last Synced At"]
+    }
+
+    fn to_table_row(&self) -> Row {
+        let synced_until_str = if let Some(synced_until) = &self.synced_until {
+            chrono::DateTime::parse_from_rfc3339(synced_until)
+                .unwrap_or_else(|_| chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()))
+                .to_rfc2822()
+                .normal()
         } else {
             "N/A".dimmed()
         };

@@ -11,32 +11,40 @@
 use crate::models;
 use serde::{Deserialize, Serialize};
 
-/// ModelKind : An enumeration.
-/// An enumeration.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub enum ModelKind {
-    #[serde(rename = "cm")]
-    Cm,
-    #[serde(rename = "doc_path_ixp")]
-    DocPathIxp,
-    #[serde(rename = "gpt_ixp")]
-    GptIxp,
-
+/// MoonFormGroupUpdate - Fixed version that properly handles empty dismissed arrays.
+/// The generated version incorrectly expected dismissed to be a single object,
+/// but the API returns it as an array (which can be empty).
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MoonFormGroupUpdate {
+    #[serde(rename = "group")]
+    pub group: Group,
+    #[serde(rename = "assigned")]
+    pub assigned: Vec<models::MoonFormLabelAnnotationUpdate>,
+    #[serde(rename = "drafted", skip_serializing_if = "Option::is_none")]
+    pub drafted: Option<Vec<models::MoonFormLabelAnnotationUpdate>>,
+    #[serde(rename = "dismissed", default)]
+    pub dismissed: Vec<models::MoonFormLabelAnnotationUpdate>,
 }
 
-impl std::fmt::Display for ModelKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::Cm => write!(f, "cm"),
-            Self::DocPathIxp => write!(f, "doc_path_ixp"),
-            Self::GptIxp => write!(f, "gpt_ixp"),
+impl MoonFormGroupUpdate {
+    pub fn new(group: Group, assigned: Vec<models::MoonFormLabelAnnotationUpdate>) -> MoonFormGroupUpdate {
+        MoonFormGroupUpdate {
+            group,
+            assigned,
+            drafted: None,
+            dismissed: Vec::new(),
         }
     }
 }
 
-impl Default for ModelKind {
-    fn default() -> ModelKind {
-        Self::Cm
-    }
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub enum Group {
+    #[serde(rename = "default")]
+    Default,
 }
 
+impl Default for Group {
+    fn default() -> Group {
+        Self::Default
+    }
+}

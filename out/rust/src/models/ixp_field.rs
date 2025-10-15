@@ -15,8 +15,6 @@ use serde::{Deserialize, Serialize};
 pub struct IxpField {
     #[serde(rename = "id")]
     pub id: String,
-    #[serde(rename = "field_id")]
-    pub field_id: String,
     #[serde(rename = "name")]
     pub name: String,
     #[serde(rename = "instructions", deserialize_with = "Option::deserialize")]
@@ -27,10 +25,9 @@ pub struct IxpField {
 }
 
 impl IxpField {
-    pub fn new(id: String, field_id: String, name: String, instructions: Option<String>, field_type_id: String) -> IxpField {
+    pub fn new(id: String, name: String, instructions: Option<String>, field_type_id: String) -> IxpField {
         IxpField {
             id,
-            field_id,
             name,
             instructions,
             field_type_id,

@@ -5,7 +5,7 @@ use openapi::models::{
     Entities, EntitiesNew, Entity, EntityNew, EntityNewSpansInner,
     GroupLabellingsRequest, LabellingGroup, Language, Name,
     MoonFormCaptureFieldsAnnotation, MoonFormCaptureFieldsAnnotationNew,
-    MoonFormDismissedUpdate, MoonFormFieldAnnotation, MoonFormFieldAnnotationNew,
+    MoonFormFieldAnnotation, MoonFormFieldAnnotationNew,
     MoonFormGroup, MoonFormGroupUpdate, MoonFormLabelAnnotation, MoonFormLabelAnnotationUpdate,
     Span, TextSpan,
 };
@@ -52,7 +52,7 @@ impl HasAnnotations for EntitiesNew {
 
 impl HasAnnotations for MoonFormGroupUpdate {
     fn has_annotations(&self) -> bool {
-        !self.assigned.is_empty() || self.drafted.is_some() || self.dismissed.is_some()
+        !self.assigned.is_empty() || self.drafted.is_some() || !self.dismissed.is_empty()
     }
 }
 
@@ -137,19 +137,9 @@ pub fn convert_moon_form_group(group: MoonFormGroup) -> MoonFormGroupUpdate {
     use openapi::models::moon_form_group_update::Group;
     
     // Convert dismissed annotations to the required format
-    let dismissed = if group.dismissed.is_empty() {
-        None
-    } else {
-        // For now, we'll create a basic MoonFormDismissedUpdate
-        // This might need adjustment based on actual API requirements
-        Some(Box::new(MoonFormDismissedUpdate {
-            captures: None,
-            entities: vec![], // This may need proper conversion logic
-            labels: group.dismissed.iter()
-                .map(|d| *d.label.clone())
-                .collect(),
-        }))
-    };
+    let dismissed: Vec<MoonFormLabelAnnotationUpdate> = group.dismissed.into_iter()
+        .map(convert_moon_form_label_annotation)
+        .collect();
 
     MoonFormGroupUpdate {
         group: Group::Default, // Map string to enum - may need more sophisticated mapping
