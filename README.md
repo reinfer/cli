@@ -53,9 +53,44 @@ The [api](/api) directory contains a Rust client library for IXP which can be us
 
 Statically linked binaries with no dependencies are provided for selected platforms:
 
+> [!NOTE]  
+> Most users should install using these binaries
+
 - [Linux (x86_64-unknown-linux-musl)](https://reinfer.dev/public/cli/bin/x86_64-unknown-linux-musl/0.38.10/re)
 - [macOS (aarch64-apple-darwin)](https://reinfer.dev/public/cli/bin/aarch64-apple-darwin/0.38.10/re)
 - [Windows (x86_64-pc-windows-gnu)](https://reinfer.dev/public/cli/bin/x86_64-pc-windows-gnu/0.38.10/re.exe)
+
+
+<details>
+
+<summary>How do I install or update a statically linked binary?</summary>
+
+The binaries linked above include all necessary dependencies and are directly
+runnable. To update or install a binary, follow the instructions below -
+replacing the existing binaries when updating.
+
+#### Mac and Linux
+1. Download the relevant binary
+2. Make it executable with `chmod +x re`
+3. Move it to `/usr/local/bin`
+4. You should now be able to run the `re` command in your terminal
+
+💡 On mac, you may need to allow the binary to run in the `Privacy & Security` section of system settings on first use.
+
+#### Windows
+1. Download the relevant binary
+2. Move it to a folder in your PATH environment variable
+3. You should now be able to run the `re` command in your terminal
+
+
+💡 If you don't know what folders are in your PATH environment variable; search
+for "Edit environment variables" in the windows menu, select the `Path`
+variable in the top "User Variables" section and then click edit. You may need
+to add a folder to this list and move the binary to that folder.
+
+</details>
+
+
 
 ### Debian / Ubuntu
 
@@ -63,11 +98,14 @@ You can download a `.deb` package [here](https://reinfer.dev/public/cli/debian/r
 
 ### From Source
 
+> [!IMPORTANT]  
+> It is not recommended that you build from source unless you are actively contributing to this code base. You should use the static binaries so that you don't need to worry about build dependencies.
+
 To build from source, you need a recent version of the [Rust toolchain](https://rustup.rs/) installed.
 
 #### Using `cargo install`
 
-To install using `cargo install` run the following.
+To install using `cargo install` run the following. Note; you'll need to ensure that you have all relevant build dependencies installed.
 
 ```
 cargo install reinfer-cli
