@@ -390,16 +390,16 @@ impl DisplayTable for ListKeyedSyncStatesResponseKeyedSyncStatesInner {
         };
 
         row![
-            if self.folder_id.is_none() {
+            if self.folder_id.is_empty() {
                 "Mailbox"
             } else {
                 "Folder"
             },
             self.mailbox_name,
-            if let Some(folder_path) = &self.folder_path {
-                folder_path.join("/").normal()
-            } else {
+            if self.folder_path.is_empty() {
                 "N/A".dimmed()
+            } else {
+                self.folder_path.join("/").normal()
             },
             self.status,
             synced_until_str,

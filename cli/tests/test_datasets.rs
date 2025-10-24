@@ -125,6 +125,7 @@ fn test_create_update_dataset_custom() {
         )
         .to_string(),
         "--label-defs",
+        // type and required fields are not in generated moon form fields
         &json!(
             [
                 {

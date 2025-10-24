@@ -6,13 +6,16 @@ use openapi::models::{AnnotatedComment, Comment, CommentNew};
 use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
 
-// Custom struct for new annotated comments (OpenAPI equivalent)
+// Use the same structure as the CLI expects for consistency  
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewAnnotatedComment {
     pub comment: CommentNew,
     pub labelling: Option<Vec<openapi::models::GroupLabellingsRequest>>,
     pub entities: Option<openapi::models::EntitiesNew>,
     pub moon_forms: Option<Vec<openapi::models::MoonFormGroupUpdate>>,
+    // Match CLI structure - add audio_path field (always None in tests)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub audio_path: Option<std::path::PathBuf>,
 }
 
 impl NewAnnotatedComment {
@@ -92,7 +95,8 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
         .map(|annotated_comment| annotated_comment.comment.clone())
         .collect::<Vec<CommentNew>>();
     input_comments.sort_by(|a, b| a.id.cmp(&b.id));
-
+    println!("input_comments: {:?}", input_comments);
+    println!("output_comments: {:?}", output_comments);
     for (input_comment, output_comment) in input_comments.iter().zip(output_comments.iter()) {
         assert_eq!(input_comment.id, output_comment.id);
         assert_eq!(
