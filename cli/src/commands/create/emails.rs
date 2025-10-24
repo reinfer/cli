@@ -1,7 +1,12 @@
-use anyhow::{Context, Result};
-use colored::Colorize;
-use log::info;
-use reinfer_client::{Bucket, BucketIdentifier, Client, NewEmail};
+//! Commands for creating and uploading emails to buckets
+//!
+//! This module provides functionality to:
+//! - Upload emails from files or stdin to buckets
+//! - Handle batch processing for efficiency
+//! - Track upload progress and statistics
+//! - Support error recovery with resume-on-error functionality
+
+// Standard library imports
 use std::{
     fs::{self, File},
     io::{self, BufRead, BufReader},
@@ -11,13 +16,27 @@ use std::{
         Arc,
     },
 };
+
+// External crate imports
+use anyhow::{Context, Result};
+use colored::Colorize;
+use log::info;
 use structopt::StructOpt;
 
+// OpenAPI imports
+use openapi::{
+    apis::{configuration::Configuration, emails_api::add_emails_to_bucket},
+    models::{AddEmailsToBucketRequest, EmailNew},
+};
+
+// Local crate imports
 use crate::{
     commands::ensure_uip_user_consents_to_ai_unit_charge,
     progress::{Options as ProgressOptions, Progress},
+    utils::{resolve_bucket, types::identifiers::BucketIdentifier},
 };
 
+/// Command line arguments for uploading emails to buckets
 #[derive(Debug, StructOpt)]
 pub struct CreateEmailsArgs {
     #[structopt(short = "f", long = "file", parse(from_os_str))]
@@ -49,21 +68,27 @@ pub struct CreateEmailsArgs {
     resume_on_error: bool,
 }
 
-pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
+/// Upload emails from file or stdin to a specified bucket
+///
+/// This function handles:
+/// - User consent for AI unit charges
+/// - Bucket resolution from name or ID
+/// - Progress tracking for file uploads
+/// - Batch processing with error recovery
+pub fn create(config: &Configuration, args: &CreateEmailsArgs) -> Result<()> {
     if !args.no_charge && !args.yes {
-        ensure_uip_user_consents_to_ai_unit_charge(client.base_url())?;
+        ensure_uip_user_consents_to_ai_unit_charge(&config.base_path.parse()?)?;
     }
 
-    let bucket = client
-        .get_bucket(args.bucket.clone())
-        .with_context(|| format!("Unable to get bucket {}", args.bucket))?;
+    let bucket = resolve_bucket(config, &args.bucket)?;
 
     let statistics = match &args.emails_path {
         Some(emails_path) => {
             info!(
-                "Uploading emails from file `{}` to bucket `{}` [id: {}]",
+                "Uploading emails from file `{}` to bucket `{}/{}` [id: {}]",
                 emails_path.display(),
-                bucket.full_name(),
+                bucket.owner,
+                bucket.name,
                 bucket.id,
             );
             let file_metadata = fs::metadata(emails_path).with_context(|| {
@@ -83,7 +108,7 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
                 Some(progress_bar(file_metadata.len(), &statistics))
             };
             upload_emails_from_reader(
-                client,
+                config,
                 &bucket,
                 file,
                 args.batch_size,
@@ -98,13 +123,12 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
         }
         None => {
             info!(
-                "Uploading emails from stdin to bucket `{}` [id: {}]",
-                bucket.full_name(),
-                bucket.id,
+                "Uploading emails from stdin to bucket `{}/{}` [id: {}]",
+                bucket.owner, bucket.name, bucket.id,
             );
             let statistics = Statistics::new();
             upload_emails_from_reader(
-                client,
+                config,
                 &bucket,
                 BufReader::new(io::stdin()),
                 args.batch_size,
@@ -121,9 +145,10 @@ pub fn create(client: &Client, args: &CreateEmailsArgs) -> Result<()> {
     Ok(())
 }
 
+/// Upload emails from a reader (file or stdin) in batches with error handling
 fn upload_emails_from_reader(
-    client: &Client,
-    bucket: &Bucket,
+    config: &Configuration,
+    bucket: &openapi::models::Bucket,
     mut emails: impl BufRead,
     batch_size: usize,
     statistics: &Statistics,
@@ -146,7 +171,7 @@ fn upload_emails_from_reader(
         } else {
             statistics.add_bytes_read(bytes_read);
             let new_email =
-                serde_json::from_str::<NewEmail>(line.trim_end()).with_context(|| {
+                serde_json::from_str::<EmailNew>(line.trim_end()).with_context(|| {
                     format!("Could not parse email at line {line_number} from input stream")
                 })?;
             batch.push(new_email);
@@ -156,18 +181,37 @@ fn upload_emails_from_reader(
             // Upload emails
 
             if resume_on_error {
-                let result = client
-                    .put_emails_split_on_failure(&bucket.full_name(), batch.to_vec(), no_charge)
-                    .context("Could not upload batch of emails")?;
+                // Use OpenAPI split-on-failure for resilience
+                let result = crate::utils::openapi::split_failure::execute_with_split_on_failure(
+                    |req| {
+                        add_emails_to_bucket(
+                            config,
+                            &bucket.owner,
+                            &bucket.name,
+                            req,
+                            Some(no_charge),
+                        )
+                    },
+                    AddEmailsToBucketRequest::new(batch.to_vec()),
+                    "add_emails_to_bucket",
+                )
+                .context("Could not upload batch of emails")?;
+
                 statistics.add_emails(StatisticsUpdate {
                     uploaded: batch.len() - result.num_failed,
                     failed: result.num_failed,
                 });
                 batch.clear();
             } else {
-                client
-                    .put_emails(&bucket.full_name(), batch.to_vec(), no_charge)
-                    .context("Could not upload batch of emails")?;
+                let request = AddEmailsToBucketRequest::new(batch.to_vec());
+                add_emails_to_bucket(
+                    config,
+                    &bucket.owner,
+                    &bucket.name,
+                    request,
+                    Some(no_charge),
+                )
+                .context("Could not upload batch of emails")?;
                 statistics.add_emails(StatisticsUpdate {
                     uploaded: batch.len(),
                     failed: 0,
@@ -182,12 +226,18 @@ fn upload_emails_from_reader(
     Ok(())
 }
 
+// ============================================================================
+// Statistics Tracking
+// ============================================================================
+
+/// Update data for email upload statistics
 #[derive(Debug)]
 pub struct StatisticsUpdate {
     uploaded: usize,
     failed: usize,
 }
 
+/// Thread-safe statistics tracking for email uploads
 #[derive(Debug)]
 pub struct Statistics {
     bytes_read: AtomicUsize,
@@ -231,6 +281,7 @@ impl Statistics {
     }
 }
 
+/// Create a progress bar for email upload tracking with detailed statistics
 fn progress_bar(total_bytes: u64, statistics: &Arc<Statistics>) -> Progress {
     Progress::new(
         move |statistics| {

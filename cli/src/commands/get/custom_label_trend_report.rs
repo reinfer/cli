@@ -1,4 +1,3 @@
-use core::f64;
 use std::{
     collections::HashMap,
     fs, mem,
@@ -16,26 +15,28 @@ use csv::Writer;
 use dialoguer::{FuzzySelect, Input, MultiSelect};
 use log::{info, warn};
 use ordered_float::NotNan;
-use reinfer_client::{
-    resources::{
-        comment::{CommentTimestampFilter, UserPropertiesFilter},
-        dataset::{
-            OrderEnum, QueryRequestParams, StatisticsRequestParams, SummaryResponse,
-            UserModelMetadata,
-        },
-    },
-    AnnotatedComment, Client, CommentFilter, Dataset, Entities, LabelDef, LabelName, Labelling,
-    ModelVersion, PredictedLabel, Prediction, TriggerLabelThreshold, DEFAULT_LABEL_GROUP_NAME,
-};
 use structopt::StructOpt;
 
-use crate::{
-    commands::get::comments::get_user_properties_filter_interactively,
-    printer::Printer,
-    progress::{Options as ProgressOptions, Progress},
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        datasets_api::{get_all_datasets, get_dataset_statistics, get_dataset_summary},
+        models_api::{get_all_models_in_dataset, get_comment_predictions},
+    },
+    models::{
+        self, _query_comments_order_sample::Kind, labelling_group::Group, AnnotatedComment,
+        CommentFilter, Dataset, GetAllModelsInDatasetRequest, GetCommentPredictionsRequest,
+        GetDatasetStatisticsRequest, LabelDef, LabellingGroup, Order, QueryCommentsOrderSample,
+        QueryCommentsRequest, TimestampRangeFilter, TriggerLabelThreshold,
+    },
 };
 
-use super::comments::DEFAULT_QUERY_PAGE_SIZE;
+use crate::{
+    commands::get::comments::{get_user_properties_filter_interactively, DEFAULT_QUERY_PAGE_SIZE},
+    printer::Printer,
+    progress::{Options as ProgressOptions, Progress},
+    utils::{csv::query_comments_csv, get_dataset_query_iter, ModelVersion, UserPropertiesFilter},
+};
 
 const PATH_PRINT_SEPERATOR: &str = "\n - ";
 const OUTPUT_FOLDER_PREFIX: &str = "LabelTrendReport";
@@ -47,52 +48,49 @@ pub struct GetCustomLabelTrendReportArgs {}
 struct LabelTrendReportParams {
     pub start_timestamp: DateTime<Utc>,
     pub end_timestamp: DateTime<Utc>,
-    pub labels_to_include: Vec<LabelName>,
-    pub labels_to_exclude: Vec<LabelName>,
+    pub labels_to_include: Vec<String>,
+    pub labels_to_exclude: Vec<String>,
     pub user_property_filters: UserPropertiesFilter,
-    pub thresholds: HashMap<LabelName, TriggerLabelThreshold>,
+    pub thresholds: HashMap<String, TriggerLabelThreshold>,
 }
 
-impl LabelTrendReportParams {
-    pub fn get_query_request_params(&self, limit: Option<usize>) -> QueryRequestParams {
-        QueryRequestParams {
-            continuation: None,
-            filter: get_comment_filter(
-                self.start_timestamp,
-                self.end_timestamp,
-                self.user_property_filters.clone(),
-            ),
-            limit,
-            order: OrderEnum::Sample { seed: 42 },
-            ..Default::default()
-        }
-    }
-}
-
-pub fn get_dataset_selection(client: &Client) -> Result<Dataset> {
+/// Get user selection for dataset from available datasets
+pub fn get_dataset_selection(config: &Configuration) -> Result<Box<Dataset>> {
     info!("Getting datasets...");
-    let datasets = client.get_datasets()?;
+    let datasets = get_sorted_datasets(config)?;
+
+    let dataset_names: Vec<String> = datasets
+        .iter()
+        .map(|dataset| format!("{}/{}", dataset.owner, dataset.name))
+        .collect();
 
     let dataset_selection = FuzzySelect::new()
         .with_prompt("Which dataset do you want to run this report for?")
-        .items(
-            &datasets
-                .iter()
-                .map(|dataset| dataset.full_name().0)
-                .collect::<Vec<String>>(),
-        )
-        .interact()?;
+        .items(&dataset_names)
+        .interact()
+        .context("Failed to get user input for dataset selection")?;
 
-    Ok(datasets[dataset_selection].clone())
+    Ok(Box::new(datasets[dataset_selection].clone()))
 }
 
-pub fn pop_label_selection(prompt: &str, label_defs: &mut Vec<LabelDef>) -> Result<Vec<LabelName>> {
+/// Get all datasets sorted by owner and name
+fn get_sorted_datasets(config: &Configuration) -> Result<Vec<Dataset>> {
+    let datasets_response = get_all_datasets(config).context("Failed to get datasets")?;
+
+    let mut datasets = datasets_response.datasets;
+    datasets.sort_unstable_by(|a, b| (&a.owner, &a.name).cmp(&(&b.owner, &b.name)));
+
+    Ok(datasets)
+}
+
+/// Interactive selection of labels from available label definitions
+pub fn pop_label_selection(prompt: &str, label_defs: &mut Vec<LabelDef>) -> Result<Vec<String>> {
     let label_inclusion_selections = MultiSelect::new()
         .with_prompt(prompt)
         .items(
             &label_defs
                 .iter()
-                .map(|label| label.name.0.clone())
+                .map(|label| label.name.clone())
                 .collect::<Vec<String>>(),
         )
         .interact()?;
@@ -105,14 +103,25 @@ pub fn pop_label_selection(prompt: &str, label_defs: &mut Vec<LabelDef>) -> Resu
 }
 
 fn get_dataset_info(
-    client: &Client,
+    config: &Configuration,
     dataset: &Dataset,
-) -> Result<(SummaryResponse, Vec<UserModelMetadata>)> {
+) -> Result<(
+    models::GetDatasetSummaryResponse,
+    Vec<models::UserModelMetadata>,
+)> {
     info!("Getting dataset summary...");
-    let summary_response = client.dataset_summary(&dataset.full_name(), &Default::default())?;
+    let summary_response = get_dataset_summary(
+        config,
+        &dataset.owner,
+        &dataset.name,
+        models::GetDatasetSummaryRequest::default(),
+    )?;
 
     info!("Getting labellers...");
-    let labellers = client.get_labellers(&dataset.full_name())?;
+    let models_request = GetAllModelsInDatasetRequest::new();
+    let models_response =
+        get_all_models_in_dataset(config, &dataset.owner, &dataset.name, models_request)?;
+    let labellers = models_response.labellers;
 
     if labellers.is_empty() {
         bail!("Cannot get a label trend report for a dataset without any pinned models")
@@ -121,15 +130,15 @@ fn get_dataset_info(
 }
 
 fn get_threshold_for_label_selections(
-    label_defs: Vec<&LabelName>,
-) -> HashMap<LabelName, TriggerLabelThreshold> {
+    label_defs: Vec<&String>,
+) -> HashMap<String, TriggerLabelThreshold> {
     label_defs
         .into_iter()
         .map(|label_name| {
             let confidence_str = Input::new()
                 .with_prompt(format!(
                     "What confidence threshold do you want to use for the label \"{}\"",
-                    label_name.0
+                    label_name
                 ))
                 .validate_with(|input: &String| match input.trim().parse::<NotNan<f64>>() {
                     Ok(number) => {
@@ -141,7 +150,6 @@ fn get_threshold_for_label_selections(
                             Err("Please enter a number between 0 and 1")
                         }
                     }
-
                     Err(_) => Err("Please enter a number between 0 and 1"),
                 })
                 .interact()
@@ -155,9 +163,8 @@ fn get_threshold_for_label_selections(
             (
                 label_name.clone(),
                 TriggerLabelThreshold {
-                    threshold,
+                    threshold: Some(threshold.into_inner()),
                     name: label_name
-                        .0
                         .split(" > ")
                         .map(|part| part.to_string())
                         .collect(),
@@ -174,11 +181,11 @@ enum ModelVersionSelection {
 }
 
 fn get_model_version_selection(
-    labellers: &[UserModelMetadata],
+    labellers: &[models::UserModelMetadata],
 ) -> Result<Vec<ModelVersionSelection>> {
     let labellers_as_string: Vec<String> = labellers
         .iter()
-        .map(|labeller| labeller.version.0.to_string())
+        .map(|labeller| labeller.version.to_string())
         .collect::<Vec<String>>();
     let mut options = vec!["Latest".to_string()];
     options.extend(labellers_as_string);
@@ -194,8 +201,8 @@ fn get_model_version_selection(
             if *selection == 0 {
                 ModelVersionSelection::Latest
             } else {
-                let labeller = labellers[*selection].clone();
-                ModelVersionSelection::ModelVersion(labeller.version)
+                let labeller = labellers[*selection - 1].clone();
+                ModelVersionSelection::ModelVersion(ModelVersion(labeller.version))
             }
         })
         .collect())
@@ -225,43 +232,44 @@ fn get_comment_filter(
     user_property_filters: UserPropertiesFilter,
 ) -> CommentFilter {
     CommentFilter {
-        timestamp: Some(CommentTimestampFilter {
-            minimum: Some(start_timestamp),
-            maximum: Some(end_timestamp),
-        }),
-        user_properties: Some(user_property_filters.clone()),
+        timestamp: Some(Box::new(TimestampRangeFilter {
+            minimum: Some(start_timestamp.to_rfc3339()),
+            maximum: Some(end_timestamp.to_rfc3339()),
+        })),
+        user_properties: Some(serde_json::to_value(user_property_filters).unwrap()),
         ..Default::default()
     }
 }
 
+/// Get the total count of comments in a dataset with filtering
 pub fn get_comment_count(
-    client: &Client,
+    config: &Configuration,
     dataset: &Dataset,
     comment_filter: CommentFilter,
 ) -> Result<u64> {
-    let num_comments: f64 = client
-        .get_dataset_statistics(
-            &dataset.full_name(),
-            &StatisticsRequestParams {
-                comment_filter: comment_filter.clone(),
-                ..Default::default()
-            },
-        )
-        .context("Operation to get dataset comment count has failed..")?
-        .num_comments
-        .into();
+    let stats_response = get_dataset_statistics(
+        config,
+        &dataset.owner,
+        &dataset.name,
+        GetDatasetStatisticsRequest {
+            comment_filter: Some(comment_filter),
+            ..Default::default()
+        },
+    )
+    .context("Operation to get dataset comment count has failed..")?;
 
-    Ok(num_comments as u64)
+    Ok(stats_response.statistics.num_comments as u64)
 }
 
+/// Generate an interactive custom label trend report
 pub fn get(
-    client: &Client,
+    config: &Configuration,
     _args: &GetCustomLabelTrendReportArgs,
     _printer: &Printer,
 ) -> Result<()> {
-    let dataset = get_dataset_selection(client)?;
+    let dataset = get_dataset_selection(config)?;
 
-    let (summary_response, labellers) = get_dataset_info(client, &dataset)?;
+    let (summary_response, labellers) = get_dataset_info(config, &dataset)?;
 
     let mut label_defs = dataset.label_defs.clone();
 
@@ -300,7 +308,7 @@ pub fn get(
         user_property_filters.clone(),
     );
 
-    let total_comment_count = get_comment_count(client, &dataset, comment_filter)?;
+    let total_comment_count = get_comment_count(config, &dataset, comment_filter)?;
 
     let report_multiply_ratio = if total_comment_count >= MAX_COMMENT_SAMPLE {
         warn!("Dataset size too big, sampling from first {MAX_COMMENT_SAMPLE}");
@@ -327,8 +335,9 @@ pub fn get(
     };
 
     let mut report = get_label_trend_report(
-        client,
-        &dataset.full_name(),
+        config,
+        &dataset.owner,
+        &dataset.name,
         &statistics,
         model_versions,
         &label_trend_report_params,
@@ -350,8 +359,9 @@ pub fn get(
 }
 
 fn get_label_trend_report_from_json(
-    client: &Client,
-    dataset_name: &reinfer_client::DatasetFullName,
+    config: &Configuration,
+    dataset_owner: &str,
+    dataset_name: &str,
     statistics: &Arc<Statistics>,
     model_version: &ModelVersion,
     params: &LabelTrendReportParams,
@@ -364,25 +374,64 @@ fn get_label_trend_report_from_json(
         ..
     } = params;
 
-    let mut query_params = params.get_query_request_params(Some(DEFAULT_QUERY_PAGE_SIZE));
-    let query_iter = client.get_dataset_query_iter(dataset_name, &mut query_params);
+    let request = QueryCommentsRequest {
+        continuation: None,
+        limit: Some(DEFAULT_QUERY_PAGE_SIZE as i32),
+        attribute_filters: None,
+        collapse_mode: None,
+        filter: Some(get_comment_filter(
+            params.start_timestamp,
+            params.end_timestamp,
+            params.user_property_filters.clone(),
+        )),
+        order: Box::new(Order::Sample(Box::new(QueryCommentsOrderSample {
+            kind: Kind::Sample,
+            seed: 42,
+        }))),
+    };
 
-    for page in query_iter.take(MAX_COMMENT_SAMPLE as usize) {
-        let page = page.context("Operation to get comments has failed.")?;
+    let query_iter = get_dataset_query_iter(
+        config.clone(),
+        dataset_owner.to_string(),
+        dataset_name.to_string(),
+        request,
+    );
+
+    for page_result in query_iter.take(MAX_COMMENT_SAMPLE as usize) {
+        let page = page_result.context("Operation to get comments has failed.")?;
         if page.is_empty() {
             return Ok(());
         }
         statistics.add_comments(page.len());
 
-        let predictions: Vec<Prediction> = client
-            .get_comment_predictions(
-                dataset_name,
-                model_version,
-                page.iter().map(|comment| &comment.comment.uid),
-                None,
-                Some(thresholds.clone().into_values().collect()),
-            )
-            .context("Operation to get predictions has failed.")?;
+        let uids: Vec<String> = page
+            .iter()
+            .map(|comment| comment.comment.uid.clone())
+            .collect();
+
+        // Convert thresholds HashMap to Vec<TriggerLabelThreshold> for API request
+        let threshold_labels: Vec<TriggerLabelThreshold> = thresholds.values().cloned().collect();
+
+        let prediction_request = GetCommentPredictionsRequest {
+            uids,
+            threshold: None, // Could set a global threshold here if needed
+            labels: if threshold_labels.is_empty() {
+                None
+            } else {
+                Some(threshold_labels)
+            },
+        };
+
+        let predictions_response = get_comment_predictions(
+            config,
+            dataset_owner,
+            dataset_name,
+            &model_version.to_string(),
+            prediction_request,
+        )
+        .context("Operation to get predictions has failed.")?;
+
+        let predictions = predictions_response.predictions;
 
         let comments: Vec<_> = page
             .clone()
@@ -390,50 +439,58 @@ fn get_label_trend_report_from_json(
             .zip(predictions)
             .map(|(comment, prediction)| AnnotatedComment {
                 comment: comment.comment,
-                labelling: Some(vec![Labelling {
-                    group: DEFAULT_LABEL_GROUP_NAME.clone(),
+                labelling: vec![LabellingGroup {
+                    group: Group::Default,
+                    uninformative: None,
                     assigned: Vec::new(),
                     dismissed: Vec::new(),
-                    predicted: prediction.labels.map(|auto_threshold_labels| {
-                        auto_threshold_labels
-                            .iter()
-                            .map(|auto_threshold_label| PredictedLabel {
-                                name: auto_threshold_label.name.clone(),
-                                sentiment: None,
-                                probability: auto_threshold_label.probability,
-                                auto_thresholds: None,
-                            })
-                            .collect()
-                    }),
-                }]),
-                entities: Some(Entities {
-                    assigned: Vec::new(),
-                    dismissed: Vec::new(),
-                    predicted: prediction.entities,
+                    predicted: Some(prediction.labels),
+                }],
+                reviewable_blocks: None,
+                entities: prediction.entities.map(|entities| {
+                    Box::new(models::Entities {
+                        assigned: Vec::new(),
+                        dismissed: Vec::new(),
+                        predicted: entities,
+                    })
                 }),
                 thread_properties: None,
-                moon_forms: None,
+                trigger_exceptions: None,
                 label_properties: None,
+                moon_forms: None,
+                extractions: None,
+                highlights: None,
+                diagnostics: None,
+                model_version: None,
             })
             .collect();
 
         for comment in comments {
-            let predicted_labels = comment
-                .labelling
-                .context("Could not get labelling for comment")?[0]
-                .predicted
-                .clone()
-                .context("Could not get predicted labels for comment")?
-                .iter()
-                .map(|predicted| predicted.name.to_label_name())
-                .collect();
+            if comment.labelling.is_empty() {
+                continue;
+            }
+            let predicted_labels = if let Some(predicted) = &comment.labelling[0].predicted {
+                predicted
+                    .iter()
+                    .map(|predicted| {
+                        crate::utils::conversions::convert_boxed_name_to_label_name(&predicted.name)
+                    })
+                    .collect()
+            } else {
+                continue;
+            };
 
             count_for_predicted_labels(
                 &predicted_labels,
                 labels_to_include,
                 labels_to_exclude,
                 &ModelVersionSelection::ModelVersion(model_version.clone()),
-                comment.comment.timestamp.date_naive(),
+                comment
+                    .comment
+                    .timestamp
+                    .parse::<chrono::DateTime<chrono::Utc>>()
+                    .unwrap()
+                    .date_naive(),
                 report,
             )
         }
@@ -444,32 +501,32 @@ fn get_label_trend_report_from_json(
 }
 
 fn count_for_predicted_labels(
-    predicted_labels: &Vec<LabelName>,
-    labels_to_include: &[LabelName],
-    labels_to_exclude: &[LabelName],
+    predicted_labels: &Vec<String>,
+    labels_to_include: &[String],
+    labels_to_exclude: &[String],
     model_version: &ModelVersionSelection,
     timestamp: NaiveDate,
     report: &mut Report,
 ) {
-    if predicted_labels.iter().any(|label| {
-        let name = label;
-        labels_to_exclude.contains(name)
-    }) {
+    if predicted_labels
+        .iter()
+        .any(|label| labels_to_exclude.contains(label))
+    {
         return;
     }
 
     for label in predicted_labels {
         if labels_to_include.contains(label) {
             report.count_label(model_version, timestamp, label);
-            // only count each message once
             return;
         }
     }
 }
 
 fn get_label_trend_report(
-    client: &Client,
-    dataset_name: &reinfer_client::DatasetFullName,
+    config: &Configuration,
+    owner: &str,
+    dataset_name: &str,
     statistics: &Arc<Statistics>,
     model_version_selections: Vec<ModelVersionSelection>,
     params: &LabelTrendReportParams,
@@ -486,7 +543,8 @@ fn get_label_trend_report(
     for model_version_selection in &model_version_selections {
         match model_version_selection {
             ModelVersionSelection::Latest => get_label_trend_report_from_csv(
-                client,
+                config,
+                owner,
                 dataset_name,
                 statistics,
                 params,
@@ -494,7 +552,8 @@ fn get_label_trend_report(
                 target_comment_count,
             )?,
             ModelVersionSelection::ModelVersion(model_version) => get_label_trend_report_from_json(
-                client,
+                config,
+                owner,
                 dataset_name,
                 statistics,
                 model_version,
@@ -509,19 +568,20 @@ fn get_label_trend_report(
 
 fn has_exceeded_threshold(
     record: &HashMap<String, String>,
-    label: &LabelName,
+    label: &String,
     threshold: &TriggerLabelThreshold,
 ) -> bool {
-    let value_for_label_str: String = record[&label.0].clone();
+    let value_for_label_str: String = record[label].clone();
     let value_for_label: f64 = value_for_label_str
         .parse()
         .unwrap_or_else(|_| panic!("Could not parse value '{value_for_label_str}' as f64"));
-    value_for_label > *threshold.threshold
+    value_for_label > threshold.threshold.unwrap_or(0.5)
 }
 
 fn get_label_trend_report_from_csv(
-    client: &Client,
-    dataset_name: &reinfer_client::DatasetFullName,
+    config: &Configuration,
+    owner: &str,
+    dataset_name: &str,
     statistics: &Arc<Statistics>,
     params: &LabelTrendReportParams,
     report: &mut Report,
@@ -534,16 +594,36 @@ fn get_label_trend_report_from_csv(
         ..
     } = params;
 
-    let params = params.get_query_request_params(Some(limit));
+    let query_request = QueryCommentsRequest {
+        filter: Some(get_comment_filter(
+            params.start_timestamp,
+            params.end_timestamp,
+            params.user_property_filters.clone(),
+        )),
+        order: Box::new(Order::Sample(Box::new(QueryCommentsOrderSample::new(
+            Kind::Sample,
+            42,
+        )))),
+        ..Default::default()
+    };
 
-    let csv_string = client.query_dataset_csv(dataset_name, &params)?;
+    let csv_string = query_comments_csv(
+        config,
+        owner,
+        dataset_name,
+        query_request,
+        Some(limit as i32),
+        None,
+        None,
+        None,
+    )?;
 
     let mut rdr = csv::Reader::from_reader(csv_string.as_bytes());
 
     for result in rdr.deserialize() {
         let record: HashMap<String, String> = result?;
 
-        let mut predicted_labels: Vec<LabelName> = Vec::new();
+        let mut predicted_labels: Vec<String> = Vec::new();
         for (label, threshold) in thresholds {
             if has_exceeded_threshold(&record, label, threshold) {
                 predicted_labels.push(label.clone())
@@ -575,14 +655,14 @@ pub struct Statistics {
 }
 
 #[derive(Default)]
-pub struct DateEntry(HashMap<LabelName, usize>);
+pub struct DateEntry(HashMap<String, usize>);
 
 impl DateEntry {
-    fn count_label(&mut self, label: &LabelName) {
+    fn count_label(&mut self, label: &String) {
         *self.0.entry(label.clone()).or_default() += 1;
     }
 
-    fn get_label_count(&self, label: &LabelName) -> usize {
+    fn get_label_count(&self, label: &String) -> usize {
         *self.0.get(label).unwrap_or(&0_usize)
     }
 }
@@ -599,7 +679,7 @@ impl ModelVersionEntry {
 #[derive(Default)]
 pub struct Report {
     volume_by_date: HashMap<ModelVersionSelection, ModelVersionEntry>,
-    labels: Vec<LabelName>,
+    labels: Vec<String>,
     start_date: NaiveDate,
     end_date: NaiveDate,
 }
@@ -652,7 +732,7 @@ impl Report {
             wtr.write_record(
                 vec!["date".to_string()]
                     .into_iter()
-                    .chain(self.labels.iter().map(|label| label.0.clone())),
+                    .chain(self.labels.iter().cloned()),
             )?;
 
             for date in date_range {
@@ -673,7 +753,7 @@ impl Report {
         &mut self,
         model_version: &ModelVersionSelection,
         date: NaiveDate,
-        label: &LabelName,
+        label: &String,
     ) {
         if !self.labels.contains(label) {
             self.labels.push(label.clone())

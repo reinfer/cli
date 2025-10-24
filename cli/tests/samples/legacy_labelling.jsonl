@@ -1,9 +1,9 @@
 {"comment":{"id":"1","timestamp":"2020-01-01T00:00:00Z","messages":[{"body":{"text":"Comment 1"}}]}}
-{"comment":{"id":"2","timestamp":"2020-01-02T00:00:00Z","messages":[{"body":{"text":"Comment 2"}}]},"labelling":{"assigned":[{"name":"A","sentiment":"positive"}]}}
-{"comment":{"id":"3","timestamp":"2020-01-03T00:00:00Z","messages":[{"body":{"text":"Comment 3"}}]},"labelling":{"assigned":[{"name":"A","sentiment":"positive"}]}}
-{"comment":{"id":"4","timestamp":"2020-01-04T00:00:00Z","messages":[{"body":{"text":"Comment 4"}}]},"labelling":{"assigned":[{"name":"B","sentiment":"positive"}]}}
+{"comment":{"id":"2","timestamp":"2020-01-02T00:00:00Z","messages":[{"body":{"text":"Comment 2"}}]},"labelling":[{"group":"default","assigned":[{"name":"A","sentiment":"positive"}],"dismissed":[]}]}
+{"comment":{"id":"3","timestamp":"2020-01-03T00:00:00Z","messages":[{"body":{"text":"Comment 3"}}]},"labelling":[{"group":"default","assigned":[{"name":"A","sentiment":"positive"}],"dismissed":[]}]}
+{"comment":{"id":"4","timestamp":"2020-01-04T00:00:00Z","messages":[{"body":{"text":"Comment 4"}}]},"labelling":[{"group":"default","assigned":[{"name":"B","sentiment":"positive"}],"dismissed":[]}]}
 {"comment":{"id":"5","timestamp":"2020-02-01T00:00:00Z","messages":[{"body":{"text":"Comment 5"}}]}}
-{"comment":{"id":"6","timestamp":"2020-02-02T00:00:00Z","messages":[{"body":{"text":"Comment 6"}}]},"labelling":{"assigned":[{"name":"C","sentiment":"positive"}]}}
-{"comment":{"id":"7","timestamp":"2020-02-03T00:00:00Z","messages":[{"body":{"text":"Comment 7"}}]},"labelling":{"assigned":[{"name":"A","sentiment":"positive"}]}}
-{"comment":{"id":"8","timestamp":"2020-02-04T00:00:00Z","messages":[{"body":{"text":"Comment 8"}}]},"labelling":{"assigned":[{"name":"B","sentiment":"positive"}]}}
+{"comment":{"id":"6","timestamp":"2020-02-02T00:00:00Z","messages":[{"body":{"text":"Comment 6"}}]},"labelling":[{"group":"default","assigned":[{"name":"C","sentiment":"positive"}],"dismissed":[]}]}
+{"comment":{"id":"7","timestamp":"2020-02-03T00:00:00Z","messages":[{"body":{"text":"Comment 7"}}]},"labelling":[{"group":"default","assigned":[{"name":"A","sentiment":"positive"}],"dismissed":[]}]}
+{"comment":{"id":"8","timestamp":"2020-02-04T00:00:00Z","messages":[{"body":{"text":"Comment 8"}}]},"labelling":[{"group":"default","assigned":[{"name":"B","sentiment":"positive"}],"dismissed":[]}]}
 {"comment":{"id":"9","timestamp":"2020-03-01T00:00:00Z","messages":[{"body":{"text":"Comment 9"}}]}}

@@ -1,7 +1,3 @@
-use anyhow::{Context, Result};
-use colored::Colorize;
-use log::info;
-use reinfer_client::{Client, UpdateUser, UserId};
 use std::{
     fs::{self, File},
     io::{self, BufRead, BufReader},
@@ -11,7 +7,17 @@ use std::{
         Arc,
     },
 };
+
+use anyhow::{Context, Result};
+use colored::Colorize;
+use log::info;
+use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
+
+use openapi::{
+    apis::{configuration::Configuration, users_api::update_user},
+    models::{UpdateUserRequest, UserUpdate},
+};
 
 use crate::progress::{Options as ProgressOptions, Progress};
 
@@ -26,7 +32,7 @@ pub struct UpdateUsersArgs {
     no_progress: bool,
 }
 
-pub fn update(client: &Client, args: &UpdateUsersArgs) -> Result<()> {
+pub fn update(config: &Configuration, args: &UpdateUsersArgs) -> Result<()> {
     let statistics = match &args.input_file {
         Some(input_file) => {
             info!("Processing users from file `{}`", input_file.display(),);
@@ -43,7 +49,7 @@ pub fn update(client: &Client, args: &UpdateUsersArgs) -> Result<()> {
             } else {
                 Some(progress_bar(file_metadata.len(), &statistics))
             };
-            update_users_from_reader(client, file, &statistics)?;
+            update_users_from_reader(config, file, &statistics)?;
             if let Some(mut progress) = progress {
                 progress.done();
             }
@@ -52,7 +58,7 @@ pub fn update(client: &Client, args: &UpdateUsersArgs) -> Result<()> {
         None => {
             info!("Processing users from stdin",);
             let statistics = Statistics::new();
-            update_users_from_reader(client, BufReader::new(io::stdin()), &statistics)?;
+            update_users_from_reader(config, BufReader::new(io::stdin()), &statistics)?;
             statistics
         }
     };
@@ -62,17 +68,16 @@ pub fn update(client: &Client, args: &UpdateUsersArgs) -> Result<()> {
     Ok(())
 }
 
-use serde::{self, Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 struct UserLine {
-    id: UserId,
+    id: String,
 
     #[serde(flatten)]
-    update: UpdateUser,
+    update: UserUpdate,
 }
 
 fn update_users_from_reader(
-    client: &Client,
+    config: &Configuration,
     mut users: impl BufRead,
     statistics: &Statistics,
 ) -> Result<()> {
@@ -94,10 +99,12 @@ fn update_users_from_reader(
             format!("Could not parse user at line {line_number} from input stream")
         })?;
 
-        // Upload users
-        client
-            .post_user(&user_line.id, user_line.update)
-            .context("Could not update user")?;
+        // Update user
+        let request = UpdateUserRequest {
+            user: Box::new(user_line.update),
+        };
+
+        update_user(config, &user_line.id, request).context("Could not update user")?;
         statistics.add_user();
 
         line_number += 1;

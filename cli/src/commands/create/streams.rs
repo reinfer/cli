@@ -1,16 +1,34 @@
+//! Commands for creating streams from JSON configuration files
+//!
+//! This module provides functionality to:
+//! - Create multiple streams from JSONL files
+//! - Set model versions for stream processing
+//! - Handle dataset resolution by name
+//! - Process streams with comprehensive error handling
+
+// Standard library imports
 use std::{
     fs::File,
     io::{BufRead, BufReader},
     path::PathBuf,
 };
 
+// External crate imports
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::ModelVersion;
-use reinfer_client::{resources::stream::NewStream, Client, DatasetIdentifier};
-
+use serde_json;
 use structopt::StructOpt;
 
+// OpenAPI imports
+use openapi::{
+    apis::{configuration::Configuration, streams_api::create_stream},
+    models::{CreateStreamRequest, TriggerNew, TriggerUserModel},
+};
+
+// Local crate imports
+use crate::utils::types::identifiers::DatasetIdentifier;
+
+/// Command line arguments for creating streams from file
 #[derive(Debug, StructOpt)]
 pub struct CreateStreamsArgs {
     #[structopt(short = "d", long = "dataset")]
@@ -23,36 +41,40 @@ pub struct CreateStreamsArgs {
 
     #[structopt(short = "v", long = "model-version")]
     /// The model version for the new streams to use
-    model_version: ModelVersion,
+    model_version: i32,
 }
 
-pub fn create(client: &Client, args: &CreateStreamsArgs) -> Result<()> {
+/// Create multiple streams from a JSONL configuration file
+///
+/// This function handles:
+/// - Dataset resolution by full name
+/// - Reading stream configurations from JSONL files
+/// - Setting model versions for all streams
+/// - Individual stream creation with error reporting
+pub fn create(config: &Configuration, args: &CreateStreamsArgs) -> Result<()> {
     let CreateStreamsArgs {
         path,
         dataset_id,
         model_version,
     } = args;
 
-    let file = BufReader::new(
-        File::open(path).with_context(|| format!("Could not open file `{}`", path.display()))?,
-    );
-
-    let dataset = client.get_dataset(dataset_id.clone())?;
+    let file =
+        File::open(path).with_context(|| format!("Could not open file `{}`", path.display()))?;
+    let file = BufReader::new(file);
+    let dataset = crate::utils::resolve_dataset(config, dataset_id)?;
 
     for read_stream_result in read_streams_iter(file) {
-        let mut new_stream = read_stream_result?;
-
-        new_stream.set_model_version(model_version);
-
-        client.put_stream(&dataset.full_name(), &new_stream)?;
-        info!("Created stream {}", new_stream.name.0)
+        let trigger_new = read_stream_result?;
+        create_single_stream(config, &dataset, trigger_new, *model_version)
+            .context("Failed to create stream")?;
     }
     Ok(())
 }
 
+/// Create an iterator that reads and parses stream configurations from JSONL
 fn read_streams_iter<'a>(
     mut streams: impl BufRead + 'a,
-) -> impl Iterator<Item = Result<NewStream>> + 'a {
+) -> impl Iterator<Item = Result<TriggerNew>> + 'a {
     let mut line = String::new();
     let mut line_number: u32 = 0;
     std::iter::from_fn(move || {
@@ -70,9 +92,40 @@ fn read_streams_iter<'a>(
         }
 
         Some(
-            serde_json::from_str::<NewStream>(line.trim_end()).with_context(|| {
-                format!("Could not parse stream at line {line_number} from input stream")
+            serde_json::from_str::<TriggerNew>(line.trim_end()).with_context(|| {
+                format!("Could not parse stream configuration at line {line_number}")
             }),
         )
     })
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/// Create a single stream with the specified model version
+fn create_single_stream(
+    config: &Configuration,
+    dataset: &openapi::models::Dataset,
+    mut trigger_new: TriggerNew,
+    model_version: i32,
+) -> Result<()> {
+    // Set the model version
+    let trigger_user_model = TriggerUserModel::new(model_version);
+    trigger_new.model = Some(Some(Box::new(trigger_user_model)));
+
+    let request = CreateStreamRequest {
+        stream: Box::new(trigger_new.clone()),
+    };
+
+    create_stream(config, &dataset.owner, &dataset.name, request)
+        .context("Failed to create stream via API")?;
+
+    let stream_name = trigger_new.name.as_deref().unwrap_or("unnamed");
+    info!(
+        "Created stream '{}'in dataset '{}/{}'",
+        stream_name, dataset.owner, dataset.name
+    );
+
+    Ok(())
 }

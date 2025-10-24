@@ -1,3 +1,7 @@
+use crate::utils::{
+    types::identifiers::{DatasetIdentifier, SourceIdentifier},
+    DatasetFullName,
+};
 use crate::{
     commands::{
         create::annotations::{upload_batch_of_annotations, CommentIdComment, NewAnnotation},
@@ -5,17 +9,23 @@ use crate::{
     },
     parse::Statistics,
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
 use log::{error, info};
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        datasets_api::get_dataset,
+        sources_api::{get_source, get_source_by_id},
+    },
+    models::{
+        group_labellings_request::Group, CommentNew, GroupLabellingsRequest, Label, LabelSentiment,
+        Message, MessageRichText, Source,
+    },
+};
 use scoped_threadpool::Pool;
 use serde::Deserialize;
-use std::sync::{mpsc::channel, Arc};
-
-use reinfer_client::{
-    Client, CommentId, DatasetFullName, DatasetIdentifier, EitherLabelling, Label, Message,
-    MessageBody, NewComment, NewLabelling, Source, SourceIdentifier, DEFAULT_LABEL_GROUP_NAME,
-};
 use std::path::PathBuf;
+use std::sync::{mpsc::channel, Arc};
 use structopt::StructOpt;
 
 const UPLOAD_BATCH_SIZE: usize = 4;
@@ -47,11 +57,11 @@ pub struct AicClassificationRecord {
 
 #[allow(clippy::too_many_arguments)]
 fn send_comments_if_needed(
-    comments: &mut Vec<NewComment>,
+    comments: &mut Vec<CommentNew>,
     annotations: &mut Vec<NewAnnotation>,
     force_send: bool,
     pool: &mut Pool,
-    client: &Client,
+    config: &Configuration,
     source: &Source,
     statistics: &Statistics,
     dataset: &DatasetFullName,
@@ -70,7 +80,7 @@ fn send_comments_if_needed(
     pool.scoped(|scope| {
         for chunk in chunks {
             scope.execute(|| {
-                let result = upload_batch_of_comments(client, source, chunk, no_charge, statistics);
+                let result = upload_batch_of_comments(config, source, chunk, no_charge, statistics);
 
                 if let Err(error) = result {
                     error_sender.send(error).expect("Could not send error");
@@ -81,7 +91,7 @@ fn send_comments_if_needed(
 
     upload_batch_of_annotations(
         annotations,
-        client,
+        config,
         source,
         statistics,
         dataset,
@@ -98,7 +108,11 @@ fn send_comments_if_needed(
     }
 }
 
-pub fn parse(client: &Client, args: &ParseAicClassificationCsvArgs, pool: &mut Pool) -> Result<()> {
+pub fn parse(
+    config: &Configuration,
+    args: &ParseAicClassificationCsvArgs,
+    pool: &mut Pool,
+) -> Result<()> {
     let ParseAicClassificationCsvArgs {
         file_path,
         source,
@@ -106,8 +120,31 @@ pub fn parse(client: &Client, args: &ParseAicClassificationCsvArgs, pool: &mut P
         no_charge,
     } = args;
 
-    let source = client.get_source(source.clone())?;
-    let dataset = client.get_dataset(dataset.clone())?;
+    let source = match source {
+        SourceIdentifier::Id(source_id) => {
+            let response =
+                get_source_by_id(config, source_id).context("Failed to get source by ID")?;
+            response.source
+        }
+        SourceIdentifier::FullName(full_name) => {
+            let response = get_source(config, full_name.owner(), full_name.name())
+                .context("Failed to get source by name")?;
+            response.source
+        }
+    };
+
+    let dataset = match dataset {
+        DatasetIdentifier::Id(_) => {
+            anyhow::bail!(
+                "Dataset lookup by ID is not supported. Please use dataset full name (owner/name)"
+            )
+        }
+        DatasetIdentifier::FullName(full_name) => {
+            let response = get_dataset(config, full_name.owner(), full_name.name())
+                .context("Failed to get dataset")?;
+            response.dataset
+        }
+    };
     let record_count = csv::Reader::from_path(file_path)?.records().count();
 
     let statistics = Arc::new(Statistics::new());
@@ -117,37 +154,36 @@ pub fn parse(client: &Client, args: &ParseAicClassificationCsvArgs, pool: &mut P
 
     let headers = reader.headers()?.clone();
 
-    let mut comments: Vec<NewComment> = Vec::new();
+    let mut comments: Vec<CommentNew> = Vec::new();
     let mut annotations: Vec<NewAnnotation> = Vec::new();
     for (idx, row) in reader.records().enumerate() {
         match row {
             Ok(row) => {
                 let record: AicClassificationRecord = row.deserialize(Some(&headers))?;
-                let comment_id = CommentId(idx.to_string());
+                let comment_id_str = idx.to_string();
 
-                comments.push(NewComment {
-                    id: comment_id.clone(),
-                    timestamp: chrono::Utc::now(),
-                    messages: vec![Message {
-                        body: MessageBody {
-                            text: record.input,
-                            ..Default::default()
-                        },
+                comments.push(CommentNew {
+                    id: comment_id_str.clone(),
+                    timestamp: Some(chrono::Utc::now().to_rfc3339()),
+                    messages: Some(vec![Message {
+                        body: Box::new(MessageRichText::new(record.input)),
                         ..Default::default()
-                    }],
+                    }]),
                     ..Default::default()
                 });
                 annotations.push(NewAnnotation {
-                    comment: CommentIdComment { id: comment_id },
-                    labelling: Some(EitherLabelling::Labelling(vec![NewLabelling {
-                        group: DEFAULT_LABEL_GROUP_NAME.clone(),
+                    comment: CommentIdComment { id: comment_id_str },
+                    labelling: Some(vec![GroupLabellingsRequest {
+                        group: Some(Group::Default),
                         assigned: Some(vec![Label {
-                            name: reinfer_client::LabelName(record.target),
-                            sentiment: reinfer_client::Sentiment::Positive,
+                            name: record.target,
+                            sentiment: LabelSentiment::Positive,
                             metadata: None,
+                            instructions: None,
                         }]),
                         dismissed: None,
-                    }])),
+                        uninformative: None,
+                    }]),
                     entities: None,
                     moon_forms: None,
                 });
@@ -157,10 +193,10 @@ pub fn parse(client: &Client, args: &ParseAicClassificationCsvArgs, pool: &mut P
                     &mut annotations,
                     false,
                     pool,
-                    client,
+                    config,
                     &source,
                     &statistics,
-                    &dataset.full_name(),
+                    &format!("{}/{}", dataset.owner, dataset.name).parse::<DatasetFullName>()?,
                     *no_charge,
                 )?;
                 statistics.increment_processed()
@@ -177,10 +213,10 @@ pub fn parse(client: &Client, args: &ParseAicClassificationCsvArgs, pool: &mut P
         &mut annotations,
         true,
         pool,
-        client,
+        config,
         &source,
         &statistics,
-        &dataset.full_name(),
+        &format!("{}/{}", dataset.owner, dataset.name).parse::<DatasetFullName>()?,
         *no_charge,
     )?;
 

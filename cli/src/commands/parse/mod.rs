@@ -5,13 +5,24 @@ mod pff;
 mod pff_sys;
 mod pst;
 
+use crate::utils::{types::identifiers::BucketIdentifier, types::transform::TransformTag};
 use aic_classification_csv::ParseAicClassificationCsvArgs;
+use anyhow::Context;
 use anyhow::Result;
 use colored::Colorize;
+use openapi::{
+    apis::{
+        buckets_api::{get_bucket, get_bucket_by_id},
+        comments_api::{sync_comments, sync_raw_emails},
+        configuration::Configuration,
+        emails_api::add_emails_to_bucket,
+    },
+    models::{
+        AddEmailsToBucketRequest, CommentNew, EmailNew, RawEmailDocument, Source,
+        SyncCommentsRequest, SyncRawEmailsRequest,
+    },
+};
 use pst::ParsePstArgs;
-use reinfer_client::resources::bucket::FullName as BucketFullName;
-use reinfer_client::resources::documents::Document;
-use reinfer_client::{Client, NewComment, NewEmail, Source, TransformTag};
 use scoped_threadpool::Pool;
 use std::fs::DirEntry;
 use std::path::PathBuf;
@@ -47,12 +58,12 @@ pub enum ParseArgs {
     Pst(ParsePstArgs),
 }
 
-pub fn run(args: &ParseArgs, client: Client, pool: &mut Pool) -> Result<()> {
+pub fn run(args: &ParseArgs, config: &Configuration, pool: &mut Pool) -> Result<()> {
     match args {
-        ParseArgs::Msgs(args) => msgs::parse(&client, args),
-        ParseArgs::Emls(args) => emls::parse(&client, args, pool),
-        ParseArgs::AicClassificationCsv(args) => aic_classification_csv::parse(&client, args, pool),
-        ParseArgs::Pst(args) => pst::parse(&client, args),
+        ParseArgs::Msgs(args) => msgs::parse(config, args),
+        ParseArgs::Emls(args) => emls::parse(config, args, pool),
+        ParseArgs::AicClassificationCsv(args) => aic_classification_csv::parse(&config, args, pool),
+        ParseArgs::Pst(args) => pst::parse(config, args),
     }
 }
 
@@ -142,44 +153,82 @@ pub fn get_files_in_directory(
 }
 
 fn upload_batch_of_new_emails(
-    client: &Client,
-    bucket: &BucketFullName,
-    emails: &[NewEmail],
+    config: &Configuration,
+    bucket: &BucketIdentifier,
+    emails: &[EmailNew],
     no_charge: bool,
     statistics: &Arc<Statistics>,
 ) -> Result<()> {
-    client.put_emails(bucket, emails.to_vec(), no_charge)?;
+    // Get bucket info using OpenAPI
+    let bucket_info = match bucket {
+        BucketIdentifier::Id(bucket_id) => {
+            let response =
+                get_bucket_by_id(config, bucket_id).context("Failed to get bucket by ID")?;
+            response.bucket
+        }
+        BucketIdentifier::FullName(full_name) => {
+            let response = get_bucket(config, full_name.owner(), full_name.name())
+                .context("Failed to get bucket by name")?;
+            response.bucket
+        }
+    };
+
+    let request = AddEmailsToBucketRequest::new(emails.to_vec());
+    add_emails_to_bucket(
+        config,
+        &bucket_info.owner,
+        &bucket_info.name,
+        request,
+        Some(no_charge),
+    )
+    .context("Failed to add emails to bucket")?;
+
     statistics.add_uploaded(emails.len());
     Ok(())
 }
 
 fn upload_batch_of_documents(
-    client: &Client,
+    config: &Configuration,
     source: &Source,
-    documents: &[Document],
+    documents: &[RawEmailDocument],
     transform_tag: &TransformTag,
     no_charge: bool,
     statistics: &Arc<Statistics>,
 ) -> Result<()> {
-    client.sync_raw_emails(
-        &source.full_name(),
-        documents,
-        transform_tag,
-        false,
-        no_charge,
-    )?;
+    let mut request = SyncRawEmailsRequest::new(documents.to_vec());
+    request.transform_tag = Some(transform_tag.as_str().to_string());
+
+    sync_raw_emails(
+        config,
+        &source.owner,
+        &source.name,
+        request,
+        Some(no_charge),
+    )
+    .context("Failed to sync raw emails")?;
+
     statistics.add_uploaded(documents.len());
     Ok(())
 }
 
 fn upload_batch_of_comments(
-    client: &Client,
+    config: &Configuration,
     source: &Source,
-    comments: &[NewComment],
+    comments: &[CommentNew],
     no_charge: bool,
     statistics: &Statistics,
 ) -> Result<()> {
-    client.sync_comments(&source.full_name(), comments.to_vec(), no_charge)?;
+    let request = SyncCommentsRequest::new(comments.to_vec());
+
+    sync_comments(
+        config,
+        &source.owner,
+        &source.name,
+        request,
+        Some(no_charge),
+    )
+    .context("Failed to sync comments")?;
+
     statistics.add_uploaded(comments.len());
     Ok(())
 }

@@ -1,3 +1,22 @@
+//! Create command implementations
+//!
+//! This module contains all the subcommands for creating various resources
+//! in the Reinfer platform, including:
+//!
+//! - **Buckets**: Email storage containers
+//! - **Sources**: Data ingestion endpoints  
+//! - **Datasets**: Training data collections
+//! - **Projects**: Organizational containers
+//! - **Comments**: Text data with annotations
+//! - **Annotations**: Labels and entity extraction
+//! - **Emails**: Email processing and ingestion
+//! - **Users**: User accounts with permissions
+//! - **Streams**: Real-time processing pipelines
+//! - **Integrations**: External system connections
+//! - **Quotas**: Resource usage limits
+//! - **Stream Exceptions**: Error handling for streams
+
+// Submodule declarations
 pub mod annotations;
 pub mod bucket;
 pub mod comments;
@@ -11,6 +30,15 @@ pub mod stream_exception;
 pub mod streams;
 pub mod user;
 
+// External crate imports
+use anyhow::Result;
+use scoped_threadpool::Pool;
+use structopt::StructOpt;
+
+// OpenAPI imports
+use openapi::apis::configuration::Configuration;
+
+// Local crate imports
 use self::{
     annotations::CreateAnnotationsArgs, bucket::CreateBucketArgs, comments::CreateCommentsArgs,
     dataset::CreateDatasetArgs, emails::CreateEmailsArgs, integrations::CreateIntegrationArgs,
@@ -18,11 +46,12 @@ use self::{
     stream_exception::CreateStreamExceptionArgs, streams::CreateStreamsArgs, user::CreateUserArgs,
 };
 use crate::printer::Printer;
-use anyhow::Result;
-use reinfer_client::Client;
-use scoped_threadpool::Pool;
-use structopt::StructOpt;
 
+/// Command line arguments for all create operations
+///
+/// This enum represents all the different types of resources that can be created
+/// through the CLI, with each variant containing the specific arguments needed
+/// for that resource type.
 #[derive(Debug, StructOpt)]
 pub enum CreateArgs {
     #[structopt(name = "bucket")]
@@ -82,32 +111,37 @@ pub enum CreateArgs {
     Integrations(CreateIntegrationArgs),
 }
 
+/// Execute the appropriate create command based on the provided arguments
+///
+/// This function dispatches to the specific create implementation based on the
+/// variant of CreateArgs provided. It handles the common setup (configuration,
+/// printer, thread pool) and delegates to the specialized create functions.
 pub fn run(
     create_args: &CreateArgs,
-    client: Client,
+    config: &Configuration,
     printer: &Printer,
     pool: &mut Pool,
 ) -> Result<()> {
     match create_args {
-        CreateArgs::Bucket(bucket_args) => bucket::create(&client, bucket_args, printer),
-        CreateArgs::Source(source_args) => source::create(&client, source_args, printer),
-        CreateArgs::Dataset(dataset_args) => dataset::create(&client, dataset_args, printer),
-        CreateArgs::Project(project_args) => project::create(&client, project_args, printer),
-        CreateArgs::Comments(comments_args) => comments::create(&client, comments_args, pool),
+        CreateArgs::Bucket(bucket_args) => bucket::create(config, bucket_args, printer),
+        CreateArgs::Source(source_args) => source::create(config, source_args, printer),
+        CreateArgs::Dataset(dataset_args) => dataset::create(config, dataset_args, printer),
+        CreateArgs::Project(project_args) => project::create(config, project_args, printer),
+        CreateArgs::Comments(comments_args) => comments::create(config, comments_args, pool),
         CreateArgs::Annotations(annotations_args) => {
-            annotations::create(&client, annotations_args, pool)
+            annotations::create(config, annotations_args, pool)
         }
-        CreateArgs::Emails(emails_args) => emails::create(&client, emails_args),
-        CreateArgs::User(user_args) => user::create(&client, user_args, printer),
+        CreateArgs::Emails(emails_args) => emails::create(config, emails_args),
+        CreateArgs::User(user_args) => user::create(config, user_args, printer),
         CreateArgs::StreamException(stream_exception_args) => {
-            stream_exception::create(&client, stream_exception_args, printer)
+            stream_exception::create(config, stream_exception_args, printer)
         }
-        CreateArgs::Quota(quota_args) => quota::create(&client, quota_args),
+        CreateArgs::Quota(quota_args) => quota::create(config, quota_args),
         CreateArgs::Stream(stream_args) | CreateArgs::Streams(stream_args) => {
-            streams::create(&client, stream_args)
+            streams::create(config, stream_args)
         }
         CreateArgs::Integration(integration_args) | CreateArgs::Integrations(integration_args) => {
-            integrations::create(&client, integration_args)
+            integrations::create(config, integration_args)
         }
     }
 }

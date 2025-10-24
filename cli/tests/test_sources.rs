@@ -1,6 +1,6 @@
 use crate::common::TestCli;
+use openapi::models::Source;
 use pretty_assertions::assert_eq;
-use reinfer_client::Source;
 use uuid::Uuid;
 
 pub struct TestSource {
@@ -66,6 +66,7 @@ impl Drop for TestSource {
 
 #[test]
 fn test_test_source() {
+    dbg!("here");
     let cli = TestCli::get();
     let source = TestSource::new();
 
@@ -125,13 +126,13 @@ fn test_create_update_source_custom() {
     impl From<Source> for SourceInfo {
         fn from(source: Source) -> SourceInfo {
             SourceInfo {
-                owner: source.owner.0,
-                name: source.name.0,
+                owner: source.owner,
+                name: source.name,
                 title: source.title,
                 description: source.description,
                 language: source.language,
                 should_translate: source.should_translate,
-                kind: source.kind.to_string(),
+                kind: source._kind.to_string(),
             }
         }
     }
@@ -198,10 +199,10 @@ fn test_create_source_with_kind() {
     impl From<Source> for SourceInfo {
         fn from(source: Source) -> SourceInfo {
             SourceInfo {
-                owner: source.owner.0,
-                name: source.name.0,
+                owner: source.owner,
+                name: source.name,
                 title: source.title,
-                kind: source.kind.to_string(),
+                kind: source._kind.to_string(),
             }
         }
     }
@@ -236,9 +237,9 @@ fn test_create_source_with_transform_tag() {
     impl From<Source> for SourceInfo {
         fn from(source: Source) -> SourceInfo {
             SourceInfo {
-                owner: source.owner.0,
-                name: source.name.0,
-                transform_tag: source.transform_tag.map(|tag| tag.0),
+                owner: source.owner,
+                name: source.name,
+                transform_tag: source.email_transform_tag,
             }
         }
     }
@@ -272,9 +273,9 @@ fn test_create_source_with_invalid_transform_tag_fails() {
     ]);
     assert!(
         output.contains(
-            "422 Unprocessable Entity: The value 'not-a-valid-transform-tag.0.ABCDEFGH' is not a valid transform tag."
+            "The value 'not-a-valid-transform-tag.0.ABCDEFGH' is not a valid transform tag."
         ),
-        "{}",
+        "Expected detailed transform tag validation error, got: {}",
         output,
     );
 }
@@ -290,8 +291,7 @@ fn test_create_source_requires_owner() {
         .unwrap();
 
     assert!(!output.status.success());
-    assert_eq!(
-        String::from_utf8_lossy(&output.stderr).trim(),
-        "error: Invalid value for '<source-name>': Expected <owner>/<name> or a source id, got: source-without-owner"
-    );
+    assert!(String::from_utf8_lossy(&output.stderr).contains(
+        "error: Invalid value for '<source-name>': expected owner/name, got 'source-without-owner'"
+    ));
 }

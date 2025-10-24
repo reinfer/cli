@@ -2,10 +2,20 @@ use std::collections::HashMap;
 
 use anyhow::{Context, Result};
 use log::info;
-use reinfer_client::{BucketIdentifier, Client};
 use structopt::StructOpt;
 
-use crate::printer::{PrintableBucket, Printer};
+use openapi::{
+    apis::{
+        buckets_api::{get_all_buckets, get_bucket_statistics},
+        configuration::Configuration,
+    },
+    models::Bucket,
+};
+
+use crate::{
+    printer::{PrintableBucket, Printer},
+    utils::{resolve_bucket, BucketIdentifier},
+};
 
 #[derive(Debug, StructOpt)]
 pub struct GetBucketsArgs {
@@ -18,47 +28,78 @@ pub struct GetBucketsArgs {
     include_stats: bool,
 }
 
-pub fn get(client: &Client, args: &GetBucketsArgs, printer: &Printer) -> Result<()> {
+/// Retrieve buckets with optional statistics
+pub fn get(config: &Configuration, args: &GetBucketsArgs, printer: &Printer) -> Result<()> {
     let GetBucketsArgs {
         bucket,
         include_stats,
     } = args;
 
-    let buckets = if let Some(bucket) = bucket {
-        vec![client
-            .get_bucket(bucket.clone())
-            .context("Operation to list buckets has failed.")?]
+    let buckets = if let Some(bucket_identifier) = bucket {
+        vec![resolve_bucket(config, bucket_identifier)?]
     } else {
-        let mut buckets = client
-            .get_buckets()
-            .context("Operation to list buckets has failed.")?;
-        buckets.sort_unstable_by(|lhs, rhs| {
-            (&lhs.owner.0, &lhs.name.0).cmp(&(&rhs.owner.0, &rhs.name.0))
-        });
-        buckets
+        get_all_buckets_sorted(config)?
     };
 
-    let mut bucket_stats: HashMap<_, _> = HashMap::new();
+    let bucket_stats = if *include_stats {
+        collect_bucket_statistics(config, &buckets)?
+    } else {
+        HashMap::new()
+    };
 
-    if *include_stats {
-        buckets.iter().try_for_each(|bucket| -> Result<()> {
-            info!("Getting statistics for bucket {}", bucket.full_name().0);
-            let stats = client
-                .get_bucket_statistics(&bucket.full_name())
-                .context("Could not get statistics for bucket")?;
+    let printable_buckets = create_printable_buckets(buckets, bucket_stats);
+    printer.print_resources(&printable_buckets)
+}
 
-            bucket_stats.insert(bucket.id.clone(), stats);
-            Ok(())
-        })?;
+/// Retrieve all buckets, sorted by owner and name
+fn get_all_buckets_sorted(config: &Configuration) -> Result<Vec<Bucket>> {
+    let mut buckets = get_all_buckets(config)
+        .context("Failed to list buckets")?
+        .buckets;
+
+    buckets.sort_unstable_by(|lhs, rhs| (&lhs.owner, &lhs.name).cmp(&(&rhs.owner, &rhs.name)));
+
+    Ok(buckets)
+}
+
+/// Collect statistics for all provided buckets
+fn collect_bucket_statistics(
+    config: &Configuration,
+    buckets: &[Bucket],
+) -> Result<HashMap<String, openapi::models::BucketStatistics>> {
+    let mut bucket_stats = HashMap::new();
+
+    for bucket in buckets {
+        info!(
+            "Getting statistics for bucket {}/{}",
+            bucket.owner, bucket.name
+        );
+
+        let stats = get_bucket_statistics(config, &bucket.owner, &bucket.name)
+            .with_context(|| {
+                format!(
+                    "Failed to get statistics for bucket {}/{}",
+                    bucket.owner, bucket.name
+                )
+            })?
+            .statistics;
+
+        bucket_stats.insert(bucket.id.clone(), *stats);
     }
 
-    let printable_buckets: Vec<PrintableBucket> = buckets
+    Ok(bucket_stats)
+}
+
+/// Create printable bucket objects with optional statistics
+fn create_printable_buckets(
+    buckets: Vec<Bucket>,
+    bucket_stats: HashMap<String, openapi::models::BucketStatistics>,
+) -> Vec<PrintableBucket> {
+    buckets
         .into_iter()
         .map(|bucket| {
             let stats = bucket_stats.get(&bucket.id).cloned();
             PrintableBucket { bucket, stats }
         })
-        .collect();
-
-    printer.print_resources(&printable_buckets)
+        .collect()
 }
