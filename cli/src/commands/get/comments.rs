@@ -498,7 +498,7 @@ pub fn get_single(config: &Configuration, args: &GetSingleCommentArgs) -> Result
         &source.owner,
         &source.name,
         comment_id.as_ref(),
-        None,
+        Some(true),
     )
     .with_context(|| format!("Unable to get comment {}", comment_id))?;
     let comment = *comment_response.comment;
