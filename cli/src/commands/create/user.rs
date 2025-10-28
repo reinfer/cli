@@ -164,6 +164,6 @@ fn create_user_via_api(
 fn send_user_welcome_email(config: &Configuration, user: &openapi::models::User) -> Result<()> {
     openapi::apis::users_api::send_welcome_email(config, &user.id)
         .context("Operation to send welcome email failed")?;
-    log::info!("Welcome email sent for user '{}'", user.username);
+    log::info!("Welcome email sent for user");
     Ok(())
 }
