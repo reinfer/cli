@@ -1,6 +1,6 @@
 use crate::common::TestCli;
+use openapi::models::{Project, User};
 use pretty_assertions::assert_eq;
-use reinfer_client::{Project, User};
 use uuid::Uuid;
 
 pub struct TestProject {
@@ -17,9 +17,9 @@ impl TestProject {
         // So we loop until the project is created with our user in, or we time out.
         let start_time = std::time::Instant::now();
         loop {
-            let output = cli.run(["get", "users", "--project", name, "--user", &user.id.0]);
+            let output = cli.run(["get", "users", "--project", name, "--user", &user.id]);
 
-            if output.contains(&user.id.0) {
+            if output.contains(&user.id) {
                 return true;
             }
 
@@ -42,7 +42,7 @@ impl TestProject {
             let user = cli.user();
 
             cli.run(
-                ["create", "project", &name, "--user-ids", &user.id.0]
+                ["create", "project", &name, "--user-ids", &user.id]
                     .iter()
                     .chain(args),
             );
@@ -118,7 +118,7 @@ fn test_create_update_project_custom() {
     impl From<Project> for ProjectInfo {
         fn from(project: Project) -> ProjectInfo {
             ProjectInfo {
-                name: project.name.0,
+                name: project.name,
                 title: project.title,
                 description: project.description,
             }
@@ -179,8 +179,8 @@ fn test_project_force_delete() {
     assert!(!output.status.success());
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("API request failed with 409 Conflict: Project contains child resources but force deletion was not requested: {\"sources\": 1}"),
-        "{}",
+            .contains("Project contains child resources but force deletion was not requested: {\"sources\": 1}"),
+        "Expected detailed conflict error message, got: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 

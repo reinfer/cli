@@ -6,9 +6,9 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 use dialoguer::Confirm;
-use once_cell::sync::Lazy;
-use reinfer_client::TransformTag;
 use url::Url;
+
+use crate::utils::types::transform::DEFAULT_TRANSFORM_TAG;
 
 pub mod auth;
 pub mod config;
@@ -44,9 +44,6 @@ Do you want to continue?"#,
         Err(anyhow!("Billable operation aborted by user"))
     }
 }
-
-static DEFAULT_TRANSFORM_TAG: Lazy<TransformTag> =
-    Lazy::new(|| TransformTag("generic.0.CONVKER5".to_string()));
 
 pub struct LocalAttachmentPath {
     index: usize,

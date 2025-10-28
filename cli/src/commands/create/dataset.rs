@@ -1,15 +1,36 @@
-use crate::printer::Printer;
-use anyhow::{anyhow, bail, Context, Error, Result};
-use log::info;
-use reinfer_client::{
-    resources::{dataset::DatasetFlag, entity_def::NewGeneralFieldDef},
-    Client, DatasetFullName, NewDataset, NewEntityDef, NewLabelDef, NewLabelGroup,
-    SourceIdentifier,
-};
-use serde::Deserialize;
+//! Commands for creating datasets with comprehensive configuration options
+//!
+//! This module supports creating datasets with:
+//! - Entity definitions and general fields
+//! - Label definitions and label groups  
+//! - Model family and feature flags (QoS, GenAI, etc.)
+//! - Source associations and annotation copying
+
+// Standard library imports
 use std::str::FromStr;
+
+// External crate imports
+use anyhow::{anyhow, bail, Error, Result};
+use log::info;
+use serde::Deserialize;
 use structopt::StructOpt;
 
+// OpenAPI imports
+use openapi::{
+    apis::{configuration::Configuration, datasets_api::create_dataset},
+    models::{
+        CreateDatasetRequest, DatasetFlag, DatasetNew, EntityDefNew, GeneralFieldDefNew,
+        LabelDefNew, LabelGroupNew,
+    },
+};
+
+// Local crate imports
+use crate::{
+    printer::Printer,
+    utils::{types::identifiers::SourceIdentifier, FullName as DatasetFullName},
+};
+
+/// Command line arguments for creating a dataset with full configuration options
 #[derive(Debug, StructOpt)]
 pub struct CreateDatasetArgs {
     #[structopt(name = "owner-name/dataset-name")]
@@ -37,20 +58,20 @@ pub struct CreateDatasetArgs {
 
     #[structopt(short = "e", long = "entity-defs", default_value = "[]")]
     /// Entity defs to create at dataset creation, as json
-    entity_defs: VecExt<NewEntityDef>,
+    entity_defs: VecExt<EntityDefNew>,
 
     #[structopt(short = "g", long = "general-fields", default_value = "[]")]
     /// General Fields to create at dataset creation, as json
-    general_fields: VecExt<NewGeneralFieldDef>,
+    general_fields: VecExt<GeneralFieldDefNew>,
 
     #[structopt(long = "label-defs", default_value = "[]")]
     /// Label defs to create at dataset creation, as json.
     /// Only used if label_groups is not provided.
-    label_defs: VecExt<NewLabelDef>,
+    label_defs: VecExt<LabelDefNew>,
 
     #[structopt(long = "label-groups", default_value = "[]")]
     /// Label groups to create at dataset creation, as json
-    label_groups: VecExt<NewLabelGroup>,
+    label_groups: VecExt<LabelGroupNew>,
 
     #[structopt(long = "model-family")]
     /// Model family to use for the new dataset
@@ -77,7 +98,14 @@ pub struct CreateDatasetArgs {
     zero_shot: Option<bool>,
 }
 
-pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> Result<()> {
+/// Create a new dataset with the specified configuration
+///
+/// This function handles:
+/// - Source ID resolution from names or IDs
+/// - Dataset flag validation and setup
+/// - Label definition vs label group precedence
+/// - Comprehensive error handling with detailed messages
+pub fn create(config: &Configuration, args: &CreateDatasetArgs, printer: &Printer) -> Result<()> {
     let CreateDatasetArgs {
         name,
         title,
@@ -96,47 +124,13 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
         zero_shot,
     } = args;
 
-    let source_ids = {
-        let mut source_ids = Vec::with_capacity(sources.len());
-        for source in sources.iter() {
-            source_ids.push(
-                client
-                    .get_source(source.clone())
-                    .context("Operation to get source has failed")?
-                    .id,
-            );
-        }
-        source_ids
-    };
+    let mut source_ids = Vec::with_capacity(sources.len());
+    for source_id in sources.iter() {
+        let source = crate::utils::resolve_source(config, source_id)?;
+        source_ids.push(source.id);
+    }
 
-    let get_dataset_flags = || -> Result<Vec<DatasetFlag>> {
-        if external_llm.unwrap_or_default() && !gen_ai.unwrap_or_default() {
-            bail!("External Llm can only be used if gen ai features are enabled. Please add `--gen-ai true`")
-        }
-
-        if zero_shot.unwrap_or_default() && !gen_ai.unwrap_or_default() {
-            bail!("Zero shot can only be used if gen ai features are enabled. Please add `--gen-ai true`")
-        }
-
-        let mut dataset_flags = Vec::new();
-
-        if gen_ai.unwrap_or_default() {
-            dataset_flags.push(DatasetFlag::Gpt4)
-        }
-
-        if external_llm.unwrap_or_default() {
-            dataset_flags.push(DatasetFlag::ExternalMoonLlm)
-        }
-
-        if zero_shot.unwrap_or_default() {
-            dataset_flags.push(DatasetFlag::ZeroShotLabels)
-        }
-
-        if qos.unwrap_or_default() {
-            dataset_flags.push(DatasetFlag::Qos)
-        }
-        Ok(dataset_flags)
-    };
+    let dataset_flags = build_dataset_flags(*gen_ai, *external_llm, *zero_shot, *qos)?;
 
     // Unwrap the inner values, we only need the outer for argument parsing
     let entity_defs = &entity_defs.0;
@@ -148,60 +142,129 @@ pub fn create(client: &Client, args: &CreateDatasetArgs, printer: &Printer) -> R
         // otherwise, we either don't have defs or have groups, so don't use them
         _ => None,
     };
-    let dataset = client
-        .create_dataset(
-            name,
-            NewDataset {
-                source_ids: &source_ids,
-                title: title.as_deref(),
-                description: description.as_deref(),
-                has_sentiment: Some(has_sentiment.unwrap_or(false)),
-                entity_defs: if entity_defs.is_empty() {
-                    None
-                } else {
-                    Some(entity_defs)
-                },
-                general_fields: if general_fields.is_empty() {
-                    None
-                } else {
-                    Some(general_fields)
-                },
-                label_defs,
-                label_groups: if label_groups.is_empty() {
-                    None
-                } else {
-                    Some(&label_groups[..])
-                },
-                model_family: model_family.as_deref(),
-                copy_annotations_from: copy_annotations_from.as_deref(),
-                dataset_flags: get_dataset_flags()?,
-            },
-        )
-        .context("Operation to create a dataset has failed.")?;
+    let dataset_new = DatasetNew {
+        title: title.clone(),
+        description: description.clone(),
+        source_ids: Some(source_ids),
+        has_sentiment: Some(has_sentiment.unwrap_or(false)),
+        entity_defs: if entity_defs.is_empty() {
+            None
+        } else {
+            Some(entity_defs.clone())
+        },
+        general_fields: if general_fields.is_empty() {
+            None
+        } else {
+            Some(general_fields.clone())
+        },
+        label_defs: label_defs.map(|label_defs| label_defs.to_vec()),
+        label_groups: if label_groups.is_empty() {
+            None
+        } else {
+            Some(label_groups.clone())
+        },
+        model_family: model_family.clone(),
+        copy_annotations_from: copy_annotations_from.clone(),
+        _dataset_flags: Some(dataset_flags),
+        ..Default::default()
+    };
+
+    let create_request = CreateDatasetRequest {
+        dataset: Box::new(dataset_new),
+    };
+
+    let response =
+        create_dataset(config, name.owner(), name.name(), create_request).map_err(|e| {
+            match e {
+                openapi::apis::Error::ResponseError(response_content) => {
+                    // Try to parse the error response to get the detailed message
+                    let detailed_error = if let Ok(error_resp) =
+                        serde_json::from_str::<openapi::models::ErrorResponse>(
+                            &response_content.content,
+                        ) {
+                        error_resp.message
+                    } else {
+                        response_content.content
+                    };
+                    anyhow!(
+                        "Operation to create a dataset has failed: {}",
+                        detailed_error
+                    )
+                }
+                _ => anyhow!("Operation to create a dataset has failed: {}", e),
+            }
+        })?;
+
+    let dataset = *response.dataset;
     info!(
-        "New dataset `{}` [id: {}] created successfully",
-        dataset.full_name().0,
-        dataset.id.0,
+        "New dataset `{}/{}` [id: {}] created successfully",
+        dataset.owner, dataset.name, dataset.id,
     );
     printer.print_resources(&[dataset])?;
     Ok(())
 }
 
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/// Build dataset flags based on feature selections with validation
+fn build_dataset_flags(
+    gen_ai: Option<bool>,
+    external_llm: Option<bool>,
+    zero_shot: Option<bool>,
+    qos: Option<bool>,
+) -> Result<Vec<DatasetFlag>> {
+    // Validate flag combinations
+    if external_llm.unwrap_or_default() && !gen_ai.unwrap_or_default() {
+        bail!("External LLM can only be used if gen AI features are enabled. Please add `--gen-ai true`")
+    }
+
+    if zero_shot.unwrap_or_default() && !gen_ai.unwrap_or_default() {
+        bail!(
+            "Zero shot can only be used if gen AI features are enabled. Please add `--gen-ai true`"
+        )
+    }
+
+    let mut dataset_flags = Vec::new();
+
+    if gen_ai.unwrap_or_default() {
+        dataset_flags.push(DatasetFlag::Gpt4)
+    }
+
+    if external_llm.unwrap_or_default() {
+        dataset_flags.push(DatasetFlag::ExternalMoonLlm)
+    }
+
+    if zero_shot.unwrap_or_default() {
+        dataset_flags.push(DatasetFlag::ZeroShotLabels)
+    }
+
+    if qos.unwrap_or_default() {
+        dataset_flags.push(DatasetFlag::Qos)
+    }
+
+    Ok(dataset_flags)
+}
+
+// ============================================================================
+// Utility Types
+// ============================================================================
+
+/// Wrapper type for JSON deserialization of Vec<T> from command line arguments
 #[derive(Debug, Deserialize)]
 struct VecExt<T>(pub Vec<T>);
 
-/// Utility type for foreign trait interactions.
+/// Utility type for parsing JSON arrays from command line arguments
 ///
-/// For actual api interactions, `Vec<T>` is fine.
+/// This enables parsing JSON arrays like `[{"name": "test"}]` directly from CLI args
 impl<T: serde::de::DeserializeOwned> FromStr for VecExt<T> {
     type Err = Error;
 
     fn from_str(string: &str) -> Result<Self> {
         serde_json::from_str(string).map_err(|source| {
-            // We do a map_err -> anyhow here, because we need the details inlined
-            // for when the error message is shown on the cli without backtrace
             anyhow!(
-                "Expected valid json for type. Got: '{}', which failed because: '{}'",
+                "Expected valid JSON array. Got: '{}', which failed because: '{}'",
                 string.to_owned(),
                 source
             )

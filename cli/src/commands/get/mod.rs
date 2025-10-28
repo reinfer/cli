@@ -1,6 +1,7 @@
+// Module declarations
 mod audit_events;
 mod buckets;
-mod comments;
+pub mod comments;
 mod custom_label_trend_report;
 mod datasets;
 mod emails;
@@ -13,21 +14,22 @@ mod streams;
 mod users;
 
 use anyhow::Result;
-use custom_label_trend_report::GetCustomLabelTrendReportArgs;
-use quota::GetQuotaArgs;
-use reinfer_client::Client;
 use scoped_threadpool::Pool;
 use structopt::StructOpt;
+
+use openapi::apis::configuration::Configuration;
 
 use self::{
     audit_events::GetAuditEventsArgs,
     buckets::GetBucketsArgs,
     comments::{GetManyCommentsArgs, GetSingleCommentArgs},
+    custom_label_trend_report::GetCustomLabelTrendReportArgs,
     datasets::GetDatasetsArgs,
     emails::GetManyEmailsArgs,
     integrations::GetIntegrationsArgs,
     keyed_sync_states::GetKeyedSyncStatesArgs,
     projects::GetProjectsArgs,
+    quota::GetQuotaArgs,
     sources::GetSourcesArgs,
     streams::{GetStreamCommentsArgs, GetStreamStatsArgs, GetStreamsArgs},
     users::GetUsersArgs,
@@ -106,26 +108,30 @@ pub enum GetArgs {
     CustomDatasetReport(GetCustomLabelTrendReportArgs),
 }
 
-pub fn run(args: &GetArgs, client: Client, printer: &Printer, pool: &mut Pool) -> Result<()> {
+/// Execute get commands based on the provided arguments
+pub fn run(
+    args: &GetArgs,
+    config: &Configuration,
+    printer: &Printer,
+    pool: &mut Pool,
+) -> Result<()> {
     match args {
-        GetArgs::Buckets(args) => buckets::get(&client, args, printer),
-        GetArgs::Emails(args) => emails::get_many(&client, args),
-        GetArgs::Comment(args) => comments::get_single(&client, args),
-        GetArgs::Comments(args) => comments::get_many(&client, args),
-        GetArgs::Datasets(args) => datasets::get(&client, args, printer, pool),
-        GetArgs::Projects(args) => projects::get(&client, args, printer),
-        GetArgs::Sources(args) => sources::get(&client, args, printer),
-        GetArgs::Streams(args) => streams::get(&client, args, printer),
-        GetArgs::StreamComments(args) => streams::get_stream_comments(&client, args),
-        GetArgs::StreamStats(args) => streams::get_stream_stats(&client, args, printer, pool),
-        GetArgs::Users(args) => users::get(&client, args, printer),
-        GetArgs::CurrentUser => users::get_current_user(&client, printer),
-        GetArgs::Quotas(args) => quota::get(&client, args, printer),
-        GetArgs::AuditEvents(args) => audit_events::get(&client, args, printer),
-        GetArgs::Integrations(args) => integrations::get(&client, args, printer),
-        GetArgs::KeyedSyncStates(args) => keyed_sync_states::get(&client, args, printer),
-        GetArgs::CustomDatasetReport(args) => {
-            custom_label_trend_report::get(&client, args, printer)
-        }
+        GetArgs::Buckets(args) => buckets::get(config, args, printer),
+        GetArgs::Emails(args) => emails::get_many(config, args),
+        GetArgs::Comment(args) => comments::get_single(config, args),
+        GetArgs::Comments(args) => comments::get_many(config, args),
+        GetArgs::Datasets(args) => datasets::get(config, args, printer, pool),
+        GetArgs::Projects(args) => projects::get(config, args, printer),
+        GetArgs::Sources(args) => sources::get(config, args, printer),
+        GetArgs::Streams(args) => streams::get(config, args, printer),
+        GetArgs::StreamComments(args) => streams::get_stream_comments(config, args),
+        GetArgs::StreamStats(args) => streams::get_stream_stats(config, args, printer, pool),
+        GetArgs::Users(args) => users::get(config, args, printer),
+        GetArgs::CurrentUser => users::get_current_user_and_print(config, printer),
+        GetArgs::Quotas(args) => quota::get(config, args, printer),
+        GetArgs::AuditEvents(args) => audit_events::get(config, args, printer),
+        GetArgs::Integrations(args) => integrations::get(config, args, printer),
+        GetArgs::KeyedSyncStates(args) => keyed_sync_states::get(config, args, printer),
+        GetArgs::CustomDatasetReport(args) => custom_label_trend_report::get(config, args, printer),
     }
 }

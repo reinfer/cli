@@ -1,20 +1,34 @@
-use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
-use colored::Colorize;
-use log::info;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
 };
+
+use anyhow::{Context, Result};
+use chrono::{DateTime, Utc};
+use colored::Colorize;
+use log::info;
 use structopt::StructOpt;
 
-use reinfer_client::{
-    resources::{bucket::GetKeyedSyncStateIdsRequest, project::ForceDeleteProject},
-    BucketIdentifier, Client, CommentId, CommentsIter, CommentsIterTimerange, DatasetIdentifier,
-    ProjectName, Source, SourceIdentifier, UserIdentifier,
+use openapi::{
+    apis::{
+        buckets_api::{delete_bucket, delete_keyed_sync_state, query_keyed_sync_state_ids},
+        comments_api::delete_comment,
+        configuration::Configuration,
+        datasets_api::{delete_dataset_by_id, delete_dataset_v1},
+        projects_api::delete_project,
+        sources_api::delete_source,
+        users_api::delete_user,
+    },
+    models::{QueryKeyedSyncStateIdsRequest, Source},
 };
 
+use crate::commands::get::comments::{get_comments_iter, CommentsIter};
 use crate::progress::{Options as ProgressOptions, Progress};
+use crate::utils::{
+    types::identifiers::{resolve_bucket, resolve_source, ResourceIdentifier, UserIdentifier},
+    BucketIdentifier, CommentId, CommentsIterTimerange, DatasetIdentifier, ProjectName,
+    SourceIdentifier,
+};
 
 #[derive(Debug, StructOpt)]
 pub enum DeleteArgs {
@@ -114,24 +128,37 @@ pub enum DeleteArgs {
     },
 }
 
-pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
+pub fn run(delete_args: &DeleteArgs, config: &Configuration) -> Result<()> {
     match delete_args {
         DeleteArgs::Source { source } => {
-            client
-                .delete_source(source.clone())
+            // Resolve source identifier to get the ID
+            let resolved_source =
+                resolve_source(config, source).context("Failed to resolve source")?;
+
+            delete_source(config, &resolved_source.id)
                 .context("Operation to delete source has failed.")?;
             log::info!("Deleted source.");
         }
         DeleteArgs::User { user } => {
-            client
-                .delete_user(user.clone())
-                .context("Operation to delete user has failed.")?;
+            let user_id = user
+                .id()
+                .ok_or_else(|| anyhow::anyhow!("User must be specified by ID"))?;
+            delete_user(config, user_id).context("Operation to delete user has failed.")?;
             log::info!("Deleted user.");
         }
         DeleteArgs::Comments { source, comments } => {
-            client
-                .delete_comments(source.clone(), comments)
-                .context("Operation to delete comments has failed.")?;
+            // Delete comments one by one
+            for comment_id in comments {
+                let owner = source
+                    .owner()
+                    .ok_or_else(|| anyhow::anyhow!("Source must be specified by full name"))?;
+                let name = source
+                    .name()
+                    .ok_or_else(|| anyhow::anyhow!("Source must be specified by full name"))?;
+                delete_comment(config, owner, name, None, Some(&comment_id.0)).context(format!(
+                    "Operation to delete comment {comment_id} has failed."
+                ))?;
+            }
             log::info!("Deleted comments.");
         }
         DeleteArgs::BulkComments {
@@ -141,10 +168,11 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
             to_timestamp,
             no_progress,
         } => {
-            let source = client.get_source(source_identifier.clone())?;
+            let source =
+                resolve_source(config, source_identifier).context("Failed to resolve source")?;
             let show_progress = !no_progress;
             delete_comments_in_period(
-                &client,
+                config,
                 source,
                 *include_annotated,
                 CommentsIterTimerange {
@@ -156,44 +184,67 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
             .context("Operation to delete comments has failed.")?;
         }
         DeleteArgs::Dataset { dataset } => {
-            client
-                .delete_dataset(dataset.clone())
-                .context("Operation to delete dataset has failed.")?;
+            match dataset {
+                ResourceIdentifier::Id(dataset_id) => {
+                    delete_dataset_by_id(config, dataset_id)
+                        .context("Operation to delete dataset has failed.")?;
+                }
+                ResourceIdentifier::FullName(full_name) => {
+                    delete_dataset_v1(config, full_name.owner(), full_name.name())
+                        .context("Operation to delete dataset has failed.")?;
+                }
+            }
             log::info!("Deleted dataset.");
         }
         DeleteArgs::Bucket { bucket } => {
-            client
-                .delete_bucket(bucket.clone())
-                .context("Operation to delete bucket has failed.")?;
+            let bucket_id = bucket
+                .id()
+                .ok_or_else(|| anyhow::anyhow!("Bucket must be specified by ID"))?;
+            delete_bucket(config, bucket_id).context("Operation to delete bucket has failed.")?;
             log::info!("Deleted bucket.");
         }
         DeleteArgs::Project { project, force } => {
-            let force_delete = if *force {
-                ForceDeleteProject::Yes
-            } else {
-                ForceDeleteProject::No
-            };
-            client
-                .delete_project(project, force_delete)
-                .context("Operation to delete project has failed.")?;
+            delete_project(config, project.as_str(), Some(*force)).map_err(|e| {
+                match e {
+                    openapi::apis::Error::ResponseError(response_content) => {
+                        // Try to parse the error response to get the detailed message
+                        let detailed_error = if let Ok(error_resp) =
+                            serde_json::from_str::<openapi::models::ErrorResponse>(
+                                &response_content.content,
+                            ) {
+                            error_resp.message
+                        } else {
+                            response_content.content
+                        };
+                        anyhow::anyhow!(
+                            "Operation to delete project has failed: {}",
+                            detailed_error
+                        )
+                    }
+                    _ => anyhow::anyhow!("Operation to delete project has failed: {}", e),
+                }
+            })?;
             log::info!("Deleted project.");
         }
         DeleteArgs::KeyedSyncStates {
             bucket,
             mailbox_name,
         } => {
-            let bucket = client.get_bucket(bucket.clone())?;
+            let bucket = resolve_bucket(config, bucket).context("Failed to resolve bucket")?;
 
-            let keyed_sync_state_ids = client.get_keyed_sync_state_ids(
+            let keyed_sync_state_ids_response = query_keyed_sync_state_ids(
+                config,
                 &bucket.id,
-                &GetKeyedSyncStateIdsRequest {
+                QueryKeyedSyncStateIdsRequest {
                     mailbox_name: mailbox_name.clone(),
                 },
-            )?;
+            )
+            .context("Failed to get keyed sync state IDs")?;
 
-            for id in keyed_sync_state_ids {
-                client.delete_keyed_sync_state(&bucket.id, &id)?;
-                info!("Delete keyed sync state {}", id.0)
+            for id in keyed_sync_state_ids_response.keyed_sync_state_ids {
+                delete_keyed_sync_state(config, &bucket.id, &id)
+                    .context("Failed to delete keyed sync state")?;
+                info!("Delete keyed sync state {id}")
             }
         }
     };
@@ -201,15 +252,16 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
 }
 
 fn delete_comments_in_period(
-    client: &Client,
+    config: &Configuration,
     source: Source,
     include_annotated: bool,
     timerange: CommentsIterTimerange,
     show_progress: bool,
 ) -> Result<()> {
     log::info!(
-        "Deleting comments in source `{}`{} (include-annotated: {})",
-        source.full_name().0,
+        "Deleting comments in source `{}/{}`{} (include-annotated: {})",
+        source.owner,
+        source.name,
         match (timerange.from, timerange.to) {
             (None, None) => "".into(),
             (Some(start), None) => format!(" after {start}"),
@@ -236,43 +288,52 @@ fn delete_comments_in_period(
             Vec::with_capacity(DELETION_BATCH_SIZE + CommentsIter::MAX_PAGE_SIZE);
 
         let delete_batch = |comment_ids: Vec<CommentId>| -> Result<()> {
-            client
-                .delete_comments(&source, &comment_ids)
-                .context("Operation to delete comments failed")?;
+            // Delete comments individually using OpenAPI
+            for comment_id in &comment_ids {
+                delete_comment(
+                    config,
+                    &source.owner,
+                    &source.name,
+                    None,
+                    Some(&comment_id.0),
+                )
+                .context(format!("Operation to delete comment {comment_id} failed"))?;
+            }
             statistics.increment_deleted(comment_ids.len());
             Ok(())
         };
 
-        client
-            .get_comments_iter(
-                &source.full_name(),
-                Some(CommentsIter::MAX_PAGE_SIZE),
-                timerange,
-            )
-            .try_for_each(|page| -> Result<()> {
-                let page = page.context("Operation to get comments failed")?;
-                let num_comments = page.len();
-                let comment_ids = page
-                    .into_iter()
-                    .filter_map(|comment| {
-                        if !include_annotated && comment.has_annotations {
-                            None
-                        } else {
-                            Some(comment.id)
-                        }
-                    })
-                    .collect::<Vec<_>>();
+        get_comments_iter(
+            config,
+            source.owner.clone(),
+            source.name.clone(),
+            Some(CommentsIter::MAX_PAGE_SIZE),
+            timerange,
+        )
+        .try_for_each(|page| -> Result<()> {
+            let page = page.context("Operation to get comments failed")?;
+            let num_comments = page.len();
+            let comment_ids = page
+                .into_iter()
+                .filter_map(|comment| {
+                    if !include_annotated && comment.has_annotations.unwrap_or(false) {
+                        None
+                    } else {
+                        Some(CommentId(comment.id))
+                    }
+                })
+                .collect::<Vec<_>>();
 
-                let num_skipped = num_comments - comment_ids.len();
-                statistics.increment_skipped(num_skipped);
+            let num_skipped = num_comments - comment_ids.len();
+            statistics.increment_skipped(num_skipped);
 
-                comments_to_delete.extend(comment_ids);
-                while comments_to_delete.len() >= DELETION_BATCH_SIZE {
-                    let remainder = comments_to_delete.split_off(DELETION_BATCH_SIZE);
-                    delete_batch(std::mem::replace(&mut comments_to_delete, remainder))?;
-                }
-                Ok(())
-            })?;
+            comments_to_delete.extend(comment_ids);
+            while comments_to_delete.len() >= DELETION_BATCH_SIZE {
+                let remainder = comments_to_delete.split_off(DELETION_BATCH_SIZE);
+                delete_batch(std::mem::replace(&mut comments_to_delete, remainder))?;
+            }
+            Ok(())
+        })?;
 
         // Delete any comments left over in any potential last partial batch.
         if !comments_to_delete.is_empty() {

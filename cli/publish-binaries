@@ -4,6 +4,10 @@ set -euxo pipefail
 
 cd "$(dirname "$0")"
 
+# Ensure we have the latest OpenAPI client from develop branch
+echo "Generating fresh OpenAPI client from develop branch..."
+echo "develop" | ../scripts/update-and-generate.sh
+
 # requires toml package (apt-get install python3-toml)
 CLI_VERSION="$(python -c 'import toml; fh = open("Cargo.toml"); data = toml.load(fh); print(data["package"]["version"])')"
 export CLI_VERSION

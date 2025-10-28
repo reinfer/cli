@@ -1,5 +1,3 @@
-use colored::Colorize;
-use itertools::Itertools;
 use std::{
     collections::HashMap,
     fmt::Display,
@@ -15,37 +13,75 @@ use std::{
 };
 
 use anyhow::{anyhow, Context, Result};
-use reinfer_client::{
-    resources::{
-        bucket::{Bucket, Id as BucketId},
-        dataset::{DatasetFlag, IxpDatasetNew, ModelConfig},
-        entity_def::{EntityRuleSetNew, FieldChoiceNew, Name as EntityDefName, NewGeneralFieldDef},
-    },
-    Client, CommentUid, Dataset, DatasetFullName, DatasetName, EntityDefId, LabelDef,
-    NewAnnotatedComment, NewBucket, NewComment, NewDataset, NewEntityDef, NewLabelDef,
-    NewLabelDefPretrained, NewSource, ProjectName, Source, SourceId, SourceKind, UpdateDataset,
-    Username, DEFAULT_LABEL_GROUP_NAME,
-};
+use colored::Colorize;
+use itertools::Itertools;
 use scoped_threadpool::Pool;
 use structopt::StructOpt;
 
+use openapi::{
+    apis::{
+        buckets_api::{create_bucket, get_bucket},
+        comments_api::add_comments,
+        configuration::Configuration,
+        datasets_api::{
+            create_dataset, get_all_datasets, get_dataset, update_comment_labelling, update_dataset,
+        },
+        emails_api::add_emails_to_bucket,
+        label_defs_api::create_label_defs_bulk,
+        projects_api::get_project,
+        sources_api::{create_source, get_source, get_source_by_id},
+    },
+    models::{
+        bucket_new::BucketType, AddCommentsRequest, AddEmailsToBucketRequest, Bucket, BucketNew,
+        BuiltinLabelDefRequest, CommentNew, CreateBucketRequest, CreateDatasetRequest,
+        CreateIxpDatasetRequest, CreateOrUpdateLabelDefsBulkRequest, CreateSourceRequest, Dataset,
+        DatasetFlag, DatasetNew, DatasetUpdate, EntityDefNew, EntityRuleSetNewApi,
+        FieldChoiceNewApi, GeneralFieldDefNew, InheritsFrom, IxpDatasetNew, LabelDef, LabelDefNew,
+        ModelConfig, Source, SourceKind, SourceUpdate, UpdateCommentLabellingRequest,
+        UpdateDatasetRequest,
+    },
+};
+
+use crate::utils::{
+    add_emails_to_bucket_with_split_on_failure, conversions::HasAnnotations,
+    handle_split_on_failure_result, sync_comments_with_split_on_failure, upload_ixp_document_bytes,
+    AttachmentExt, FullName as DatasetFullName, NewAnnotatedComment, ProjectName, SourceId,
+    DEFAULT_LABEL_GROUP_NAME,
+};
+
+// Type aliases for compatibility
+pub type BucketId = String;
+
 use crate::{
     commands::{
-        auth::refresh_user_permissions,
         create::{
             annotations::{
                 upload_batch_of_annotations, AnnotationStatistic, CommentIdComment, NewAnnotation,
             },
-            project::create_project,
+            project::create_project_with_wait,
         },
         ensure_uip_user_consents_to_ai_unit_charge,
         package::{AttachmentKey, CommentBatchKey, EmailBatchKey, Package},
     },
     progress::Progress,
+    utils::{auth::refresh::refresh_user_permissions, get_current_user},
 };
 
 const MAX_UNPACK_CM_ATTEMPTS: u64 = 20;
 const UNPACK_CM_SLEEP_SECONDS: u64 = 3;
+
+/// Helper function to parse dataset full name into owner and name parts
+fn parse_dataset_full_name(dataset_full_name: &str) -> Result<(&str, &str)> {
+    let parts: Vec<&str> = dataset_full_name.split('/').collect();
+    if parts.len() == 2 {
+        Ok((parts[0], parts[1]))
+    } else {
+        Err(anyhow!(
+            "Invalid dataset full name format: {}",
+            dataset_full_name
+        ))
+    }
+}
 
 #[derive(Debug, StructOpt)]
 pub struct UploadPackageArgs {
@@ -82,17 +118,26 @@ pub struct UploadPackageArgs {
     skip_comment_upload: bool,
 }
 
-fn wait_for_dataset_to_exist(dataset: &Dataset, client: &Client, timeout_s: u64) -> Result<()> {
+fn wait_for_dataset_to_exist(
+    dataset: &Dataset,
+    config: &Configuration,
+    timeout_s: u64,
+) -> Result<()> {
     let start_time = Instant::now();
 
     while (start_time - Instant::now()).as_secs() <= timeout_s {
-        refresh_user_permissions(client, false)?;
-        let datasets = client.get_datasets()?;
+        refresh_user_permissions(config)?;
+        let all_datasets_response =
+            get_all_datasets(config).context("Failed to get all datasets")?;
+        let datasets = all_datasets_response.datasets;
 
         let dataset_exists = datasets
             .iter()
-            .map(|dataset| dataset.full_name())
-            .contains(&dataset.full_name());
+            .map(|ds| DatasetFullName(format!("{}/{}", ds.owner, ds.name)))
+            .contains(&DatasetFullName(format!(
+                "{}/{}",
+                dataset.owner, dataset.name
+            )));
 
         if dataset_exists {
             return Ok(());
@@ -105,43 +150,98 @@ fn wait_for_dataset_to_exist(dataset: &Dataset, client: &Client, timeout_s: u64)
 }
 
 fn create_ixp_dataset(
-    name: DatasetName,
+    name: String,
     label_defs: Vec<LabelDef>,
-    client: &Client,
+    config: &Configuration,
     timeout_s: u64,
     model_config: ModelConfig,
-    entity_defs: Vec<NewEntityDef>,
+    entity_defs: Vec<EntityDefNew>,
 ) -> Result<Dataset> {
     let mut new_label_defs = Vec::new();
 
     label_defs.iter().try_for_each(|label| -> Result<()> {
-        new_label_defs.push(NewLabelDef::try_from(label)?);
+        let new_label = LabelDefNew {
+            title: label.title.clone(),
+            instructions: label.instructions.clone(),
+            external_id: label.external_id.clone(),
+            pretrained: None, // Set to None for now
+            trainable: label.trainable.map(Some),
+            name: label.name.clone(),
+            moon_form: label.moon_form.clone().map(|forms| {
+                forms
+                    .into_iter()
+                    .map(|form| openapi::models::MoonFormFieldDefNew {
+                        field_type_id: Some(Some(form.field_type_id.clone())),
+                        id: Some(Some(form.id.clone())),
+                        kind: form.kind,
+                        name: form.name,
+                        instructions: form.instructions,
+                        rule_set: Some(None),
+                    })
+                    .collect()
+            }),
+        };
+        new_label_defs.push(new_label);
         Ok(())
     })?;
 
-    let dataset = client.create_ixp_dataset(IxpDatasetNew { name })?;
+    let create_request = CreateIxpDatasetRequest {
+        dataset: Box::new(IxpDatasetNew { name }),
+    };
+    let create_response =
+        openapi::apis::ixp_datasets_api::create_ixp_dataset(config, create_request)?;
+    let dataset = create_response.dataset;
 
-    wait_for_dataset_to_exist(&dataset, client, timeout_s)?;
+    wait_for_dataset_to_exist(&dataset, config, timeout_s)?;
 
-    client.update_dataset(
-        &dataset.full_name(),
-        UpdateDataset {
-            model_config: Some(model_config),
+    let dataset_full_name = DatasetFullName(format!("{}/{}", dataset.owner, dataset.name));
+    let (owner, dataset_name) = parse_dataset_full_name(&dataset_full_name)?;
+
+    let update_request = UpdateDatasetRequest {
+        dataset: Box::new(DatasetUpdate {
+            _model_config: Some(Box::new(model_config)),
             source_ids: None,
             title: None,
             description: None,
-            entity_defs,
-        },
-    )?;
+            entity_defs: Some(
+                entity_defs
+                    .into_iter()
+                    .map(|e| {
+                        openapi::models::DatasetUpdateEntityDefsInner::new(
+                            e.id.unwrap_or_default(),
+                            e.name.clone(),
+                            e.title.clone(),
+                            openapi::models::InheritsFrom::new(),
+                            e.trainable,
+                        )
+                    })
+                    .collect(),
+            ),
+            ..Default::default()
+        }),
+    };
+    update_dataset(config, owner, dataset_name, update_request)?;
 
-    client
-        .create_label_defs_bulk(
-            &dataset.full_name(),
-            DEFAULT_LABEL_GROUP_NAME.clone(),
-            new_label_defs,
-        )
-        .context("Error when creating label defs")?;
-    Ok(dataset)
+    let create_labels_request = CreateOrUpdateLabelDefsBulkRequest {
+        label_defs: new_label_defs
+            .into_iter()
+            .map(|l| {
+                openapi::models::CreateOrUpdateLabelDefsBulkRequestLabelDefsInner::new(
+                    l.title
+                        .unwrap_or(l.external_id.unwrap_or("Unnamed".to_string())),
+                )
+            })
+            .collect(),
+    };
+    create_label_defs_bulk(
+        config,
+        owner,
+        dataset_name,
+        DEFAULT_LABEL_GROUP_NAME,
+        create_labels_request,
+    )
+    .context("Error when creating label defs")?;
+    Ok(*dataset)
 }
 
 pub struct IxpDatasetSources {
@@ -151,16 +251,18 @@ pub struct IxpDatasetSources {
 
 enum SourceProvider<'a> {
     Packaged(&'a mut Package),
-    Remote(&'a Client),
+    Remote(&'a Configuration),
 }
 
 impl SourceProvider<'_> {
     fn get_source(&mut self, source_id: &SourceId) -> Result<Source> {
         match self {
-            Self::Packaged(package) => package.get_source_by_id(source_id),
-            Self::Remote(client) => client
-                .get_source(source_id.clone())
-                .map_err(anyhow::Error::msg),
+            Self::Packaged(package) => package.get_source_by_id(source_id.as_ref()),
+            Self::Remote(config) => {
+                let response = get_source_by_id(config, source_id.as_ref())
+                    .context("Failed to get source by ID")?;
+                Ok(*response.source)
+            }
         }
     }
 }
@@ -185,13 +287,13 @@ fn get_ixp_source(dataset: &Dataset, mut provider: SourceProvider) -> Result<Ixp
         .iter()
         .try_for_each(|source_id| -> Result<()> {
             let source = provider
-                .get_source(source_id)
+                .get_source(&SourceId(source_id.clone()))
                 .context("Could not get source")?;
-            if source_by_kind.contains_key(&source.kind) {
+            if source_by_kind.contains_key(&source._kind) {
                 return Err(anyhow!("Duplicate source kind found in packaged dataset"));
             }
 
-            source_by_kind.insert(source.kind.clone(), source.clone());
+            source_by_kind.insert(source._kind, source.clone());
             Ok(())
         })?;
 
@@ -200,16 +302,16 @@ fn get_ixp_source(dataset: &Dataset, mut provider: SourceProvider) -> Result<Ixp
         .context(anyhow!(
             "Could not find runtime source for {0} dataset {1}",
             provider,
-            dataset.id.0
+            dataset.id
         ))?
         .clone();
 
     let design_time = source_by_kind
-        .get(&SourceKind::IxpDesignTime)
+        .get(&SourceKind::IxpDesign)
         .context(anyhow!(
             "Could not find design time source for {0} dataset {1}",
             provider,
-            dataset.id.0
+            dataset.id
         ))?
         .clone();
 
@@ -225,7 +327,7 @@ fn unpack_ixp_source(
     new_source: &Source,
     new_dataset: &Dataset,
     package: &mut Package,
-    client: &Client,
+    config: &Configuration,
     pool: &mut Pool,
     resume_on_error: bool,
     statistics: &IxpStatistics,
@@ -254,7 +356,9 @@ fn unpack_ixp_source(
                             statistics.add_document_reads(1);
 
                             documents.push(AnnotationWithContent {
-                                comment: comment.clone(),
+                                comment: crate::utils::conversions::convert_annotated_comment(
+                                    comment.clone(),
+                                ),
                                 content: result,
                                 size: attachment.size as usize,
                                 file_name: attachment.name.clone(),
@@ -263,9 +367,12 @@ fn unpack_ixp_source(
                             if should_upload_batch(&documents, max_attachment_memory_mb) {
                                 upload_batch(
                                     &documents,
-                                    client,
-                                    &new_source.id,
-                                    &new_dataset.full_name(),
+                                    config,
+                                    &SourceId(new_source.id.clone()),
+                                    &DatasetFullName(format!(
+                                        "{}/{}",
+                                        new_dataset.owner, new_dataset.name
+                                    )),
                                     resume_on_error,
                                     statistics,
                                     pool,
@@ -287,9 +394,9 @@ fn unpack_ixp_source(
     }
     upload_batch(
         &documents,
-        client,
-        &new_source.id,
-        &new_dataset.full_name(),
+        config,
+        &SourceId(new_source.id.clone()),
+        &DatasetFullName(format!("{}/{}", new_dataset.owner, new_dataset.name)),
         resume_on_error,
         statistics,
         pool,
@@ -314,7 +421,7 @@ struct AnnotationWithContent {
 
 fn upload_batch(
     batch: &Vec<AnnotationWithContent>,
-    client: &Client,
+    config: &Configuration,
     source_id: &SourceId,
     dataset_name: &DatasetFullName,
     resume_on_error: bool,
@@ -327,24 +434,50 @@ fn upload_batch(
         for item in batch {
             let error_sender = error_sender.clone();
             scope.execute(move || {
-                let upload_result = client
-                    .upload_ixp_document(source_id, item.file_name.clone(), item.content.clone())
-                    .map_err(anyhow::Error::msg);
+                let upload_result = upload_ixp_document_bytes(
+                    config,
+                    source_id.as_ref(),
+                    "latest",
+                    Some(item.content.clone()),
+                    Some(item.file_name.clone()),
+                )
+                .map(|response| response.document.id)
+                .map_err(anyhow::Error::msg);
 
                 match upload_result {
                     Ok(new_comment_id) => {
                         statistics.add_document_uploads(1);
 
-                        let comment_uid =
-                            CommentUid(format!("{}.{}", source_id.0, new_comment_id.0));
+                        let comment_uid = format!("{source_id}.{new_comment_id}");
 
                         if item.comment.has_annotations() {
-                            let labelling_result = client.update_labelling(
-                                dataset_name,
+                            let dataset_full_name = dataset_name;
+                            let parts: Vec<&str> = dataset_full_name.as_str().split('/').collect();
+                            let (owner, dataset_name_part) = if parts.len() == 2 {
+                                (parts[0], parts[1])
+                            } else {
+                                error_sender
+                                    .send(anyhow!(
+                                        "Invalid dataset full name format: {}",
+                                        dataset_full_name.as_str()
+                                    ))
+                                    .unwrap();
+                                return;
+                            };
+
+                            let update_request = UpdateCommentLabellingRequest {
+                                context: None,
+                                labelling: item.comment.labelling.clone(),
+                                entities: item.comment.entities.clone(),
+                                moon_forms: item.comment.moon_forms.clone(),
+                            };
+
+                            let labelling_result = update_comment_labelling(
+                                config,
+                                owner,
+                                dataset_name_part,
                                 &comment_uid,
-                                None,
-                                item.comment.entities.as_ref(),
-                                item.comment.moon_forms.as_deref(),
+                                update_request,
                             );
 
                             match labelling_result {
@@ -381,7 +514,7 @@ fn upload_batch(
 }
 
 fn unpack_cm_bucket(
-    client: &Client,
+    config: &Configuration,
     packaged_bucket_id: &BucketId,
     package: &mut Package,
     resume_on_error: &bool,
@@ -392,19 +525,33 @@ fn unpack_cm_bucket(
     let mut packaged_bucket = package.get_bucket_by_id(packaged_bucket_id)?;
 
     if let Some(new_project_name) = new_project_name {
-        packaged_bucket.owner = new_project_name.to_username();
+        packaged_bucket.owner = new_project_name.0.clone();
     }
 
     // Get Existing bucket, or create if it doesn't exist
-    let bucket = match client.get_bucket(packaged_bucket.full_name()) {
-        Ok(bucket) => bucket,
-        Err(_) => client.create_bucket(
-            &packaged_bucket.full_name(),
-            NewBucket {
-                bucket_type: reinfer_client::BucketType::Emails,
-                title: None,
-            },
-        )?,
+    let bucket_full_name = format!("{}/{}", packaged_bucket.owner, packaged_bucket.name);
+    let parts: Vec<&str> = bucket_full_name.split('/').collect();
+    let (owner, bucket_name) = if parts.len() == 2 {
+        (parts[0], parts[1])
+    } else {
+        return Err(anyhow!(
+            "Invalid bucket full name format: {}",
+            bucket_full_name
+        ));
+    };
+
+    let bucket = match get_bucket(config, owner, bucket_name) {
+        Ok(response) => *response.bucket,
+        Err(_) => {
+            let create_request = CreateBucketRequest {
+                bucket: Box::new(BucketNew {
+                    bucket_type: Some(BucketType::Emails),
+                    title: None,
+                }),
+            };
+            let create_response = create_bucket(config, owner, bucket_name, create_request)?;
+            *create_response.bucket
+        }
     };
 
     // Upload batches of emails to the bucket
@@ -414,14 +561,44 @@ fn unpack_cm_bucket(
             .get_email_batch(&packaged_bucket.id, EmailBatchKey(idx))
             .context("Could not get email batch")?;
 
+        let bucket_full_name = format!("{}/{}", bucket.owner, bucket.name);
+        let parts: Vec<&str> = bucket_full_name.split('/').collect();
+        let (owner, bucket_name) = if parts.len() == 2 {
+            (parts[0], parts[1])
+        } else {
+            return Err(anyhow!(
+                "Invalid bucket full name format: {}",
+                bucket_full_name
+            ));
+        };
+
+        let add_emails_request = AddEmailsToBucketRequest { emails: batch };
+
         if *resume_on_error {
-            let result =
-                client.put_emails_split_on_failure(&bucket.full_name(), batch, no_charge)?;
+            // Use cleaner wrapper function for split-on-failure
+            let result = add_emails_to_bucket_with_split_on_failure(
+                config,
+                owner,
+                bucket_name,
+                add_emails_request.emails.clone(),
+                Some(no_charge),
+            )?;
 
             statistics.add_email_batch_uploads(1);
             statistics.add_failed_email_uploads(result.num_failed);
+            handle_split_on_failure_result(
+                result,
+                add_emails_request.emails.len(),
+                "add_emails_to_bucket",
+            );
         } else {
-            client.put_emails(&bucket.full_name(), batch, no_charge)?;
+            add_emails_to_bucket(
+                config,
+                owner,
+                bucket_name,
+                add_emails_request,
+                Some(no_charge),
+            )?;
             statistics.add_email_batch_uploads(1);
         }
     }
@@ -430,7 +607,7 @@ fn unpack_cm_bucket(
 
 #[allow(clippy::too_many_arguments)]
 fn unpack_cm_source(
-    client: &Client,
+    config: &Configuration,
     mut packaged_source_info: Source,
     bucket: Option<Bucket>,
     package: &mut Package,
@@ -442,24 +619,43 @@ fn unpack_cm_source(
 ) -> Result<Source> {
     // Get existing source or create a new one if it doesn't exist
     if let Some(project_name) = new_project_name {
-        packaged_source_info.owner = project_name.to_username();
+        packaged_source_info.owner = project_name.0.clone();
     }
 
-    let source = match client.get_source(packaged_source_info.full_name()) {
-        Ok(source) => source,
-        Err(_) => client.create_source(
-            &packaged_source_info.full_name(),
-            NewSource {
-                bucket_id: bucket.map(|bucket| bucket.id),
-                description: Some(&packaged_source_info.description),
-                kind: Some(&packaged_source_info.kind),
-                should_translate: Some(packaged_source_info.should_translate),
-                language: Some(&packaged_source_info.language),
-                title: Some(&packaged_source_info.title),
-                transform_tag: packaged_source_info.transform_tag.as_ref(),
-                ..Default::default()
-            },
-        )?,
+    let source_full_name = format!(
+        "{}/{}",
+        packaged_source_info.owner, packaged_source_info.name
+    );
+    let parts: Vec<&str> = source_full_name.split('/').collect();
+    let (owner, source_name) = if parts.len() == 2 {
+        (parts[0], parts[1])
+    } else {
+        return Err(anyhow!(
+            "Invalid source full name format: {}",
+            source_full_name
+        ));
+    };
+
+    let source = match get_source(config, owner, source_name) {
+        Ok(response) => *response.source,
+        Err(_) => {
+            let create_request = CreateSourceRequest {
+                source: Box::new(SourceUpdate {
+                    bucket_id: bucket.map(|b| Some(b.id)),
+                    description: Some(packaged_source_info.description.clone()),
+                    _kind: Some(packaged_source_info._kind),
+                    should_translate: Some(packaged_source_info.should_translate),
+                    language: Some(crate::utils::conversions::convert_language_string_to_enum(
+                        &packaged_source_info.language,
+                    )),
+                    title: Some(packaged_source_info.title.clone()),
+                    email_transform_tag: packaged_source_info.email_transform_tag.clone(),
+                    ..Default::default()
+                }),
+            };
+            let create_response = create_source(config, owner, source_name, create_request)?;
+            *create_response.source
+        }
     };
 
     if skip_comment_upload {
@@ -470,19 +666,36 @@ fn unpack_cm_source(
     let comment_batch_count = package.get_comment_batch_count();
     for idx in 0..comment_batch_count {
         let batch = package.get_comment_batch(&packaged_source_info.id, CommentBatchKey(idx))?;
-        let new_comments: Vec<NewComment> = batch.into_iter().map(|c| c.comment).collect();
+        let new_comments: Vec<CommentNew> = batch
+            .into_iter()
+            .map(|c| {
+                let comment = c.comment;
+                openapi::models::CommentNew {
+                    id: comment.id.clone(),
+                    ..Default::default()
+                }
+            })
+            .collect();
 
         if *resume_on_error {
-            let result = client.sync_comments_split_on_failure(
-                &source.full_name(),
-                new_comments,
-                no_charge,
+            // Use cleaner wrapper function for split-on-failure
+            let result = sync_comments_with_split_on_failure(
+                config,
+                owner,
+                source_name,
+                new_comments.clone(),
+                Some(no_charge),
             )?;
 
             statistics.add_comment_batch_upload(1);
             statistics.add_failed_comment_uploads(result.num_failed);
+            handle_split_on_failure_result(result, new_comments.len(), "sync_comments");
         } else {
-            client.sync_comments(&source.full_name(), new_comments, no_charge)?;
+            // Use add_comments - exact same as original implementation
+            let add_request = AddCommentsRequest {
+                comments: new_comments.clone(),
+            };
+            add_comments(config, owner, source_name, add_request, Some(no_charge))?;
             statistics.add_comment_batch_upload(1);
         }
     }
@@ -490,121 +703,149 @@ fn unpack_cm_source(
 }
 
 fn unpack_cm_dataset(
-    client: &Client,
+    config: &Configuration,
     mut packaged_dataset: Dataset,
     dataset_creation_timeout: &u64,
-    packaged_to_new_source_id: &HashMap<SourceId, SourceId>,
+    packaged_to_new_source_id: &HashMap<String, String>,
     new_project_name: Option<DatasetOrOwnerName>,
 ) -> Result<Dataset> {
     if let Some(new_project_name) = new_project_name {
-        packaged_dataset.owner = new_project_name.to_username();
+        packaged_dataset.owner = new_project_name.0.clone();
     }
 
-    let entify_def_id_to_name: HashMap<EntityDefId, EntityDefName> = packaged_dataset
+    let entify_def_id_to_name: HashMap<String, String> = packaged_dataset
         .entity_defs
         .clone()
         .into_iter()
-        .map(|def| (def.id, def.name))
+        .map(|def| (def.id.clone(), def.name.clone()))
         .collect();
 
-    match client.get_dataset(packaged_dataset.full_name()) {
-        Ok(dataset) => Ok(dataset),
+    let dataset_full_name = format!("{}/{}", packaged_dataset.owner, packaged_dataset.name);
+    let (owner, dataset_name) = parse_dataset_full_name(&dataset_full_name)?;
+
+    match get_dataset(config, owner, dataset_name) {
+        Ok(response) => Ok(*response.dataset),
         Err(_) => {
-            let dataset = client
-                .create_dataset(
-                    &packaged_dataset.full_name(),
-                    NewDataset {
-                        description: Some(&packaged_dataset.description),
-                        entity_defs: Some(
-                            &packaged_dataset
-                                .entity_defs
-                                .clone()
-                                .into_iter()
-                                .map(|def| NewEntityDef {
-                                    entity_def_flags: def.entity_def_flags,
-                                    inherits_from: def.inherits_from,
-                                    name: def.name,
-                                    rules: def.rules.map(|rule| EntityRuleSetNew {
-                                        suppressors: rule.suppressors,
-                                        choices: rule
-                                            .choices
+            let new_dataset = DatasetNew {
+                title: Some(packaged_dataset.title.clone()),
+                description: Some(packaged_dataset.description.clone()),
+                entity_defs: Some(
+                    packaged_dataset
+                        .entity_defs
+                        .clone()
+                        .into_iter()
+                        .map(|def| EntityDefNew {
+                            id: Some(def.id.clone()),
+                            color: None,
+                            name: def.name.clone(),
+                            title: def.title,
+                            inherits_from: Box::new(InheritsFrom::new()),
+                            trainable: def.trainable,
+                            rules: def.rules.map(|rule| {
+                                Box::new(EntityRuleSetNewApi {
+                                    suppressors: rule.suppressors,
+                                    choices: rule.choices.map(|choices_vec| {
+                                        choices_vec
                                             .into_iter()
-                                            .map(|choice| FieldChoiceNew {
+                                            .map(|choice| FieldChoiceNewApi {
+                                                id: None,
                                                 name: choice.name,
                                                 values: choice.values,
                                             })
-                                            .collect(),
-                                        regex: rule.regex,
+                                            .collect()
                                     }),
+                                    regex: rule.regex,
+                                })
+                            }),
+                            _entity_def_flags: Some(
+                                def._entity_def_flags.into_iter().collect(),
+                            ),
+                            instructions: def.instructions,
+                        })
+                        .collect::<Vec<EntityDefNew>>(),
+                ),
+                has_sentiment: Some(packaged_dataset.has_sentiment),
+                _dataset_flags: Some(packaged_dataset._dataset_flags.clone()),
+                general_fields: Some(
+                    packaged_dataset
+                        .general_fields
+                        .iter()
+                        .map(|def| GeneralFieldDefNew {
+                            api_name: def.api_name.clone(),
+                            field_type_id: Some(def.field_type_id.clone()),
+                            field_type_name: entify_def_id_to_name.get(&def.field_type_id).cloned(),
+                            title: Some(def.api_name.clone()), // Using api_name as title for now
+                        })
+                        .collect::<Vec<GeneralFieldDefNew>>(),
+                ),
+                label_defs: Some(
+                    packaged_dataset
+                        .label_defs
+                        .iter()
+                        .map(|def| LabelDefNew {
+                            external_id: def.external_id.clone(),
+                            instructions: def.instructions.clone(),
+                            moon_form: def.moon_form.clone().map(|forms| {
+                                forms
+                                    .into_iter()
+                                    .map(|form| openapi::models::MoonFormFieldDefNew {
+                                        field_type_id: Some(Some(form.field_type_id.clone())),
+                                        id: Some(Some(form.id.clone())),
+                                        kind: form.kind,
+                                        name: form.name,
+                                        instructions: form.instructions,
+                                        rule_set: Some(None),
+                                    })
+                                    .collect()
+                            }),
+                            name: def.name.clone(),
+                            pretrained: def.pretrained.clone().map(|p| {
+                                Box::new(BuiltinLabelDefRequest {
+                                    id: p.id.clone(),
+                                    name: None, // OpenAPI uses enum instead of string
+                                })
+                            }),
+                            title: def.title.clone(),
+                            trainable: None,
+                        })
+                        .collect::<Vec<LabelDefNew>>(),
+                ),
+                label_groups: None,
+                model_family: Some(packaged_dataset.model_family.to_string()),
+                source_ids: Some(
+                    packaged_dataset
+                        .source_ids
+                        .iter()
+                        .map(|source_id| -> Result<String> {
+                            Ok(packaged_to_new_source_id
+                                .get(source_id)
+                                .context(format!(
+                                    "Could not get new source with id {source_id}"
+                                ))?
+                                .clone())
+                        })
+                        .try_collect::<String, Vec<String>, anyhow::Error>()?,
+                ),
+                // Add missing required fields
+                entity_kinds: None,
+                _label_properties: None,
+                debug_config_json: None,
+                _timezone: None,
+                _preferred_locales: None,
+                _model_config: None,
+                experimental_async_fork_dataset: None,
+                copy_annotations_from: None,
+            };
 
-                                    title: def.title,
-                                    trainable: def.trainable,
-                                    instructions: def.instructions,
-                                })
-                                .collect::<Vec<NewEntityDef>>(),
-                        ),
-                        has_sentiment: Some(packaged_dataset.has_sentiment),
-                        dataset_flags: packaged_dataset.clone().dataset_flags,
-                        copy_annotations_from: None,
-                        general_fields: Some(
-                            &packaged_dataset
-                                .general_fields
-                                .iter()
-                                .map(|def| NewGeneralFieldDef {
-                                    api_name: def.api_name.clone(),
-                                    field_type_id: def.field_type_id.clone(),
-                                    field_type_name: if let Some(field_type_id) = &def.field_type_id
-                                    {
-                                        entify_def_id_to_name
-                                            .get(&EntityDefId(field_type_id.clone()))
-                                            .cloned()
-                                    } else {
-                                        None
-                                    },
-                                })
-                                .collect::<Vec<NewGeneralFieldDef>>(),
-                        ),
-                        label_defs: Some(
-                            &packaged_dataset
-                                .label_defs
-                                .iter()
-                                .map(|def| NewLabelDef {
-                                    external_id: def.external_id.clone(),
-                                    instructions: Some(def.instructions.clone()),
-                                    moon_form: def.moon_form.clone(),
-                                    name: def.name.clone(),
-                                    pretrained: def.pretrained.clone().map(|p| {
-                                        NewLabelDefPretrained {
-                                            id: p.id.clone(),
-                                            name: Some(p.name.clone()),
-                                        }
-                                    }),
-                                    title: Some(def.title.clone()),
-                                    trainable: None,
-                                })
-                                .collect::<Vec<NewLabelDef>>(),
-                        ),
-                        label_groups: None,
-                        model_family: Some(&packaged_dataset.model_family.0),
-                        source_ids: &packaged_dataset
-                            .source_ids
-                            .iter()
-                            .map(|source_id| -> Result<SourceId> {
-                                Ok(packaged_to_new_source_id
-                                    .get(source_id)
-                                    .context(format!(
-                                        "Could not get new source with id {0}",
-                                        source_id.0
-                                    ))?
-                                    .clone())
-                            })
-                            .try_collect::<SourceId, Vec<SourceId>, anyhow::Error>()?,
-                        title: Some(&packaged_dataset.title),
-                    },
-                )
+            let create_request = CreateDatasetRequest {
+                dataset: Box::new(new_dataset),
+            };
+
+            let create_response = create_dataset(config, owner, dataset_name, create_request)
                 .context("Could not create dataset")?;
+            let dataset = *create_response.dataset;
 
-            wait_for_dataset_to_exist(&dataset, client, *dataset_creation_timeout)
+            wait_for_dataset_to_exist(&dataset, config, *dataset_creation_timeout)
                 .context("Could not create dataset")?;
 
             Ok(dataset)
@@ -614,24 +855,26 @@ fn unpack_cm_dataset(
 
 #[allow(clippy::too_many_arguments)]
 fn unpack_cm_annotations(
-    client: &Client,
-    packaged_source_info: &SourceId,
-    old_to_new_source_id: &HashMap<SourceId, SourceId>,
+    config: &Configuration,
+    packaged_source_info: &str,
+    old_to_new_source_id: &HashMap<String, String>,
     package: &mut Package,
     statistics: &Arc<CmStatistics>,
     dataset: &Dataset,
     pool: &mut Pool,
     resume_on_error: &bool,
 ) -> Result<()> {
-    let source = client.get_source(
-        old_to_new_source_id
-            .get(packaged_source_info)
-            .context(format!(
-                "Could not get new source with id {0}",
-                packaged_source_info.0
-            ))?
-            .clone(),
-    )?;
+    let new_source_id = old_to_new_source_id
+        .get(packaged_source_info)
+        .context(format!(
+            "Could not get new source with id {0}",
+            &packaged_source_info
+        ))?
+        .clone();
+
+    // Use get_source_by_id since we have a source ID rather than owner/name
+    let source_response = get_source_by_id(config, &new_source_id.to_string())?;
+    let source = *source_response.source;
 
     let comment_batch_count = package.get_comment_batch_count();
     for idx in 0..comment_batch_count {
@@ -642,9 +885,21 @@ fn unpack_cm_annotations(
                 if c.has_annotations() {
                     Some(NewAnnotation {
                         comment: CommentIdComment { id: c.comment.id },
-                        labelling: c.labelling,
-                        moon_forms: c.moon_forms,
-                        entities: c.entities,
+                        labelling: Some(
+                            c.labelling
+                                .into_iter()
+                                .map(crate::utils::conversions::comments::convert_labelling_group)
+                                .collect(),
+                        ),
+                        moon_forms: c.moon_forms.map(|forms| {
+                            forms
+                                .into_iter()
+                                .map(crate::utils::conversions::convert_moon_form_group)
+                                .collect()
+                        }),
+                        entities: c
+                            .entities
+                            .map(|entities| crate::utils::conversions::convert_entities(*entities)),
                     })
                 } else {
                     None
@@ -654,10 +909,10 @@ fn unpack_cm_annotations(
 
         upload_batch_of_annotations(
             &mut new_annotations,
-            client,
+            config,
             &source,
             statistics,
-            &dataset.full_name(),
+            &DatasetFullName(format!("{}/{}", dataset.owner, dataset.name)),
             pool,
             *resume_on_error,
         )?;
@@ -669,12 +924,8 @@ fn unpack_cm_annotations(
 pub struct DatasetOrOwnerName(String);
 
 impl DatasetOrOwnerName {
-    fn to_dataset_name(&self) -> DatasetName {
-        DatasetName(self.0.clone())
-    }
-
-    fn to_username(&self) -> Username {
-        Username(self.0.clone())
+    fn to_dataset_name(&self) -> String {
+        self.0.clone()
     }
 
     fn to_project_name(&self) -> ProjectName {
@@ -692,7 +943,7 @@ impl FromStr for DatasetOrOwnerName {
 
 #[allow(clippy::too_many_arguments)]
 fn unpack_cm(
-    client: &Client,
+    config: &Configuration,
     packaged_dataset: Dataset,
     package: &mut Package,
     dataset_creation_timeout: &u64,
@@ -715,20 +966,24 @@ fn unpack_cm(
         .map(|source_id| package.get_source_by_id(source_id))
         .try_collect()?;
 
-    let mut packaged_to_new_source_id: HashMap<SourceId, SourceId> = HashMap::new();
+    let mut packaged_to_new_source_id: HashMap<String, String> = HashMap::new();
 
     if let Some(new_project_name) = new_project_name {
-        match client.get_project(&new_project_name.to_project_name()) {
+        let project_name = new_project_name.to_project_name();
+        match get_project(config, &project_name.0) {
             Ok(_) => {}
             Err(_) => {
-                create_project(
-                    client,
-                    &new_project_name.to_project_name(),
-                    &None,
-                    &None,
-                    &[client.get_current_user()?.id],
+                // Get current user to use their ID for project creation
+                let current_user = get_current_user(config)?;
+                let current_user_id = current_user.id;
+                create_project_with_wait(
+                    config,
+                    project_name.0.clone(),
+                    None,
+                    None,
+                    vec![current_user_id],
                 )?;
-                refresh_user_permissions(client, false)?;
+                refresh_user_permissions(config)?;
             }
         }
     }
@@ -737,7 +992,7 @@ fn unpack_cm(
         // Unpack bucket, if it exists
         let bucket = if let Some(bucket_id) = &packaged_source_info.bucket_id {
             let bucket = unpack_cm_bucket(
-                client,
+                config,
                 bucket_id,
                 package,
                 resume_on_error,
@@ -752,7 +1007,7 @@ fn unpack_cm(
 
         // Unpack Source
         let source = unpack_cm_source(
-            client,
+            config,
             packaged_source_info.clone(),
             bucket,
             package,
@@ -768,7 +1023,7 @@ fn unpack_cm(
 
     // Unpack Dataset
     let dataset = unpack_cm_dataset(
-        client,
+        config,
         packaged_dataset.clone(),
         dataset_creation_timeout,
         &packaged_to_new_source_id,
@@ -778,7 +1033,7 @@ fn unpack_cm(
     // Upload annotations
     for package_source_id in &packaged_dataset.source_ids {
         unpack_cm_annotations(
-            client,
+            config,
             package_source_id,
             &packaged_to_new_source_id,
             package,
@@ -794,14 +1049,14 @@ fn unpack_cm(
 
 #[allow(clippy::too_many_arguments)]
 fn unpack_ixp(
-    client: &Client,
-    dataset: Dataset,
+    dataset: Box<Dataset>,
     package: &mut Package,
     new_project_name: Option<DatasetOrOwnerName>,
     dataset_creation_timeout: &u64,
     pool: &mut Pool,
     resume_on_error: &bool,
     max_attachment_memory_mb: &u64,
+    config: &Configuration,
 ) -> Result<()> {
     let total_documents = package.get_document_count();
     let statistics = Arc::new(IxpStatistics::new());
@@ -816,39 +1071,48 @@ fn unpack_ixp(
         new_project_name
             .map(|p| p.to_dataset_name())
             .clone()
-            .unwrap_or(DatasetName(dataset.title)),
-        dataset.label_defs,
-        client,
+            .unwrap_or(dataset.title.clone()),
+        dataset.label_defs.clone(),
+        config,
         *dataset_creation_timeout,
-        dataset.model_config,
+        dataset._model_config.as_ref().clone(),
         dataset
             .entity_defs
+            .clone()
             .into_iter()
-            .map(|def| NewEntityDef {
-                entity_def_flags: def.entity_def_flags,
-                inherits_from: def.inherits_from,
+            .map(|def| EntityDefNew {
+                id: Some(def.id),
+                color: None,
                 name: def.name,
-                rules: def.rules.map(|rule| EntityRuleSetNew {
-                    suppressors: rule.suppressors,
-                    choices: rule
-                        .choices
-                        .into_iter()
-                        .map(|choice| FieldChoiceNew {
-                            name: choice.name,
-                            values: choice.values,
-                        })
-                        .collect(),
-                    regex: rule.regex,
-                }),
                 title: def.title,
+                inherits_from: Box::new(InheritsFrom::new()),
                 trainable: def.trainable,
+                rules: def.rules.map(|rule| {
+                    Box::new(EntityRuleSetNewApi {
+                        suppressors: rule.suppressors,
+                        choices: rule.choices.map(|choices_vec| {
+                            choices_vec
+                                .into_iter()
+                                .map(|choice| FieldChoiceNewApi {
+                                    id: None,
+                                    name: choice.name,
+                                    values: choice.values,
+                                })
+                                .collect()
+                        }),
+                        regex: rule.regex,
+                    })
+                }),
+                _entity_def_flags: Some(
+                    def._entity_def_flags.into_iter().collect(),
+                ),
                 instructions: def.instructions,
             })
             .collect(),
     )
     .context("Could not create dataset")?;
 
-    let new_sources = get_ixp_source(&new_dataset, SourceProvider::Remote(client))
+    let new_sources = get_ixp_source(&new_dataset, SourceProvider::Remote(config))
         .context("Could not get ixp source via api")?;
 
     for (packaged, new) in [
@@ -860,7 +1124,7 @@ fn unpack_ixp(
             new,
             &new_dataset,
             package,
-            client,
+            config,
             pool,
             *resume_on_error,
             &statistics,
@@ -871,8 +1135,8 @@ fn unpack_ixp(
     Ok(())
 }
 
-pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result<()> {
-    refresh_user_permissions(client, false)?;
+pub fn run(args: &UploadPackageArgs, config: &Configuration, pool: &mut Pool) -> Result<()> {
+    refresh_user_permissions(config)?;
     let UploadPackageArgs {
         file,
         resume_on_error,
@@ -893,27 +1157,27 @@ pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result
         .datasets()
         .context("Could not get package datasets")?
     {
-        if dataset.has_flag(DatasetFlag::Ixp) {
+        if dataset._dataset_flags.contains(&DatasetFlag::Ixp) {
             unpack_ixp(
-                client,
-                dataset,
+                Box::new(dataset),
                 &mut package,
                 new_project_name.clone(),
                 dataset_creation_timeout,
                 pool,
                 resume_on_error,
                 max_attachment_memory_mb,
+                config,
             )?;
         } else {
             if !no_charge && !yes && !has_consented_to_ai_unit_consumption {
-                ensure_uip_user_consents_to_ai_unit_charge(client.base_url())?;
+                ensure_uip_user_consents_to_ai_unit_charge(&config.base_path.parse()?)?;
                 has_consented_to_ai_unit_consumption = true;
             }
             // Attempt to unpack the dataset with retries for project creation due to race
             // condition
             for attempt in 1..=MAX_UNPACK_CM_ATTEMPTS {
                 match unpack_cm(
-                    client,
+                    config,
                     dataset.clone(),
                     &mut package,
                     dataset_creation_timeout,
@@ -926,7 +1190,7 @@ pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result
                     Ok(_) => break,
                     Err(err) if is_project_not_found_error(&err) && new_project_name.is_some() => {
                         sleep(Duration::from_secs(UNPACK_CM_SLEEP_SECONDS));
-                        refresh_user_permissions(client, false)?;
+                        refresh_user_permissions(config)?;
 
                         if attempt == MAX_UNPACK_CM_ATTEMPTS {
                             return Err(anyhow!(
