@@ -88,7 +88,6 @@ fn collect_source_statistics(
 
         let request = models::GetSourceStatisticsRequest {
             comment_filter: Some(models::CommentFilter::default()),
-            ..Default::default()
         };
 
         let response = get_source_statistics(config, &source.owner, &source.name, request)

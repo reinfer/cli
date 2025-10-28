@@ -62,7 +62,7 @@ pub fn run(args: &ParseArgs, config: &Configuration, pool: &mut Pool) -> Result<
     match args {
         ParseArgs::Msgs(args) => msgs::parse(config, args),
         ParseArgs::Emls(args) => emls::parse(config, args, pool),
-        ParseArgs::AicClassificationCsv(args) => aic_classification_csv::parse(&config, args, pool),
+        ParseArgs::AicClassificationCsv(args) => aic_classification_csv::parse(config, args, pool),
         ParseArgs::Pst(args) => pst::parse(config, args),
     }
 }

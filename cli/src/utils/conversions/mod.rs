@@ -24,7 +24,7 @@ where
     T: HasAnnotations,
 {
     fn has_annotations(&self) -> bool {
-        self.as_ref().map_or(false, |t| t.has_annotations())
+        self.as_ref().is_some_and(|t| t.has_annotations())
     }
 }
 
@@ -90,7 +90,7 @@ impl HasAnnotations for MoonFormGroup {
 
 /// Helper function to determine if an optional vector should be skipped during serialization
 pub fn should_skip_serializing_optional_vec<T>(vec: &Option<Vec<T>>) -> bool {
-    vec.as_ref().map_or(true, |v| v.is_empty())
+    vec.as_ref().is_none_or(|v| v.is_empty())
 }
 
 // Re-export only the conversion functions that are used elsewhere

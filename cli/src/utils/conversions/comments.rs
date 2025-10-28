@@ -15,7 +15,7 @@ pub fn convert_language_string_to_enum(language_str: &str) -> Language {
         "xlm" | "multilingual" => Language::Xlm,
         _ => {
             // Default to English for unknown languages
-            log::warn!("Unknown language '{}', defaulting to English", language_str);
+            log::warn!("Unknown language '{language_str}', defaulting to English");
             Language::En
         }
     }

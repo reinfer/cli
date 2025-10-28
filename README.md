@@ -141,6 +141,16 @@ The binary is located at `../target/release/re`. Move it somewhere suitable, e.g
 sudo mv ../target/release/re /usr/local/bin/
 ```
 
+## Development
+
+### 🚀 For Publishing
+Use `./cli/publish-binaries` - automatically uses `develop` branch and generates fresh client.
+
+### 🔧 For Local Development  
+Use `./scripts/openapi-client/update-and-generate-complete.sh` - prompts for branch, generates client in `api/` directory.
+
+For more details, see the [scripts README](scripts/README.md).
+
 ## Getting Started
 
 Check the installation and see a full listing of the available commands by running `re` with no arguments.

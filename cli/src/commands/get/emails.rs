@@ -108,7 +108,7 @@ fn download_email(
             )
         })?;
 
-    print_resources_as_json(response.emails.into_iter(), &mut writer)
+    print_resources_as_json(response.emails, &mut writer)
 }
 
 /// Download all emails from a bucket with pagination

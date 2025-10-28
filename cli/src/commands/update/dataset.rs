@@ -89,9 +89,8 @@ pub fn update(config: &Configuration, args: &UpdateDatasetArgs, printer: &Printe
 
     let dataset = response.dataset;
     info!(
-        "Dataset `{}` [id: {}] updated successfully",
-        format!("{}/{}", dataset.owner, dataset.name),
-        dataset.id,
+        "Dataset `{}/{}` [id: {}] updated successfully",
+        dataset.owner, dataset.name, dataset.id,
     );
     printer.print_resources(&[*dataset])?;
     Ok(())

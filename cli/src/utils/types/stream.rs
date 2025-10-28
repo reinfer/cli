@@ -84,6 +84,6 @@ mod tests {
             dataset: "dataset".to_string(),
             stream: "stream".to_string(),
         };
-        assert_eq!(format!("{}", stream), "owner/dataset/stream");
+        assert_eq!(format!("{stream}"), "owner/dataset/stream");
     }
 }

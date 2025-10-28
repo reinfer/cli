@@ -70,8 +70,7 @@ pub fn create(config: &Configuration, args: &CreateQuotaArgs) -> Result<()> {
     )?;
 
     info!(
-        "New quota `{}` set successfully in tenant with id `{}`",
-        tenant_quota_kind, tenant_id
+        "New quota `{tenant_quota_kind}` set successfully in tenant with id `{tenant_id}`"
     );
 
     Ok(())

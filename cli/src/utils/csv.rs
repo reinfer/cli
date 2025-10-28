@@ -48,6 +48,7 @@ use openapi::models;
 /// 1. Sets Accept header to "text/csv" to request CSV format
 /// 2. Returns String containing CSV data instead of QueryCommentsResponse struct
 /// 3. Does not attempt to JSON-parse the response
+#[allow(clippy::too_many_arguments)]
 pub fn query_comments_csv(
     configuration: &Configuration,
     owner: &str,
@@ -98,7 +99,7 @@ pub fn query_comments_csv(
     if let Some(ref local_var_apikey) = local_var_configuration.api_key {
         let local_var_key = local_var_apikey.key.clone();
         let local_var_value = match local_var_apikey.prefix {
-            Some(ref local_var_prefix) => format!("{} {}", local_var_prefix, local_var_key),
+            Some(ref local_var_prefix) => format!("{local_var_prefix} {local_var_key}"),
             None => local_var_key,
         };
         local_var_req_builder = local_var_req_builder.header("authorization", local_var_value);
@@ -123,8 +124,7 @@ pub fn query_comments_csv(
         // ERROR: Still try to parse error as JSON for better error messages
         let local_var_content = local_var_resp.text()?;
         let error_msg = format!(
-            "CSV query failed with status {}: {}",
-            local_var_status, local_var_content
+            "CSV query failed with status {local_var_status}: {local_var_content}"
         );
         Err(anyhow::anyhow!(error_msg))
     }

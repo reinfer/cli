@@ -88,7 +88,7 @@ where
     // First, try the entire batch
     match api_call(request.clone()) {
         Ok(response) => {
-            debug!("Batch {} succeeded without splitting", operation_name);
+            debug!("Batch {operation_name} succeeded without splitting");
             Ok(SplitOnFailureResult {
                 response,
                 num_failed: 0,
@@ -96,17 +96,15 @@ where
         }
         Err(error) if should_split_request(&error) => {
             debug!(
-                "Batch {} failed with splittable error, attempting to split",
-                operation_name
+                "Batch {operation_name} failed with splittable error, attempting to split"
             );
             execute_split_requests(api_call, request, operation_name)
         }
         Err(error) => {
-            debug!("Batch {} failed with non-splittable error", operation_name);
+            debug!("Batch {operation_name} failed with non-splittable error");
             Err(convert_openapi_error(error)).with_context(|| {
                 format!(
-                    "Failed to execute {} (non-splittable error)",
-                    operation_name
+                    "Failed to execute {operation_name} (non-splittable error)"
                 )
             })
         }
@@ -131,8 +129,7 @@ where
     let mut merged_response = ResponseT::empty_response();
 
     debug!(
-        "Split {} into {} individual requests",
-        operation_name, total_requests
+        "Split {operation_name} into {total_requests} individual requests"
     );
 
     for (index, individual_request) in individual_requests.into_iter().enumerate() {
@@ -161,8 +158,7 @@ where
 
     let num_succeeded = total_requests - num_failed;
     debug!(
-        "Split {} completed: {} succeeded, {} failed",
-        operation_name, num_succeeded, num_failed
+        "Split {operation_name} completed: {num_succeeded} succeeded, {num_failed} failed"
     );
 
     Ok(SplitOnFailureResult {

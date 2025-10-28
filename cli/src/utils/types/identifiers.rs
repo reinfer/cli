@@ -86,8 +86,8 @@ impl ResourceIdentifier {
 impl std::fmt::Display for ResourceIdentifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ResourceIdentifier::Id(id) => write!(f, "{}", id),
-            ResourceIdentifier::FullName(full_name) => write!(f, "{}", full_name),
+            ResourceIdentifier::Id(id) => write!(f, "{id}"),
+            ResourceIdentifier::FullName(full_name) => write!(f, "{full_name}"),
         }
     }
 }
@@ -110,12 +110,12 @@ pub fn resolve_source(
     match source_id {
         SourceIdentifier::FullName(full_name) => {
             let response = get_source(config, full_name.owner(), full_name.name())
-                .with_context(|| format!("Unable to get source {}", source_id))?;
+                .with_context(|| format!("Unable to get source {source_id}"))?;
             Ok(*response.source)
         }
         SourceIdentifier::Id(id) => {
             let response = get_source_by_id(config, id)
-                .with_context(|| format!("Unable to get source {}", source_id))?;
+                .with_context(|| format!("Unable to get source {source_id}"))?;
             Ok(*response.source)
         }
     }
@@ -134,7 +134,7 @@ pub fn resolve_dataset(
         }
         DatasetIdentifier::FullName(full_name) => {
             let response = get_dataset(config, full_name.owner(), full_name.name())
-                .with_context(|| format!("Unable to get dataset {}", dataset_id))?;
+                .with_context(|| format!("Unable to get dataset {dataset_id}"))?;
             Ok(*response.dataset)
         }
     }
@@ -148,12 +148,12 @@ pub fn resolve_bucket(
     match bucket_id {
         BucketIdentifier::Id(id) => {
             let response = get_bucket_by_id(config, id)
-                .with_context(|| format!("Unable to get bucket by ID {}", id))?;
+                .with_context(|| format!("Unable to get bucket by ID {id}"))?;
             Ok(*response.bucket)
         }
         BucketIdentifier::FullName(full_name) => {
             let response = get_bucket(config, full_name.owner(), full_name.name())
-                .with_context(|| format!("Unable to get bucket {}", bucket_id))?;
+                .with_context(|| format!("Unable to get bucket {bucket_id}"))?;
             Ok(*response.bucket)
         }
     }
@@ -184,10 +184,10 @@ mod tests {
     #[test]
     fn test_display() {
         let id = ResourceIdentifier::Id("abc123".to_string());
-        assert_eq!(format!("{}", id), "abc123");
+        assert_eq!(format!("{id}"), "abc123");
 
         let full_name = ResourceIdentifier::FullName(FullName::from_str("owner/resource").unwrap());
-        assert_eq!(format!("{}", full_name), "owner/resource");
+        assert_eq!(format!("{full_name}"), "owner/resource");
     }
 
     #[test]

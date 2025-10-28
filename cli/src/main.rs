@@ -173,18 +173,17 @@ fn config_from_args(args: &Args, config: &ReinferConfig) -> Result<Configuration
         .build()
         .context("Failed to initialise the HTTP client.")?;
 
-    let mut openapi_config = Configuration::default();
-    openapi_config.base_path = endpoint.to_string();
-
-    // Set API key for generated OpenAPI client (not bearer_access_token)
-    openapi_config.api_key = Some(openapi::apis::configuration::ApiKey {
-        prefix: Some("Bearer".to_string()),
-        key: token.0.clone(),
-    });
-
-    // Also set bearer_access_token for custom endpoints (like get_current_user)
-    openapi_config.bearer_access_token = Some(token.0);
-    openapi_config.client = client; // ← Use our TLS-configured client
+    // Create OpenAPI configuration with all fields initialized
+    let openapi_config = Configuration {
+        base_path: endpoint.to_string(),
+        api_key: Some(openapi::apis::configuration::ApiKey {
+            prefix: Some("Bearer".to_string()),
+            key: token.0.clone(),
+        }),
+        bearer_access_token: Some(token.0),
+        client, // ← Use our TLS-configured client
+        ..Default::default()
+    };
 
     // Check context requirements (mirrors legacy client behavior)
     check_if_context_is_a_required_field(config, &openapi_config, args)?;

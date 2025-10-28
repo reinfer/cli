@@ -97,8 +97,7 @@ pub fn handle_split_on_failure_result<T>(
 
     if result.num_failed == 0 {
         println!(
-            "✅ {} completed successfully: {}/{} items processed",
-            operation_name, successful, total_items
+            "✅ {operation_name} completed successfully: {successful}/{total_items} items processed"
         );
     } else if successful > 0 {
         println!(
@@ -107,8 +106,7 @@ pub fn handle_split_on_failure_result<T>(
         );
     } else {
         println!(
-            "❌ {} failed completely: 0/{} items processed",
-            operation_name, total_items
+            "❌ {operation_name} failed completely: 0/{total_items} items processed"
         );
     }
 }

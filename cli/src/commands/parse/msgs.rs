@@ -259,12 +259,12 @@ pub fn parse(config: &Configuration, args: &ParseMsgArgs) -> Result<()> {
     let source = match source {
         SourceIdentifier::Id(source_id) => {
             let response = get_source_by_id(config, source_id)
-                .with_context(|| format!("Failed to get source by ID: {}", source_id))?;
+                .with_context(|| format!("Failed to get source by ID: {source_id}"))?;
             response.source
         }
         SourceIdentifier::FullName(full_name) => {
             let response = get_source(config, full_name.owner(), full_name.name())
-                .with_context(|| format!("Failed to get source: {}", full_name))?;
+                .with_context(|| format!("Failed to get source: {full_name}"))?;
             response.source
         }
     };

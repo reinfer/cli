@@ -68,7 +68,7 @@ fn get_single_user(config: &Configuration, user_id: &UserIdentifier) -> Result<m
     let user = match user_id {
         UserIdentifier::Id(id) => {
             let response = get_user_by_id(config, id)
-                .with_context(|| format!("Failed to get user with ID: {}", id))?;
+                .with_context(|| format!("Failed to get user with ID: {id}"))?;
             *response.user
         }
         UserIdentifier::FullName(_) => {

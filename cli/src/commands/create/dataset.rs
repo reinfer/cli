@@ -157,11 +157,7 @@ pub fn create(config: &Configuration, args: &CreateDatasetArgs, printer: &Printe
         } else {
             Some(general_fields.clone())
         },
-        label_defs: if let Some(label_defs) = label_defs {
-            Some(label_defs.to_vec())
-        } else {
-            None
-        },
+        label_defs: label_defs.map(|label_defs| label_defs.to_vec()),
         label_groups: if label_groups.is_empty() {
             None
         } else {

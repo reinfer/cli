@@ -51,7 +51,7 @@ impl Iterator for AuditEventsIterator {
                                 datasets.iter().find(|dataset| dataset.id == *dataset_id)
                             })
                             .map(|dataset| dataset.name.clone())
-                            .unwrap_or_else(|| format!("Unknown Dataset ({})", dataset_id))
+                            .unwrap_or_else(|| format!("Unknown Dataset ({dataset_id})"))
                     })
                     .collect()
             })
@@ -72,7 +72,7 @@ impl Iterator for AuditEventsIterator {
                                 projects.iter().find(|project| project.id == *project_id)
                             })
                             .map(|project| project.name.clone())
-                            .unwrap_or_else(|| format!("Unknown Project ({})", project_id))
+                            .unwrap_or_else(|| format!("Unknown Project ({project_id})"))
                     })
                     .collect()
             })
@@ -88,7 +88,7 @@ impl Iterator for AuditEventsIterator {
                     .iter()
                     .find(|tenant| tenant.id == *tenant_id)
                     .map(|tenant| tenant.name.clone())
-                    .unwrap_or_else(|| format!("Unknown Tenant ({})", tenant_id))
+                    .unwrap_or_else(|| format!("Unknown Tenant ({tenant_id})"))
             })
             .collect();
 

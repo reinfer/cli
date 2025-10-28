@@ -156,8 +156,7 @@ pub fn run(delete_args: &DeleteArgs, config: &Configuration) -> Result<()> {
                     .name()
                     .ok_or_else(|| anyhow::anyhow!("Source must be specified by full name"))?;
                 delete_comment(config, owner, name, None, Some(&comment_id.0)).context(format!(
-                    "Operation to delete comment {} has failed.",
-                    comment_id
+                    "Operation to delete comment {comment_id} has failed."
                 ))?;
             }
             log::info!("Deleted comments.");
@@ -191,7 +190,7 @@ pub fn run(delete_args: &DeleteArgs, config: &Configuration) -> Result<()> {
                         .context("Operation to delete dataset has failed.")?;
                 }
                 ResourceIdentifier::FullName(full_name) => {
-                    delete_dataset_v1(config, &full_name.owner(), &full_name.name())
+                    delete_dataset_v1(config, full_name.owner(), full_name.name())
                         .context("Operation to delete dataset has failed.")?;
                 }
             }
@@ -245,7 +244,7 @@ pub fn run(delete_args: &DeleteArgs, config: &Configuration) -> Result<()> {
             for id in keyed_sync_state_ids_response.keyed_sync_state_ids {
                 delete_keyed_sync_state(config, &bucket.id, &id)
                     .context("Failed to delete keyed sync state")?;
-                info!("Delete keyed sync state {}", id)
+                info!("Delete keyed sync state {id}")
             }
         }
     };
@@ -298,7 +297,7 @@ fn delete_comments_in_period(
                     None,
                     Some(&comment_id.0),
                 )
-                .context(format!("Operation to delete comment {} failed", comment_id))?;
+                .context(format!("Operation to delete comment {comment_id} failed"))?;
             }
             statistics.increment_deleted(comment_ids.len());
             Ok(())

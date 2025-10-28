@@ -578,7 +578,7 @@ fn upload_batch_of_comments(
         let source_id = SourceId::from_str(&source.id)
             .with_context(|| format!("Invalid source ID: {}", source.id))?;
         let comment_id = CommentId::from_str(comment_id)
-            .with_context(|| format!("Invalid comment ID: {}", comment_id))?;
+            .with_context(|| format!("Invalid comment ID: {comment_id}"))?;
 
         set_comment_audio(
             config,

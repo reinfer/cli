@@ -15,7 +15,7 @@ where
             Ok(response) => {
                 let status = response.status();
                 if should_retry_status(status) && attempt < max_retries - 1 {
-                    let wait_factor = backoff_factor.powi(attempt as i32);
+                    let wait_factor = backoff_factor.powi(attempt);
                     let duration = base_wait.mul_f64(wait_factor);
                     log::warn!(
                         "{} for {} - retrying after {:?}.",
@@ -37,9 +37,9 @@ where
                     .unwrap_or(false);
 
                 if should_retry && attempt < max_retries - 1 {
-                    let wait_factor = backoff_factor.powi(attempt as i32);
+                    let wait_factor = backoff_factor.powi(attempt);
                     let duration = base_wait.mul_f64(wait_factor);
-                    log::warn!("{} - retrying after {:?}.", e, duration);
+                    log::warn!("{e} - retrying after {duration:?}.");
                     std::thread::sleep(duration);
                     continue;
                 } else {

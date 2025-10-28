@@ -115,11 +115,11 @@ fn build_organisation_permissions(
             let mut map = HashMap::new();
             map.insert(
                 project.0.clone(),
-                permissions.iter().map(|p| p.0.clone()).collect(),
+                permissions.iter().map(|p| p.0).collect(),
             );
             Ok(map)
         }
-        (None, permissions) if permissions.is_empty() => Ok(HashMap::new()),
+        (None, []) => Ok(HashMap::new()),
         _ => {
             anyhow::bail!(
                 "Arguments `--project` and `--project-permissions` have to be both specified or neither"
@@ -141,7 +141,7 @@ fn build_user_new(
         global_permissions: if global_permissions.is_empty() {
             None
         } else {
-            Some(global_permissions.iter().map(|p| p.0.clone()).collect())
+            Some(global_permissions.iter().map(|p| p.0).collect())
         },
         organisation_permissions: if organisation_permissions.is_empty() {
             None

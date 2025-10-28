@@ -165,7 +165,7 @@ fn create_ixp_dataset(
             instructions: label.instructions.clone(),
             external_id: label.external_id.clone(),
             pretrained: None, // Set to None for now
-            trainable: label.trainable.map(|t| Some(t)),
+            trainable: label.trainable.map(Some),
             name: label.name.clone(),
             moon_form: label.moon_form.clone().map(|forms| {
                 forms
@@ -293,7 +293,7 @@ fn get_ixp_source(dataset: &Dataset, mut provider: SourceProvider) -> Result<Ixp
                 return Err(anyhow!("Duplicate source kind found in packaged dataset"));
             }
 
-            source_by_kind.insert(source._kind.clone(), source.clone());
+            source_by_kind.insert(source._kind, source.clone());
             Ok(())
         })?;
 
@@ -436,7 +436,7 @@ fn upload_batch(
             scope.execute(move || {
                 let upload_result = upload_ixp_document_bytes(
                     config,
-                    &source_id.to_string(),
+                    source_id.as_ref(),
                     "latest",
                     Some(item.content.clone()),
                     Some(item.file_name.clone()),
@@ -448,7 +448,7 @@ fn upload_batch(
                     Ok(new_comment_id) => {
                         statistics.add_document_uploads(1);
 
-                        let comment_uid = format!("{}.{}", source_id, new_comment_id);
+                        let comment_uid = format!("{source_id}.{new_comment_id}");
 
                         if item.comment.has_annotations() {
                             let dataset_full_name = dataset_name;
@@ -643,7 +643,7 @@ fn unpack_cm_source(
                 source: Box::new(SourceUpdate {
                     bucket_id: bucket.map(|b| Some(b.id)),
                     description: Some(packaged_source_info.description.clone()),
-                    _kind: Some(packaged_source_info._kind.clone()),
+                    _kind: Some(packaged_source_info._kind),
                     should_translate: Some(packaged_source_info.should_translate),
                     language: Some(crate::utils::conversions::convert_language_string_to_enum(
                         &packaged_source_info.language,
@@ -758,7 +758,7 @@ fn unpack_cm_dataset(
                                 })
                             }),
                             _entity_def_flags: Some(
-                                def._entity_def_flags.into_iter().map(|flag| flag).collect(),
+                                def._entity_def_flags.into_iter().collect(),
                             ),
                             instructions: def.instructions,
                         })
@@ -784,7 +784,7 @@ fn unpack_cm_dataset(
                         .iter()
                         .map(|def| LabelDefNew {
                             external_id: def.external_id.clone(),
-                            instructions: def.instructions.clone().map(|s| s),
+                            instructions: def.instructions.clone(),
                             moon_form: def.moon_form.clone().map(|forms| {
                                 forms
                                     .into_iter()
@@ -805,7 +805,7 @@ fn unpack_cm_dataset(
                                     name: None, // OpenAPI uses enum instead of string
                                 })
                             }),
-                            title: def.title.clone().map(|s| s),
+                            title: def.title.clone(),
                             trainable: None,
                         })
                         .collect::<Vec<LabelDefNew>>(),
@@ -820,8 +820,7 @@ fn unpack_cm_dataset(
                             Ok(packaged_to_new_source_id
                                 .get(source_id)
                                 .context(format!(
-                                    "Could not get new source with id {0}",
-                                    source_id
+                                    "Could not get new source with id {source_id}"
                                 ))?
                                 .clone())
                         })
@@ -1105,7 +1104,7 @@ fn unpack_ixp(
                     })
                 }),
                 _entity_def_flags: Some(
-                    def._entity_def_flags.into_iter().map(|flag| flag).collect(),
+                    def._entity_def_flags.into_iter().collect(),
                 ),
                 instructions: def.instructions,
             })

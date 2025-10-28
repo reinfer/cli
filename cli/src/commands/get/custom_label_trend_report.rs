@@ -137,8 +137,7 @@ fn get_threshold_for_label_selections(
         .map(|label_name| {
             let confidence_str = Input::new()
                 .with_prompt(format!(
-                    "What confidence threshold do you want to use for the label \"{}\"",
-                    label_name
+                    "What confidence threshold do you want to use for the label \"{label_name}\""
                 ))
                 .validate_with(|input: &String| match input.trim().parse::<NotNan<f64>>() {
                     Ok(number) => {
@@ -658,8 +657,8 @@ pub struct Statistics {
 pub struct DateEntry(HashMap<String, usize>);
 
 impl DateEntry {
-    fn count_label(&mut self, label: &String) {
-        *self.0.entry(label.clone()).or_default() += 1;
+    fn count_label(&mut self, label: &str) {
+        *self.0.entry(label.to_owned()).or_default() += 1;
     }
 
     fn get_label_count(&self, label: &String) -> usize {

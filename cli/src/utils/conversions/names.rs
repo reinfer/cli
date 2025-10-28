@@ -24,19 +24,19 @@ pub fn convert_openapi_name_to_label_name(name: &Name) -> String {
                     parts.join(" > ")
                 }
                 _ => {
-                    log::warn!("Could not extract label name from JSON: {:?}", json_value);
+                    log::warn!("Could not extract label name from JSON: {json_value:?}");
                     "UNKNOWN_LABEL".to_string()
                 }
             }
         }
         Err(e) => {
-            log::warn!("Failed to serialize Name to JSON: {}", e);
+            log::warn!("Failed to serialize Name to JSON: {e}");
             "SERIALIZATION_ERROR".to_string()
         }
     }
 }
 
 /// Convert Box<Name> to String
-pub fn convert_boxed_name_to_label_name(boxed_name: &Box<Name>) -> String {
+pub fn convert_boxed_name_to_label_name(boxed_name: &Name) -> String {
     convert_openapi_name_to_label_name(boxed_name)
 }

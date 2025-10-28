@@ -87,20 +87,17 @@ impl PackageContentId<'_> {
         match self {
             PackageContentId::Bucket { bucket_id } => {
                 format!(
-                    "{BUCKETS_FOLDER_NAME}/{0}.{BUCKET_POSTFIX_AND_EXTENSION}",
-                    bucket_id
+                    "{BUCKETS_FOLDER_NAME}/{bucket_id}.{BUCKET_POSTFIX_AND_EXTENSION}"
                 )
             }
             PackageContentId::Dataset { dataset_id } => {
                 format!(
-                    "{DATASETS_FOLDER_NAME}/{0}.{DATASET_POSTFIX_AND_EXTENSION}",
-                    dataset_id
+                    "{DATASETS_FOLDER_NAME}/{dataset_id}.{DATASET_POSTFIX_AND_EXTENSION}"
                 )
             }
             PackageContentId::Source { source_id } => {
                 format!(
-                    "{SOURCES_FOLDER_NAME}/{0}.{SOURCE_POSTFIX_AND_EXTENSION}",
-                    source_id
+                    "{SOURCES_FOLDER_NAME}/{source_id}.{SOURCE_POSTFIX_AND_EXTENSION}"
                 )
             }
             PackageContentId::CommentBatch { key, source_id } => {
@@ -135,9 +132,9 @@ impl PackageContentId<'_> {
 
     fn friendly_name(&self) -> String {
         match self {
-            PackageContentId::Dataset { dataset_id } => format!("dataset {}", dataset_id),
-            PackageContentId::Source { source_id } => format!("source {}", source_id),
-            PackageContentId::Bucket { bucket_id } => format!("bucket {}", bucket_id),
+            PackageContentId::Dataset { dataset_id } => format!("dataset {dataset_id}"),
+            PackageContentId::Source { source_id } => format!("source {source_id}"),
+            PackageContentId::Bucket { bucket_id } => format!("bucket {bucket_id}"),
             PackageContentId::CommentBatch { key, source_id } => {
                 format!("comment batch {0} for source {1}", key.0, source_id)
             }

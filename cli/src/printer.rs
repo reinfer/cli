@@ -177,7 +177,7 @@ impl DisplayTable for PrintableDatasetWithStats {
             let quality_score = rating.score * 100.0;
             format!(
                 "✓ {:.1}% ({} labels)",
-                format!("{:.1}", quality_score).green(),
+                format!("{quality_score:.1}").green(),
                 validation.validation.labels.len()
             )
         } else {
@@ -479,30 +479,21 @@ impl DisplayTable for PrintableAuditEvent {
             if self.dataset_names.is_empty() {
                 "none".dimmed()
             } else {
-                self.dataset_names
-                    .iter()
-                    .map(|dataset| dataset.clone())
-                    .collect::<Vec<String>>()
+                self.dataset_names.to_vec()
                     .join(" & ")
                     .normal()
             },
             if self.project_names.is_empty() {
                 "none".dimmed()
             } else {
-                self.project_names
-                    .iter()
-                    .map(|project| project.clone())
-                    .collect::<Vec<String>>()
+                self.project_names.to_vec()
                     .join(" & ")
                     .normal()
             },
             if self.tenant_names.is_empty() {
                 "none".dimmed()
             } else {
-                self.tenant_names
-                    .iter()
-                    .map(|name| name.clone())
-                    .collect::<Vec<String>>()
+                self.tenant_names.to_vec()
                     .join(" & ")
                     .normal()
             }

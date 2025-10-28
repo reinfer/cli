@@ -124,7 +124,7 @@ impl Iterator for CommentsIter<'_> {
             None,       // direction
         );
 
-        Some(response.map_err(|e| anyhow::Error::from(e)).map(|page| {
+        Some(response.map_err(anyhow::Error::from).map(|page| {
             self.continuation = page.continuation.map(ContinuationKind::Continuation);
             self.done = self.continuation.is_none();
             page.comments
@@ -252,7 +252,7 @@ impl Iterator for DatasetQueryIter<'_> {
 
         Some(
             response
-                .map_err(|e| anyhow::Error::from(e))
+                .map_err(anyhow::Error::from)
                 .map(|response| {
                     self.continuation = response.continuation;
                     self.done = self.continuation.is_none();
@@ -330,7 +330,7 @@ impl Iterator for LabellingsIter<'_> {
 
         Some(
             response
-                .map_err(|e| anyhow::Error::from(e))
+                .map_err(anyhow::Error::from)
                 .map(|response| {
                     let previous_after = self.after.clone();
                     self.after = response.after.clone();
@@ -500,7 +500,7 @@ pub fn get_single(config: &Configuration, args: &GetSingleCommentArgs) -> Result
         comment_id.as_ref(),
         Some(true),
     )
-    .with_context(|| format!("Unable to get comment {}", comment_id))?;
+    .with_context(|| format!("Unable to get comment {comment_id}"))?;
     let comment = *comment_response.comment;
 
     if let Some(attachments_dir) = attachments_dir {
@@ -926,7 +926,7 @@ pub fn get_many(config: &Configuration, args: &GetManyCommentsArgs) -> Result<()
         Some(filter.0.clone())
     } else if *interative_property_filter {
         if let Some(dataset_id) = dataset {
-            let dataset = resolve_dataset(config, &dataset_id)?;
+            let dataset = resolve_dataset(config, dataset_id)?;
 
             // Get dataset summary
             let summary_request = GetDatasetSummaryRequest::new();
@@ -1098,7 +1098,7 @@ fn download_comments(
                 None
             },
             sources: Some(vec![source.id.clone()]),
-            messages: options.messages_filter.clone().map(|f| Box::new(f)),
+            messages: options.messages_filter.clone().map(Box::new),
             user_properties: options
                 .user_properties_filter
                 .as_ref()

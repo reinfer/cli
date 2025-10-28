@@ -216,7 +216,7 @@ fn get_threshold_and_precision_for_recall(
         .recalls
         .iter()
         .position(|&val_recall| val_recall >= *recall)
-        .context(format!("Could not get recall for label {}", label_name))?;
+        .context(format!("Could not get recall for label {label_name}"))?;
 
     let precision = label_validation.precisions.get(recall_index);
 
@@ -252,8 +252,7 @@ fn get_threshold_and_recall_for_precision(
         });
 
     let precision_index = precision_index.context(format!(
-        "Could not get precision index for label {}",
-        label_name
+        "Could not get precision index for label {label_name}"
     ))?;
 
     let recall = label_validation.recalls.get(precision_index);
@@ -280,20 +279,20 @@ fn get_precision_and_recall_for_threshold(
         .thresholds
         .iter()
         .position(|&val_threshold| val_threshold <= *threshold)
-        .context(format!("Could not find threshold for label {}", label_name))?;
+        .context(format!("Could not find threshold for label {label_name}"))?;
 
     let precision = NotNan::new(
         *label_validation
             .precisions
             .get(threshold_index)
-            .context(format!("Could not get precision for label {}", label_name))?,
+            .context(format!("Could not get precision for label {label_name}"))?,
     )
     .unwrap();
     let recall = NotNan::new(
         *label_validation
             .recalls
             .get(threshold_index)
-            .context(format!("Could not get recall for label {}", label_name))?,
+            .context(format!("Could not get recall for label {label_name}"))?,
     )
     .unwrap();
 
@@ -520,14 +519,14 @@ fn get_stream_and_model(
     config: &Configuration,
     stream_full_name: &StreamFullName,
 ) -> Result<Trigger> {
-    info!("Getting stream {}", stream_full_name);
+    info!("Getting stream {stream_full_name}");
     let stream_response = get_stream_by_name(
         config,
         &stream_full_name.owner,
         &stream_full_name.dataset,
         &stream_full_name.stream,
     )
-    .with_context(|| format!("Failed to get stream {}", stream_full_name))?;
+    .with_context(|| format!("Failed to get stream {stream_full_name}"))?;
 
     Ok(*stream_response.stream)
 }
@@ -639,7 +638,7 @@ fn fetch_stream_comments_once(
         &stream.stream,
         request,
     )
-    .with_context(|| format!("Failed to fetch comments from stream {}", stream))?;
+    .with_context(|| format!("Failed to fetch comments from stream {stream}"))?;
 
     print_resources_as_json(Some(&batch), io::stdout().lock())
 }
@@ -661,7 +660,7 @@ fn fetch_stream_comments_continuously(
             &stream.stream,
             request,
         )
-        .with_context(|| format!("Failed to fetch comments from stream {}", stream))?;
+        .with_context(|| format!("Failed to fetch comments from stream {stream}"))?;
 
         if batch.results.is_empty() {
             handle_empty_batch(config, stream, &batch, delay_seconds)?;
@@ -692,7 +691,7 @@ fn handle_empty_batch(
             &stream.stream,
             advance_request,
         )
-        .with_context(|| format!("Failed to advance stream {} for empty batch", stream))?;
+        .with_context(|| format!("Failed to advance stream {stream} for empty batch"))?;
     }
     Ok(())
 }
@@ -720,7 +719,7 @@ fn process_batch_results(
                 advance_request,
             )
             .with_context(|| {
-                format!("Failed to advance stream {} for individual comment", stream)
+                format!("Failed to advance stream {stream} for individual comment")
             })?;
         }
     }
@@ -734,7 +733,7 @@ fn process_batch_results(
             &stream.stream,
             advance_request,
         )
-        .with_context(|| format!("Failed to advance stream {} for batch", stream))?;
+        .with_context(|| format!("Failed to advance stream {stream} for batch"))?;
     }
 
     Ok(())

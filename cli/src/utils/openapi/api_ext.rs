@@ -40,7 +40,7 @@ pub fn upload_ixp_document_bytes(
     if let Some(ref local_var_apikey) = local_var_configuration.api_key {
         let local_var_key = local_var_apikey.key.clone();
         let local_var_value = match local_var_apikey.prefix {
-            Some(ref local_var_prefix) => format!("{} {}", local_var_prefix, local_var_key),
+            Some(ref local_var_prefix) => format!("{local_var_prefix} {local_var_key}"),
             None => local_var_key,
         };
         local_var_req_builder = local_var_req_builder.header("authorization", local_var_value);
@@ -103,7 +103,7 @@ pub fn get_document_bytes(
     if let Some(ref local_var_apikey) = local_var_configuration.api_key {
         let local_var_key = local_var_apikey.key.clone();
         let local_var_value = match local_var_apikey.prefix {
-            Some(ref local_var_prefix) => format!("{} {}", local_var_prefix, local_var_key),
+            Some(ref local_var_prefix) => format!("{local_var_prefix} {local_var_key}"),
             None => local_var_key,
         };
         local_var_req_builder = local_var_req_builder.header("authorization", local_var_value);
@@ -161,7 +161,7 @@ pub fn get_comment_audio(
     if let Some(ref local_var_apikey) = local_var_configuration.api_key {
         let local_var_key = local_var_apikey.key.clone();
         let local_var_value = match local_var_apikey.prefix {
-            Some(ref local_var_prefix) => format!("{} {}", local_var_prefix, local_var_key),
+            Some(ref local_var_prefix) => format!("{local_var_prefix} {local_var_key}"),
             None => local_var_key,
         };
         local_var_req_builder = local_var_req_builder.header("authorization", local_var_value);
@@ -217,7 +217,7 @@ pub fn set_comment_audio(
     if let Some(ref local_var_apikey) = local_var_configuration.api_key {
         let local_var_key = local_var_apikey.key.clone();
         let local_var_value = match local_var_apikey.prefix {
-            Some(ref local_var_prefix) => format!("{} {}", local_var_prefix, local_var_key),
+            Some(ref local_var_prefix) => format!("{local_var_prefix} {local_var_key}"),
             None => local_var_key,
         };
         local_var_req_builder = local_var_req_builder.header("authorization", local_var_value);
@@ -229,7 +229,7 @@ pub fn set_comment_audio(
         .map_err(|source| {
             Error::ResponseError(ResponseContent {
                 status: reqwest::StatusCode::BAD_REQUEST,
-                content: format!("Failed to create multipart form for file: {}", source),
+                content: format!("Failed to create multipart form for file: {source}"),
                 entity: None,
             })
         })?;

@@ -31,7 +31,7 @@ fn fetch_keyed_sync_states(
     bucket_id: &str,
 ) -> Result<Vec<openapi::models::ListKeyedSyncStatesResponseKeyedSyncStatesInner>> {
     let response = list_keyed_sync_states(config, bucket_id)
-        .with_context(|| format!("Failed to get keyed sync states for bucket {}", bucket_id))?;
+        .with_context(|| format!("Failed to get keyed sync states for bucket {bucket_id}"))?;
 
     Ok(response.keyed_sync_states)
 }

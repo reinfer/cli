@@ -95,8 +95,8 @@ fn check_comments_lifecycle(comments_str: &str, args: Vec<&str>) {
         .map(|annotated_comment| annotated_comment.comment.clone())
         .collect::<Vec<CommentNew>>();
     input_comments.sort_by(|a, b| a.id.cmp(&b.id));
-    println!("input_comments: {:?}", input_comments);
-    println!("output_comments: {:?}", output_comments);
+    println!("input_comments: {input_comments:?}");
+    println!("output_comments: {output_comments:?}");
     for (input_comment, output_comment) in input_comments.iter().zip(output_comments.iter()) {
         assert_eq!(input_comment.id, output_comment.id);
         assert_eq!(
@@ -236,7 +236,7 @@ fn test_delete_comments_in_range() {
         .filter(|comment| {
             // N.B. to / from are inclusive
             !comment.has_annotations()
-                && comment.comment.timestamp.as_ref().map_or(false, |ts| {
+                && comment.comment.timestamp.as_ref().is_some_and(|ts| {
                     DateTime::parse_from_rfc3339(ts)
                         .map(|dt| dt <= to_timestamp && dt >= from_timestamp)
                         .unwrap_or(false)
