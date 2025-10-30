@@ -80,6 +80,14 @@ pub struct UploadPackageArgs {
     #[structopt(long = "skip-comment-upload")]
     /// Don't upload comments for CM packages
     skip_comment_upload: bool,
+
+    #[structopt(long = "skip-email-upload")]
+    /// Don't upload emails for CM packages
+    skip_email_upload: bool,
+
+    #[structopt(long = "skip-annotation-upload")]
+    /// Don't upload annotations for CM packages
+    skip_annotation_upload: bool,
 }
 
 fn wait_for_dataset_to_exist(dataset: &Dataset, client: &Client, timeout_s: u64) -> Result<()> {
@@ -380,6 +388,7 @@ fn upload_batch(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn unpack_cm_bucket(
     client: &Client,
     packaged_bucket_id: &BucketId,
@@ -388,6 +397,7 @@ fn unpack_cm_bucket(
     statistics: &Arc<CmStatistics>,
     no_charge: bool,
     new_project_name: Option<DatasetOrOwnerName>,
+    skip_email_upload: bool,
 ) -> Result<Bucket> {
     let mut packaged_bucket = package.get_bucket_by_id(packaged_bucket_id)?;
 
@@ -406,6 +416,10 @@ fn unpack_cm_bucket(
             },
         )?,
     };
+
+    if skip_email_upload {
+        return Ok(bucket);
+    }
 
     // Upload batches of emails to the bucket
     let email_batch_count = package.get_email_batch_count_for_bucket(&packaged_bucket.id);
@@ -701,6 +715,8 @@ fn unpack_cm(
     no_charge: bool,
     new_project_name: &Option<DatasetOrOwnerName>,
     skip_comment_upload: &bool,
+    skip_email_upload: &bool,
+    skip_annotation_upload: &bool,
 ) -> Result<()> {
     let total_comment_batches = package.get_comment_batch_count();
     let total_email_batches = package.get_emails_batch_count();
@@ -744,6 +760,7 @@ fn unpack_cm(
                 &statistics,
                 no_charge,
                 new_project_name.clone(),
+                *skip_email_upload,
             )?;
             Some(bucket)
         } else {
@@ -776,17 +793,19 @@ fn unpack_cm(
     )?;
 
     // Upload annotations
-    for package_source_id in &packaged_dataset.source_ids {
-        unpack_cm_annotations(
-            client,
-            package_source_id,
-            &packaged_to_new_source_id,
-            package,
-            &statistics,
-            &dataset,
-            pool,
-            resume_on_error,
-        )?;
+    if !skip_annotation_upload {
+        for package_source_id in &packaged_dataset.source_ids {
+            unpack_cm_annotations(
+                client,
+                package_source_id,
+                &packaged_to_new_source_id,
+                package,
+                &statistics,
+                &dataset,
+                pool,
+                resume_on_error,
+            )?;
+        }
     }
 
     Ok(())
@@ -882,6 +901,8 @@ pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result
         no_charge,
         yes,
         skip_comment_upload,
+        skip_email_upload,
+        skip_annotation_upload,
     } = args;
 
     let mut has_consented_to_ai_unit_consumption = false;
@@ -922,6 +943,8 @@ pub fn run(args: &UploadPackageArgs, client: &Client, pool: &mut Pool) -> Result
                     *no_charge,
                     new_project_name,
                     skip_comment_upload,
+                    skip_email_upload,
+                    skip_annotation_upload,
                 ) {
                     Ok(_) => break,
                     Err(err) if is_project_not_found_error(&err) && new_project_name.is_some() => {
