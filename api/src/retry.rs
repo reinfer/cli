@@ -44,7 +44,9 @@ impl Retrier {
     }
 
     fn should_retry(status: StatusCode) -> bool {
-        status.is_server_error() || status == StatusCode::TOO_MANY_REQUESTS
+        status.is_server_error()
+            || status == StatusCode::TOO_MANY_REQUESTS
+            || status == StatusCode::CONFLICT
     }
 
     pub fn with_retries(&self, send_request: impl Fn() -> Result<Response>) -> Result<Response> {

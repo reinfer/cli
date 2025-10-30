@@ -1,3 +1,7 @@
+# Unreleased 
+- Retry and split requests on 409 conflict 
+- Add option to skip emails and annotations when uploading CM packages
+
 # v0.38.10
 - Support mailbox sync states 
 - Support Gemini IXP model versions.
