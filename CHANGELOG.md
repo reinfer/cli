@@ -1,3 +1,6 @@
+# v0.38.12
+- Allow users to only package reviewed comments from cm datasets
+
 # v0.38.11
 - Retry and split requests on 409 conflict 
 - Add option to skip emails and annotations when uploading CM packages
