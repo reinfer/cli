@@ -9,16 +9,17 @@ use std::{
     },
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use itertools::Itertools;
 use reinfer_client::{
     resources::{
         attachments::AttachmentMetadata,
         bucket::Id as BucketId,
-        dataset::{DatasetFlag, QueryRequestParams},
+        comment::ReviewedFilterEnum,
+        dataset::{DatasetFlag, QueryRequestParams, StatisticsRequestParams},
     },
-    Bucket, Client, CommentFilter, CommentId, Dataset, DatasetFullName, DatasetName,
-    HasAnnotations, SourceId,
+    AnnotatedComment, Bucket, Client, CommentFilter, CommentId, Dataset, DatasetFullName,
+    DatasetName, HasAnnotations, SourceId,
 };
 use scoped_threadpool::Pool;
 use structopt::StructOpt;
@@ -72,6 +73,14 @@ pub struct DownloadPackageArgs {
     #[structopt(long = "max-attachment-memory-mb", default_value = "256")]
     /// Maximum number of mb to use to store attachments in memory
     max_attachment_memory_mb: u64,
+
+    #[structopt(long)]
+    /// Whether to only download annotated comments for CM projects
+    reviewed_only: bool,
+
+    #[structopt(long)]
+    /// Whether to skip downloading raw email for CM projects
+    skip_emails: bool,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -111,6 +120,7 @@ fn package_source_contents(
     max_attachment_memory_mb: &u64,
     pool: &mut Pool,
     source_type: SourceType,
+    reviewed_only: Option<bool>,
 ) -> Result<()> {
     let mut query = QueryRequestParams {
         limit: Some(batch_size),
@@ -121,7 +131,13 @@ fn package_source_contents(
         ..Default::default()
     };
 
-    let source_comments_iter = client.get_dataset_query_iter(dataset, &mut query);
+    let source_comments_iter: Box<
+        dyn Iterator<Item = Result<Vec<AnnotatedComment>, reinfer_client::Error>>,
+    > = if reviewed_only == Some(true) {
+        Box::new(client.get_labellings_iter(dataset, source_id, false, None))
+    } else {
+        Box::new(client.get_dataset_query_iter(dataset, &mut query))
+    };
 
     let mut documents: Vec<(AttachmentMetadata, AttachmentKey, SourceId, CommentId)> = Vec::new();
 
@@ -254,14 +270,32 @@ fn package_batch_of_documents(
     Ok(())
 }
 
-fn get_comment_count(dataset: &Dataset, client: &Client) -> Result<u64> {
+fn get_comment_count(
+    dataset: &Dataset,
+    client: &Client,
+    reviewed_only: Option<bool>,
+) -> Result<u64> {
     let total_comments = *client
-        .get_dataset_statistics(&dataset.full_name(), &Default::default())
+        .get_dataset_statistics(
+            &dataset.full_name(),
+            &StatisticsRequestParams {
+                comment_filter: CommentFilter {
+                    reviewed: if reviewed_only == Some(true) {
+                        Some(ReviewedFilterEnum::OnlyReviewed)
+                    } else {
+                        Default::default()
+                    },
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
         .context("Failed to get dataset statistics")?
         .num_comments as u64;
     Ok(total_comments)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn package_cm_project(
     client: &Client,
     dataset: &Dataset,
@@ -269,9 +303,11 @@ fn package_cm_project(
     batch_size: &usize,
     max_attachment_memory_mb: &u64,
     pool: &mut Pool,
+    skip_raw_emails: bool,
+    reviewed_only: bool,
 ) -> Result<()> {
-    let total_comments =
-        get_comment_count(dataset, client).context("Failed to get comment count")?;
+    let total_comments = get_comment_count(dataset, client, Some(reviewed_only))
+        .context("Failed to get comment count")?;
 
     let mut package_writer =
         PackageWriter::new(file.into()).context("Failed to create new package writer")?;
@@ -302,13 +338,15 @@ fn package_cm_project(
     // Write buckets and raw emails
     for bucket in buckets {
         package_writer.write_bucket(&bucket)?;
-        package_bucket_contents(
-            &bucket,
-            *batch_size,
-            &mut package_writer,
-            client,
-            &statistics,
-        )?;
+        if !skip_raw_emails {
+            package_bucket_contents(
+                &bucket,
+                *batch_size,
+                &mut package_writer,
+                client,
+                &statistics,
+            )?;
+        }
     }
 
     // Write sources and comments
@@ -331,6 +369,7 @@ fn package_cm_project(
             max_attachment_memory_mb,
             pool,
             SourceType::CommunicationsMining,
+            Some(reviewed_only),
         )?;
     }
     Ok(())
@@ -345,7 +384,7 @@ fn package_ixp_project(
     pool: &mut Pool,
 ) -> Result<()> {
     let total_comments =
-        get_comment_count(dataset, client).context("Failed to get comment count")?;
+        get_comment_count(dataset, client, None).context("Failed to get comment count")?;
 
     let statistics = Arc::new(Statistics::new());
     let _progress_bar = get_ixp_progress_bar(total_comments, &statistics);
@@ -377,6 +416,7 @@ fn package_ixp_project(
             max_attachment_memory_mb,
             pool,
             SourceType::UnstructedAndComplexDocs,
+            None,
         )
         .context("Failed to package source context")?;
     }
@@ -395,6 +435,8 @@ pub fn run(args: &DownloadPackageArgs, client: &Client, pool: &mut Pool) -> Resu
         overwrite,
         batch_size,
         max_attachment_memory_mb,
+        reviewed_only,
+        skip_emails,
     } = args;
     // Delete output file if overwriting
     if *overwrite && file.is_file() {
@@ -406,6 +448,18 @@ pub fn run(args: &DownloadPackageArgs, client: &Client, pool: &mut Pool) -> Resu
         "Could not get project with the name {0}",
         project.0
     ))?;
+
+    if *reviewed_only && !*skip_emails {
+        bail!("You must skip raw emails when only downloading reviewed comments")
+    }
+
+    if dataset.has_flag(DatasetFlag::Ixp) && *reviewed_only {
+        bail!("`--reviewed-only` can only be used with Communications Mining datasets")
+    }
+
+    if dataset.has_flag(DatasetFlag::Ixp) && *skip_emails {
+        bail!("`--skip-emails` can only be used with Communications Mining datasets")
+    }
 
     if dataset.has_flag(DatasetFlag::Ixp) {
         package_ixp_project(
@@ -424,6 +478,8 @@ pub fn run(args: &DownloadPackageArgs, client: &Client, pool: &mut Pool) -> Resu
             batch_size,
             max_attachment_memory_mb,
             pool,
+            *skip_emails,
+            *reviewed_only,
         )
     }
 }
