@@ -76,16 +76,12 @@ pub struct Dataset {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+#[derive(Default)]
 pub enum ModelConfig {
+    #[default]
     Cm,
     DocPathIxp,
     GptIxp(GptIxpModelConfig),
-}
-
-impl Default for ModelConfig {
-    fn default() -> Self {
-        Self::Cm
-    }
 }
 
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
@@ -348,16 +344,16 @@ pub struct StatisticsRequestParams {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+#[derive(Default)]
 pub enum OrderEnum {
-    ByLabel { label: String },
+    ByLabel {
+        label: String,
+    },
+    #[default]
     Recent,
-    Sample { seed: usize },
-}
-
-impl Default for OrderEnum {
-    fn default() -> Self {
-        Self::Recent
-    }
+    Sample {
+        seed: usize,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
