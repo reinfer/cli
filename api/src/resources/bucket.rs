@@ -169,8 +169,10 @@ pub(crate) struct GetResponse {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum BucketType {
     #[serde(rename = "emails")]
+    #[default]
     Emails,
 }
 
@@ -187,11 +189,6 @@ impl FromStr for BucketType {
     }
 }
 
-impl Default for BucketType {
-    fn default() -> Self {
-        Self::Emails
-    }
-}
 
 impl Display for BucketType {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
