@@ -84,7 +84,6 @@ pub enum ModelConfig {
     GptIxp(GptIxpModelConfig),
 }
 
-
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DocPathIxpModelConfig {
     #[serde(
@@ -347,12 +346,15 @@ pub struct StatisticsRequestParams {
 #[serde(tag = "kind", rename_all = "snake_case")]
 #[derive(Default)]
 pub enum OrderEnum {
-    ByLabel { label: String },
+    ByLabel {
+        label: String,
+    },
     #[default]
     Recent,
-    Sample { seed: usize },
+    Sample {
+        seed: usize,
+    },
 }
-
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct SummaryRequestParams {
