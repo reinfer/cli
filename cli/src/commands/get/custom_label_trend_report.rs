@@ -367,7 +367,7 @@ fn get_label_trend_report_from_json(
     let mut query_params = params.get_query_request_params(Some(DEFAULT_QUERY_PAGE_SIZE));
     let query_iter = client.get_dataset_query_iter(dataset_name, &mut query_params);
 
-    for page in query_iter.take(MAX_COMMENT_SAMPLE as usize) {
+    for page in query_iter.take(MAX_COMMENT_SAMPLE as usize / DEFAULT_QUERY_PAGE_SIZE) {
         let page = page.context("Operation to get comments has failed.")?;
         if page.is_empty() {
             return Ok(());
