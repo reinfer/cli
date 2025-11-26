@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::{TestCli, TestDataset, TestSource};
 use anyhow::anyhow;
 use backoff::{retry, ExponentialBackoff};
@@ -282,5 +284,12 @@ fn get_comments_with_delay(cli: &TestCli, command: &[&str], expected_count: usiz
         }
     };
 
-    retry(ExponentialBackoff::default(), run_command).unwrap()
+    retry(
+        ExponentialBackoff {
+            max_elapsed_time: Some(Duration::from_mins(120)),
+            ..Default::default()
+        },
+        run_command,
+    )
+    .unwrap()
 }
