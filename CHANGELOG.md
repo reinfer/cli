@@ -1,4 +1,4 @@
-# Unreleased
+# v0.38.13
 - Fixes an issue where custom label trend reports would exceed MAX_COMMENT_SAMPLE when using specific model version
 
 # v0.38.12
