@@ -481,7 +481,7 @@ fn unpack_cm_source(
     }
 
     // Upload comment batches to the source
-    let comment_batch_count = package.get_comment_batch_count();
+    let comment_batch_count = package.get_comment_batch_count_for_source(&packaged_source_info.id);
     for idx in 0..comment_batch_count {
         let batch = package.get_comment_batch(&packaged_source_info.id, CommentBatchKey(idx))?;
         let new_comments: Vec<NewComment> = batch.into_iter().map(|c| c.comment).collect();
@@ -647,7 +647,7 @@ fn unpack_cm_annotations(
             .clone(),
     )?;
 
-    let comment_batch_count = package.get_comment_batch_count();
+    let comment_batch_count = package.get_comment_batch_count_for_source(packaged_source_info);
     for idx in 0..comment_batch_count {
         let batch = package.get_comment_batch(packaged_source_info, CommentBatchKey(idx))?;
         let mut new_annotations: Vec<NewAnnotation> = batch
