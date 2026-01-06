@@ -98,13 +98,18 @@ impl DisplayTable for Bucket {
 
 impl DisplayTable for Quota {
     fn to_table_headers() -> Row {
-        row![bFg => "Kind", "Hard Limit", "Usage (Total)", "Usage %"]
+        row![bFg => "Kind", "Hard Limit", "Self-serve limit", "Usage (Total)", "Usage %", ]
     }
 
     fn to_table_row(&self) -> Row {
         row![
             self.quota_kind,
             Thousands(self.hard_limit),
+            if let Some(auto_increase_up_to) = self.auto_increase_up_to {
+                Thousands(auto_increase_up_to).to_string()
+            } else {
+                "N/A".dimmed().to_string()
+            },
             Thousands(self.current_max_usage),
             if self.hard_limit > 0 {
                 format!(
@@ -113,7 +118,7 @@ impl DisplayTable for Quota {
                 )
             } else {
                 "N/A".dimmed().to_string()
-            }
+            },
         ]
     }
 }

@@ -114,6 +114,8 @@ pub struct Quota {
     pub hard_limit: u64,
     pub quota_kind: TenantQuotaKind,
     pub current_max_usage: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_increase_up_to: Option<u64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
