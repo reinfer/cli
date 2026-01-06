@@ -1,4 +1,4 @@
-# Unreleased
+# v0.38.15
 - Displays Self-servce limits when listing quotas
 
 # v0.38.14
