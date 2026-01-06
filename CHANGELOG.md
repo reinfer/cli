@@ -1,3 +1,6 @@
+# Unreleased
+- Displays Self-servce limits when listing quotas
+
 # v0.38.14
 - Fixes an issue where CM packages could not be uploaded due to batch count error
 
