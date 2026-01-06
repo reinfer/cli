@@ -79,13 +79,13 @@ pub enum Error {
     #[error("Failed to initialise the HTTP client")]
     BuildHttpClient(#[source] reqwest::Error),
 
-    #[error("HTTP request error: {}", message)]
+    #[error("HTTP request error: {} {}", message, source)]
     ReqwestError {
         message: String,
         source: reqwest::Error,
     },
 
-    #[error("An unknown error has occurred: {}", message)]
+    #[error("An unknown error has occurred: {} {}", message, source)]
     Unknown {
         message: String,
         source: Box<dyn std::error::Error + Send + Sync + 'static>,
