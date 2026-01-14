@@ -2,7 +2,7 @@
 name = "reinfer-cli"
 version = "0.38.15"
 description = "Command line interface for Re:infer, the conversational data intelligence platform"
-homepage = "https://github.com/reinfer/cli"
+repository = "https://github.com/reinfer/cli"
 readme = "README.md"
 authors = ["reinfer Ltd. <eng@reinfer.io>"]
 license = "Apache-2.0"
