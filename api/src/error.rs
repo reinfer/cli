@@ -66,6 +66,9 @@ pub enum Error {
     #[error("Could not parse JSON response.")]
     BadJsonResponse(#[source] reqwest::Error),
 
+    #[error("Could not parse JSON response.")]
+    BadSerdeJsonResponse(#[source] serde_json::Error),
+
     #[error(
         "Status code {} inconsistent with response payload: {}",
         status_code,
