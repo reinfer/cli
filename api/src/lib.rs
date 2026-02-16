@@ -1634,9 +1634,17 @@ impl Client {
         let http_response = self.raw_request(method, url, body, query, retry, None)?;
 
         let status = http_response.status();
-        http_response
-            .json::<Response<SuccessT>>()
-            .map_err(Error::BadJsonResponse)?
+
+        let response_text = http_response.text().map_err(|source| Error::ReqwestError {
+            message: "Could not get request text".to_string(),
+            source,
+        })?;
+
+        let mut deserializer = serde_json::Deserializer::from_str(&response_text);
+        deserializer.disable_recursion_limit();
+
+        Response::<SuccessT>::deserialize(&mut deserializer)
+            .map_err(Error::BadSerdeJsonResponse)?
             .into_result(status)
     }
 

@@ -1,3 +1,6 @@
+# Unreleased 
+- Handle unbound recursion 
+
 # v0.38.15
 - Displays Self-servce limits when listing quotas
 
