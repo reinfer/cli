@@ -319,7 +319,10 @@ impl Package {
     {
         let string = self.read_string_content_by_name(filename)?;
 
-        Ok(serde_json::from_str(&string)?)
+        let mut deserializer = serde_json::Deserializer::from_str(&string);
+        deserializer.disable_recursion_limit();
+
+        Ok(T::deserialize(&mut deserializer)?)
     }
 
     fn read_jsonl_content_by_id<T>(&mut self, content: PackageContentId) -> Result<Vec<T>>
@@ -336,7 +339,10 @@ impl Package {
         string
             .lines()
             .map(|line| -> Result<T> {
-                serde_json::from_str::<T>(line).map_err(anyhow::Error::msg)
+                let mut deserializer = serde_json::Deserializer::from_str(line);
+                deserializer.disable_recursion_limit();
+
+                T::deserialize(&mut deserializer).map_err(anyhow::Error::msg)
             })
             .try_collect()
     }

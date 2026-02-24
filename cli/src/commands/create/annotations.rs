@@ -307,8 +307,11 @@ fn read_annotations_iter<'a>(
             Err(e) => return Some(Err(e)),
         }
 
+        let mut deserializer = serde_json::Deserializer::from_str(line.trim_end());
+        deserializer.disable_recursion_limit();
+
         Some(
-            serde_json::from_str::<NewAnnotation>(line.trim_end()).with_context(|| {
+            NewAnnotation::deserialize(&mut deserializer).with_context(|| {
                 format!("Could not parse annotations at line {line_number} from input stream")
             }),
         )
