@@ -1,5 +1,8 @@
+# Unreleased 
+- Handle unbound recursion on package upload
+
 # v0.38.16
-- Handle unbound recursion 
+- Handle unbound recursion in api
 
 # v0.38.15
 - Displays Self-servce limits when listing quotas
