@@ -1577,6 +1577,10 @@ impl Client {
                 // This is for the case where some sort of network config (e.g. cloudflare) blocks
                 // the request and returns invalid content
                 true
+            } else if let Error::BadSerdeJsonResponse(_) = error {
+                // This is for the case where some sort of network config (e.g. cloudflare) blocks
+                // the request and returns invalid content
+                true
             } else if let Error::ReqwestError { source, .. } = error {
                 // Should split timeouts
                 source.is_timeout()
