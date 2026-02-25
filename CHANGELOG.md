@@ -1,3 +1,6 @@
+# v0.38.18
+- Split retries on bad serde json response
+
 # v0.38.17
 - Handle unbound recursion on package upload
 
