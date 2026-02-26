@@ -1,4 +1,4 @@
-# Unreleased
+# v0.38.19
 - Resume on every error
 
 # v0.38.18
