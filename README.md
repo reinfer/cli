@@ -56,9 +56,9 @@ Statically linked binaries with no dependencies are provided for selected platfo
 > [!NOTE]  
 > Most users should install using these binaries
 
-- [Linux (x86_64-unknown-linux-musl)](https://reinfer.dev/public/cli/bin/x86_64-unknown-linux-musl/0.38.18/re)
-- [macOS (aarch64-apple-darwin)](https://reinfer.dev/public/cli/bin/aarch64-apple-darwin/0.38.18/re)
-- [Windows (x86_64-pc-windows-gnu)](https://reinfer.dev/public/cli/bin/x86_64-pc-windows-gnu/0.38.18/re.exe)
+- [Linux (x86_64-unknown-linux-musl)](https://reinfer.dev/public/cli/bin/x86_64-unknown-linux-musl/0.38.19/re)
+- [macOS (aarch64-apple-darwin)](https://reinfer.dev/public/cli/bin/aarch64-apple-darwin/0.38.19/re)
+- [Windows (x86_64-pc-windows-gnu)](https://reinfer.dev/public/cli/bin/x86_64-pc-windows-gnu/0.38.19/re.exe)
 
 
 <details>
@@ -94,7 +94,7 @@ to add a folder to this list and move the binary to that folder.
 
 ### Debian / Ubuntu
 
-You can download a `.deb` package [here](https://reinfer.dev/public/cli/debian/reinfer-cli_0.38.18_amd64.deb).
+You can download a `.deb` package [here](https://reinfer.dev/public/cli/debian/reinfer-cli_0.38.19_amd64.deb).
 
 ### From Source
 
