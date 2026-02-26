@@ -374,13 +374,11 @@ fn upload_batch_of_comments(
         }
 
         if resume_on_error {
-            let result = client
-                .put_comments_split_on_failure(
-                    &source.full_name(),
-                    comments_to_put.to_vec(),
-                    no_charge,
-                )
-                .context("Could not put batch of comments")?;
+            let result = client.put_comments_split_on_failure(
+                &source.full_name(),
+                comments_to_put.to_vec(),
+                no_charge,
+            );
             failed += result.num_failed;
         } else {
             client
@@ -402,13 +400,11 @@ fn upload_batch_of_comments(
             )?;
         }
         let result = if resume_on_error {
-            let result = client
-                .sync_comments_split_on_failure(
-                    &source.full_name(),
-                    comments_to_sync.to_vec(),
-                    no_charge,
-                )
-                .context("Could not sync batch of comments")?;
+            let result = client.sync_comments_split_on_failure(
+                &source.full_name(),
+                comments_to_sync.to_vec(),
+                no_charge,
+            );
             failed += result.num_failed;
             result.response
         } else {

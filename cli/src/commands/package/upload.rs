@@ -429,8 +429,7 @@ fn unpack_cm_bucket(
             .context("Could not get email batch")?;
 
         if *resume_on_error {
-            let result =
-                client.put_emails_split_on_failure(&bucket.full_name(), batch, no_charge)?;
+            let result = client.put_emails_split_on_failure(&bucket.full_name(), batch, no_charge);
 
             statistics.add_email_batch_uploads(1);
             statistics.add_failed_email_uploads(result.num_failed);
@@ -487,11 +486,8 @@ fn unpack_cm_source(
         let new_comments: Vec<NewComment> = batch.into_iter().map(|c| c.comment).collect();
 
         if *resume_on_error {
-            let result = client.sync_comments_split_on_failure(
-                &source.full_name(),
-                new_comments,
-                no_charge,
-            )?;
+            let result =
+                client.sync_comments_split_on_failure(&source.full_name(), new_comments, no_charge);
 
             statistics.add_comment_batch_upload(1);
             statistics.add_failed_comment_uploads(result.num_failed);
