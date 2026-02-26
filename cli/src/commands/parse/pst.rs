@@ -212,9 +212,8 @@ pub fn parse(client: &Client, args: &ParsePstArgs) -> Result<()> {
         if !args.dry_run {
             let bucket = client.get_bucket(args.bucket.clone())?;
             if args.resume_on_error {
-                let result = client
-                    .put_emails_split_on_failure(&bucket.full_name(), emails, args.no_charge)
-                    .context("Could not upload batch of emails")?;
+                let result =
+                    client.put_emails_split_on_failure(&bucket.full_name(), emails, args.no_charge);
                 statistics.add_uploaded(batch_len - result.num_failed);
                 statistics.add_failed_to_upload(result.num_failed);
             } else {

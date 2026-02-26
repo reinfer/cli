@@ -574,13 +574,15 @@ impl Client {
         source_name: &SourceFullName,
         comments: Vec<NewComment>,
         no_charge: bool,
-    ) -> Result<SplitableRequestResponse<PutCommentsResponse>> {
+    ) -> SplitableRequestResponse<PutCommentsResponse> {
         // Retrying here despite the potential for 409's in order to increase reliability when
         // working with poor connection
 
         self.splitable_request(
             Method::PUT,
-            self.endpoints.put_comments(source_name)?,
+            self.endpoints
+                .put_comments(source_name)
+                .expect("Could not get put_comments endpoint"),
             PutCommentsRequest { comments },
             Some(NoChargeQuery { no_charge }),
             Retry::Yes,
@@ -698,10 +700,12 @@ impl Client {
         source_name: &SourceFullName,
         comments: Vec<NewComment>,
         no_charge: bool,
-    ) -> Result<SplitableRequestResponse<SyncCommentsResponse>> {
+    ) -> SplitableRequestResponse<SyncCommentsResponse> {
         self.splitable_request(
             Method::POST,
-            self.endpoints.sync_comments(source_name)?,
+            self.endpoints
+                .sync_comments(source_name)
+                .expect("Could not get sync_comments endpoint"),
             SyncCommentsRequest { comments },
             Some(NoChargeQuery { no_charge }),
             Retry::Yes,
@@ -734,10 +738,12 @@ impl Client {
         bucket_name: &BucketFullName,
         emails: Vec<NewEmail>,
         no_charge: bool,
-    ) -> Result<SplitableRequestResponse<PutEmailsResponse>> {
+    ) -> SplitableRequestResponse<PutEmailsResponse> {
         self.splitable_request(
             Method::PUT,
-            self.endpoints.put_emails(bucket_name)?,
+            self.endpoints
+                .put_emails(bucket_name)
+                .expect("Could not get put_emails endpoint"),
             PutEmailsRequest { emails },
             Some(NoChargeQuery { no_charge }),
             Retry::Yes,
@@ -1557,7 +1563,7 @@ impl Client {
         body: RequestT,
         query: Option<QueryT>,
         retry: Retry,
-    ) -> Result<SplitableRequestResponse<SuccessT>>
+    ) -> SplitableRequestResponse<SuccessT>
     where
         LocationT: IntoUrl + Display + Clone,
         RequestT: Serialize + SplittableRequest + Clone,
@@ -1568,40 +1574,20 @@ impl Client {
         let result: Result<SuccessT> =
             self.request(&method, &url, &Some(body.clone()), &query, &retry);
 
-        fn should_split(error: &Error) -> bool {
-            if let Error::Api { status_code, .. } = error {
-                *status_code == reqwest::StatusCode::UNPROCESSABLE_ENTITY
-                    || *status_code == reqwest::StatusCode::BAD_REQUEST
-                    || *status_code == reqwest::StatusCode::CONFLICT
-            } else if let Error::BadJsonResponse(_) = error {
-                // This is for the case where some sort of network config (e.g. cloudflare) blocks
-                // the request and returns invalid content
-                true
-            } else if let Error::BadSerdeJsonResponse(_) = error {
-                // This is for the case where some sort of network config (e.g. cloudflare) blocks
-                // the request and returns invalid content
-                true
-            } else if let Error::ReqwestError { source, .. } = error {
-                // Should split timeouts
-                source.is_timeout()
-            } else {
-                false
-            }
-        }
-
         match result {
-            Ok(response) => Ok(SplitableRequestResponse {
+            Ok(response) => SplitableRequestResponse {
                 response,
                 num_failed: 0,
-            }),
-            Err(error) if should_split(&error) => {
+            },
+            Err(_) => {
                 let mut num_failed = 0;
                 let response = body
                     .split()
                     .filter_map(|request| {
                         match self.request(&method, &url, &Some(request), &query, &retry) {
                             Ok(response) => Some(response),
-                            Err(_) => {
+                            Err(err) => {
+                                debug!("{err}");
                                 num_failed += 1;
                                 None
                             }
@@ -1611,12 +1597,11 @@ impl Client {
                         merged.merge(next)
                     });
 
-                Ok(SplitableRequestResponse {
+                SplitableRequestResponse {
                     num_failed,
                     response,
-                })
+                }
             }
-            Err(error) => Err(error),
         }
     }
 

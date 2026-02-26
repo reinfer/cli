@@ -156,9 +156,11 @@ fn upload_emails_from_reader(
             // Upload emails
 
             if resume_on_error {
-                let result = client
-                    .put_emails_split_on_failure(&bucket.full_name(), batch.to_vec(), no_charge)
-                    .context("Could not upload batch of emails")?;
+                let result = client.put_emails_split_on_failure(
+                    &bucket.full_name(),
+                    batch.to_vec(),
+                    no_charge,
+                );
                 statistics.add_emails(StatisticsUpdate {
                     uploaded: batch.len() - result.num_failed,
                     failed: result.num_failed,

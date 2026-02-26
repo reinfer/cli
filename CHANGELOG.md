@@ -1,3 +1,6 @@
+# Unreleased
+- Resume on every error
+
 # v0.38.18
 - Split retries on bad serde json response
 
