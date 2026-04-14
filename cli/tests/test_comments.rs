@@ -269,6 +269,52 @@ fn test_delete_comments_in_range() {
     assert_eq!(after_deleting_all.lines().count(), 0);
 }
 
+#[test]
+fn test_get_reviewed_comments_with_label_filter() {
+    let comments_str = include_str!("./samples/many.jsonl");
+    let cli = TestCli::get();
+    let source = TestSource::new();
+    let dataset = TestDataset::new_args(&[&format!("--source={}", source.identifier())]);
+
+    let output = cli.run_with_stdin(
+        [
+            "create",
+            "comments",
+            "--allow-duplicates",
+            "--yes",
+            &format!("--source={}", source.identifier()),
+            &format!("--dataset={}", dataset.identifier()),
+        ],
+        comments_str.as_bytes(),
+    );
+    assert!(output.is_empty());
+
+    let filtered_comments = get_comments_with_delay(
+        cli,
+        &[
+            "get",
+            "comments",
+            "--reviewed-only",
+            "true",
+            "--label-filter",
+            "A",
+            "--dataset",
+            dataset.identifier(),
+            source.identifier(),
+        ],
+        3,
+    );
+
+    let mut ids: Vec<String> = filtered_comments
+        .lines()
+        .map(|line| serde_json::from_str::<AnnotatedComment>(line).unwrap())
+        .map(|comment| comment.comment.id.0)
+        .collect();
+    ids.sort();
+
+    assert_eq!(ids, vec!["2".to_owned(), "3".to_owned(), "7".to_owned()]);
+}
+
 fn get_comments_with_delay(cli: &TestCli, command: &[&str], expected_count: usize) -> String {
     let run_command = || {
         let result = cli.run(command);
@@ -286,7 +332,7 @@ fn get_comments_with_delay(cli: &TestCli, command: &[&str], expected_count: usiz
 
     retry(
         ExponentialBackoff {
-            max_elapsed_time: Some(Duration::from_mins(120)),
+            max_elapsed_time: Some(Duration::from_secs(120 * 60)),
             ..Default::default()
         },
         run_command,

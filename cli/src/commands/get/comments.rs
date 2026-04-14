@@ -472,15 +472,7 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         stop_after,
     } = args;
 
-    let by_timerange = from_timestamp.is_some() || to_timestamp.is_some();
-    if reviewed_only.unwrap_or_default() && by_timerange {
-        bail!("The `reviewed_only` and `from/to-timestamp` options are mutually exclusive.")
-    }
-
     let reviewed_only = reviewed_only.unwrap_or(false);
-    if reviewed_only && model_version.is_some() {
-        bail!("The `reviewed_only` and `model_version` options are mutually exclusive.")
-    }
 
     if reviewed_only && dataset.is_none() {
         bail!("Cannot get reviewed comments when `dataset` is not provided.")
@@ -499,20 +491,12 @@ pub fn get_many(client: &Client, args: &GetManyCommentsArgs) -> Result<()> {
         bail!("Cannot use a attachment type filter when `dataset` is not provided.")
     }
 
-    if label_filter.is_some() && reviewed_only {
-        bail!("The `reviewed_only` and `label_filter` options are mutually exclusive.")
-    }
-
     if label_filter.is_some() && model_version.is_some() {
         bail!("The `label_filter` and `model_version` options are mutually exclusive.")
     }
 
     if (user_property_filter.is_some() || *interative_property_filter) && dataset.is_none() {
         bail!("Cannot use a property filter when `dataset` is not provided.")
-    }
-
-    if (user_property_filter.is_some() || *interative_property_filter) && reviewed_only {
-        bail!("The `reviewed_only` and `property_filter` options are mutually exclusive.")
     }
 
     if user_property_filter.is_some() && *interative_property_filter {
@@ -697,6 +681,24 @@ impl CommentDownloadOptions {
 
         filters
     }
+
+    fn should_use_reviewed_query(&self) -> bool {
+        self.reviewed_only
+            && (self.timerange.from.is_some()
+                || self.timerange.to.is_some()
+                || self.model_version.is_some()
+                || self.label_attribute_filter.is_some()
+                || self.attachment_property_types_filter.is_some()
+                || self.only_with_attachments_filter.is_some()
+                || self.user_properties_filter.is_some()
+                || self.shuffle
+                || self
+                    .messages_filter
+                    .as_ref()
+                    .is_some_and(|messages_filter| {
+                        messages_filter.from.is_some() || messages_filter.to.is_some()
+                    }))
+    }
 }
 
 fn download_comments(
@@ -771,7 +773,7 @@ fn download_comments(
             None
         };
 
-        if options.reviewed_only {
+        if options.reviewed_only && !options.should_use_reviewed_query() {
             get_reviewed_comments_in_bulk(
                 client,
                 dataset_name,
@@ -837,7 +839,11 @@ fn get_comments_from_uids(
         attribute_filters: options.get_attribute_filters(),
         continuation: None,
         filter: CommentFilter {
-            reviewed: None,
+            reviewed: if options.reviewed_only {
+                Some(ReviewedFilterEnum::OnlyReviewed)
+            } else {
+                None
+            },
             timestamp: Some(CommentTimestampFilter {
                 minimum: options.timerange.from,
                 maximum: options.timerange.to,
