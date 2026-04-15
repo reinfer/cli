@@ -1,4 +1,4 @@
-# Unreleased
+# v0.39.0
 - Allow `re get comments --reviewed-only` to be combined with dataset filters
 
 # v0.38.19
