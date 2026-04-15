@@ -1147,3 +1147,169 @@ fn get_comments_progress_bar(
         ProgressOptions { bytes_units: false },
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Baseline options: `--reviewed-only` with no other filters, which should
+    /// route to the bulk labellings endpoint.
+    fn reviewed_only_opts() -> CommentDownloadOptions {
+        CommentDownloadOptions {
+            dataset_identifier: None,
+            include_predictions: false,
+            model_version: None,
+            reviewed_only: true,
+            timerange: CommentsIterTimerange::default(),
+            show_progress: false,
+            label_attribute_filter: None,
+            attachment_property_types_filter: None,
+            user_properties_filter: None,
+            messages_filter: None,
+            attachments_dir: None,
+            only_with_attachments_filter: None,
+            shuffle: false,
+            stop_after: None,
+        }
+    }
+
+    fn labels_filter() -> AttributeFilter {
+        AttributeFilter {
+            attribute: Attribute::Labels,
+            filter: AttributeFilterEnum::StringAnyOf {
+                any_of: vec!["A".to_owned()],
+            },
+        }
+    }
+
+    fn attachment_property_types_filter() -> AttributeFilter {
+        AttributeFilter {
+            attribute: Attribute::AttachmentPropertyTypes,
+            filter: AttributeFilterEnum::StringAnyOf {
+                any_of: vec!["pdf".to_owned()],
+            },
+        }
+    }
+
+    fn num_attachments_filter() -> AttributeFilter {
+        AttributeFilter {
+            attribute: Attribute::AttachmentPropertyNumAttachments,
+            filter: AttributeFilterEnum::NumberRange {
+                minimum: Some(1),
+                maximum: None,
+            },
+        }
+    }
+
+    fn single_value_property_filter(value: &str) -> PropertyFilter {
+        PropertyFilter::new(
+            vec![PropertyValue::String(value.to_owned())],
+            Vec::new(),
+            Vec::new(),
+        )
+    }
+
+    #[test]
+    fn routes_to_bulk_when_not_reviewed_only() {
+        // Even with extra filters set, if reviewed_only is false the routing
+        // question is moot — we never go through either reviewed code path.
+        let mut opts = reviewed_only_opts();
+        opts.reviewed_only = false;
+        opts.timerange.from = Some(Utc::now());
+        opts.label_attribute_filter = Some(labels_filter());
+        opts.shuffle = true;
+        assert!(!opts.should_use_reviewed_query());
+    }
+
+    #[test]
+    fn routes_to_bulk_when_reviewed_only_with_no_extra_filters() {
+        assert!(!reviewed_only_opts().should_use_reviewed_query());
+    }
+
+    #[test]
+    fn routes_to_query_endpoint_with_from_timestamp() {
+        let mut opts = reviewed_only_opts();
+        opts.timerange.from = Some(Utc::now());
+        assert!(opts.should_use_reviewed_query());
+    }
+
+    #[test]
+    fn routes_to_query_endpoint_with_to_timestamp() {
+        let mut opts = reviewed_only_opts();
+        opts.timerange.to = Some(Utc::now());
+        assert!(opts.should_use_reviewed_query());
+    }
+
+    #[test]
+    fn routes_to_query_endpoint_with_model_version() {
+        let mut opts = reviewed_only_opts();
+        opts.model_version = Some(1);
+        assert!(opts.should_use_reviewed_query());
+    }
+
+    #[test]
+    fn routes_to_query_endpoint_with_label_filter() {
+        let mut opts = reviewed_only_opts();
+        opts.label_attribute_filter = Some(labels_filter());
+        assert!(opts.should_use_reviewed_query());
+    }
+
+    #[test]
+    fn routes_to_query_endpoint_with_attachment_property_types_filter() {
+        let mut opts = reviewed_only_opts();
+        opts.attachment_property_types_filter = Some(attachment_property_types_filter());
+        assert!(opts.should_use_reviewed_query());
+    }
+
+    #[test]
+    fn routes_to_query_endpoint_with_only_with_attachments_filter() {
+        let mut opts = reviewed_only_opts();
+        opts.only_with_attachments_filter = Some(num_attachments_filter());
+        assert!(opts.should_use_reviewed_query());
+    }
+
+    #[test]
+    fn routes_to_query_endpoint_with_user_properties_filter() {
+        let mut opts = reviewed_only_opts();
+        opts.user_properties_filter = Some(UserPropertiesFilter(HashMap::new()));
+        assert!(opts.should_use_reviewed_query());
+    }
+
+    #[test]
+    fn routes_to_query_endpoint_with_shuffle() {
+        let mut opts = reviewed_only_opts();
+        opts.shuffle = true;
+        assert!(opts.should_use_reviewed_query());
+    }
+
+    #[test]
+    fn routes_to_query_endpoint_with_senders_filter() {
+        let mut opts = reviewed_only_opts();
+        opts.messages_filter = Some(MessagesFilter {
+            from: Some(single_value_property_filter("alice@example.com")),
+            to: None,
+        });
+        assert!(opts.should_use_reviewed_query());
+    }
+
+    #[test]
+    fn routes_to_query_endpoint_with_recipients_filter() {
+        let mut opts = reviewed_only_opts();
+        opts.messages_filter = Some(MessagesFilter {
+            from: None,
+            to: Some(single_value_property_filter("bob@example.com")),
+        });
+        assert!(opts.should_use_reviewed_query());
+    }
+
+    #[test]
+    fn routes_to_bulk_when_messages_filter_is_empty() {
+        // `messages_filter` is constructed unconditionally in `get_many` from
+        // `senders`/`recipients`, so a `Some(MessagesFilter::default())` is the
+        // shape we see when neither was provided. That should stay on the bulk
+        // path.
+        let mut opts = reviewed_only_opts();
+        opts.messages_filter = Some(MessagesFilter::default());
+        assert!(!opts.should_use_reviewed_query());
+    }
+}
