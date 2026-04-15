@@ -682,14 +682,31 @@ impl CommentDownloadOptions {
         filters
     }
 
+    /// Returns true if `--reviewed-only` is combined with filters or ordering
+    /// that the bulk labellings endpoint does not support, and we therefore have
+    /// to fall back to the dataset query endpoint with
+    /// `filter.reviewed = OnlyReviewed`.
+    ///
+    /// There are two code paths for reviewed-only downloads:
+    ///
+    /// 1. `get_reviewed_comments_in_bulk` — hits the bulk labellings endpoint,
+    ///    which is fast and has stable pagination, but only supports
+    ///    `reviewed + source` with no additional filtering or ordering.
+    ///
+    /// 2. `get_comments_from_uids` — hits the dataset query endpoint with
+    ///    `filter.reviewed = OnlyReviewed`. Supports the full set of dataset
+    ///    filters (labels, attachments, timestamps, user properties,
+    ///    senders/recipients, model version, shuffle) but is slower.
+    ///
+    /// Path 1 is preferred when possible because it is measurably faster for
+    /// large reviewed-only exports; we only fall back to path 2 when the user
+    /// has asked for something path 1 cannot express.
     fn should_use_reviewed_query(&self) -> bool {
         self.reviewed_only
-            && (self.timerange.from.is_some()
+            && (!self.get_attribute_filters().is_empty()
+                || self.timerange.from.is_some()
                 || self.timerange.to.is_some()
                 || self.model_version.is_some()
-                || self.label_attribute_filter.is_some()
-                || self.attachment_property_types_filter.is_some()
-                || self.only_with_attachments_filter.is_some()
                 || self.user_properties_filter.is_some()
                 || self.shuffle
                 || self
