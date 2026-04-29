@@ -102,7 +102,7 @@ fn download_emails(
         .try_for_each(|page| {
             let page = page.context("Operation to get emails has failed.")?;
             statistics.add_emails(page.len());
-            print_resources_as_json(page.into_iter(), &mut writer)
+            print_resources_as_json(page, &mut writer)
         })?;
     log::info!(
         "Successfully downloaded {} emails.",

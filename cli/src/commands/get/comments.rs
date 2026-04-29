@@ -908,7 +908,7 @@ fn get_comments_from_uids(
             // they are set to None or [] here
             let comments: Vec<_> = page
                 .into_iter()
-                .zip(predictions.into_iter())
+                .zip(predictions)
                 .map(|(comment, prediction)| AnnotatedComment {
                     comment: comment.comment,
                     labelling: Some(vec![Labelling {
