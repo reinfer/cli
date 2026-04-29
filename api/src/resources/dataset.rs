@@ -165,8 +165,16 @@ pub struct IterativeConfig {
 pub enum GptModelVersion {
     #[serde(rename = "gpt_4o_2024_05_13")]
     Gpt4o20240513,
+    #[serde(rename = "gpt_5_1_2025_11_13")]
+    Gpt5120251113,
+    #[serde(rename = "gpt_5_4_2026_03_05")]
+    Gpt5420260305,
     #[serde(rename = "gemini_2_5_flash")]
     GeminiFlash25,
+    #[serde(rename = "gemini_2_5_pro")]
+    GeminiPro25,
+    #[serde(rename = "gemini_3_1_pro_preview")]
+    Gemini31ProPreview,
 }
 
 #[derive(Eq, Clone, Debug, PartialEq, Serialize, Deserialize)]
