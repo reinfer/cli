@@ -121,13 +121,11 @@ impl PackageContentId<'_> {
                 extension,
                 key,
             } => {
+                let basename = document_basename(source_id, comment_id, key);
                 if let Some(extension) = extension {
-                    format!(
-                        "{DOCUMENTS_FOLDER_NAME}/{0}.{1}.{2}.document.{3}",
-                        source_id.0, comment_id.0, key.0, extension
-                    )
+                    format!("{DOCUMENTS_FOLDER_NAME}/{basename}.{extension}")
                 } else {
-                    format!("{0}.{1}.{2}.document", source_id.0, comment_id.0, key.0)
+                    format!("{DOCUMENTS_FOLDER_NAME}/{basename}")
                 }
             }
         }
@@ -165,6 +163,10 @@ impl PackageContentId<'_> {
     }
 }
 
+fn document_basename(source_id: &SourceId, comment_id: &CommentId, key: &AttachmentKey) -> String {
+    format!("{0}.{1}.{2}.document", source_id.0, comment_id.0, key.0)
+}
+
 pub struct PackageWriter {
     writer: ZipWriter<File>,
 }
@@ -188,6 +190,7 @@ impl Package {
         key: &AttachmentKey,
         extension: Option<String>,
     ) -> Result<Vec<u8>> {
+        let has_extension = extension.is_some();
         let content_id = PackageContentId::Document {
             source_id,
             comment_id,
@@ -195,12 +198,30 @@ impl Package {
             extension,
         };
 
-        self.read_bytes(content_id)
+        let result = self.read_bytes(content_id);
+        if has_extension {
+            return result;
+        }
+        if result.is_ok() {
+            return result;
+        }
+
+        // Backwards-compat: documents without an extension were previously written
+        // to the zip root rather than under documents/.
+        let legacy_name = document_basename(source_id, comment_id, key);
+        match self.read_bytes_by_name(&legacy_name) {
+            Ok(bytes) => Ok(bytes),
+            Err(_) => result,
+        }
     }
 
     pub fn read_bytes(&mut self, content_id: PackageContentId) -> Result<Vec<u8>> {
+        self.read_bytes_by_name(&content_id.filename())
+    }
+
+    fn read_bytes_by_name(&mut self, filename: &str) -> Result<Vec<u8>> {
         let mut contents = Vec::new();
-        let mut file = self.archive.by_name(&content_id.filename())?;
+        let mut file = self.archive.by_name(filename)?;
 
         file.read_to_end(&mut contents)?;
         Ok(contents)
@@ -267,8 +288,14 @@ impl Package {
             .file_names()
             .filter(|name| {
                 let path = Path::new(name);
-                path.parent()
-                    .is_some_and(|folder| folder.to_string_lossy() == DOCUMENTS_FOLDER_NAME)
+                let parent = path.parent().map(|p| p.to_string_lossy());
+                match parent.as_deref() {
+                    Some(folder) if folder == DOCUMENTS_FOLDER_NAME => true,
+                    // Backwards-compat: legacy packages stored extension-less
+                    // documents at the zip root.
+                    Some(folder) if folder.is_empty() && name.ends_with(".document") => true,
+                    _ => false,
+                }
             })
             .count()
     }
