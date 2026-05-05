@@ -598,7 +598,7 @@ fn get_ixp_progress_bar(total_comments: u64, statistics: &Arc<Statistics>) -> Pr
             let num_annotations = statistics.num_annotations();
             let num_docs_written = statistics.num_document_writes();
             (
-                ((num_comments + num_docs_downloaded + num_docs_written) / 3) as u64,
+                (num_comments + num_docs_downloaded + num_docs_written) as u64,
                 format!(
                     "{} {} {} {} {} {} {} {}",
                     num_comments.to_string().bold(),
@@ -613,7 +613,7 @@ fn get_ixp_progress_bar(total_comments: u64, statistics: &Arc<Statistics>) -> Pr
             )
         },
         statistics,
-        Some(total_comments),
+        Some(total_comments * 3),
         crate::progress::Options { bytes_units: false },
     )
 }
