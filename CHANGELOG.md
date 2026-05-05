@@ -1,5 +1,6 @@
 # Unreleased
 - Support `gpt_5_1_2025_11_13`, `gpt_5_4_2026_03_05`, `gemini_2_5_pro`, and `gemini_3_1_pro_preview` model versions
+- Fix downloaded packages placing extension-less documents at the package root instead of in the `documents/` folder
 
 # v0.39.0
 - Allow `re get comments --reviewed-only` to be combined with dataset filters
