@@ -107,14 +107,22 @@ where
         let progress_fn = progress_fn;
         let statistics = Arc::clone(&statistics);
         let sleep_duration = Duration::from_millis(100);
+        let mut current_max = max_progress_value;
 
         while report_progress.load(Ordering::SeqCst) {
             thread::sleep(sleep_duration);
             let (progress_value, message) = progress_fn(&statistics);
             progress_bar.set_position(progress_value);
             progress_bar.set_prefix(message);
-            match max_progress_value {
-                Some(value) => progress_bar.set_message(format!("{progress_value} / {value}")),
+            match current_max {
+                Some(value) => {
+                    let display_total = progress_value.max(value);
+                    if display_total > value {
+                        progress_bar.set_length(display_total);
+                        current_max = Some(display_total);
+                    }
+                    progress_bar.set_message(format!("{progress_value} / {display_total}"));
+                }
                 None => progress_bar.set_message(format!("{progress_value}")),
             };
         }
