@@ -1,4 +1,4 @@
-# Unreleased
+# v0.39.1
 - Support `gpt_5_1_2025_11_13`, `gpt_5_4_2026_03_05`, `gemini_2_5_pro`, and `gemini_3_1_pro_preview` model versions
 - Fix downloaded packages placing extension-less documents at the package root instead of in the `documents/` folder
 - Fix `re package download` progress bar showing more progress than the total when the dataset's comment count is approximate
