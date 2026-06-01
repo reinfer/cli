@@ -137,6 +137,82 @@ fn test_get_emails_filter_by_mailbox_and_timerange() {
 }
 
 #[test]
+fn test_delete_emails() {
+    let cli = TestCli::get();
+    let owner = TestCli::project();
+
+    let bucket = format!("{}/test-delete-emails-{}", owner, Uuid::new_v4());
+    cli.run(["create", "bucket", &bucket]);
+
+    // Three emails in the bucket.
+    let emails = [
+        ("keep", "alice@reinfer.io", "2020-01-01T00:00:00Z"),
+        ("delete-1", "bob@reinfer.io", "2020-02-01T00:00:00Z"),
+        ("delete-2", "carol@reinfer.io", "2020-03-01T00:00:00Z"),
+    ];
+    let jsonl = emails
+        .iter()
+        .map(|(id, mailbox, timestamp)| {
+            serde_json::json!({
+                "id": id,
+                "mailbox": mailbox,
+                "timestamp": timestamp,
+                "mime_content": format!(
+                    "Date: {timestamp}\r\nFrom: {mailbox}\r\nTo: support@reinfer.io\r\n\
+                     Subject: {id}\r\nContent-Type: text/plain\r\n\r\nHello from {id}\r\n"
+                ),
+            })
+            .to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    cli.run_with_stdin(["create", "emails", "-y", "-b", &bucket], jsonl.as_bytes());
+
+    // Sorted list of email ids currently in the bucket.
+    let ids = |output: &str| -> Vec<String> {
+        let mut values: Vec<String> = output
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .map(|line| {
+                serde_json::from_str::<serde_json::Value>(line).unwrap()["id"]
+                    .as_str()
+                    .unwrap()
+                    .to_owned()
+            })
+            .collect();
+        values.sort();
+        values
+    };
+
+    assert_eq!(
+        ids(&cli.run(["get", "emails", &bucket])),
+        vec!["delete-1", "delete-2", "keep"],
+        "all three emails should be present before deletion"
+    );
+
+    // Delete two of the three by id.
+    let output = cli.run(["delete", "emails", "-b", &bucket, "delete-1", "delete-2"]);
+    assert!(output.is_empty(), "{}", output);
+
+    assert_eq!(
+        ids(&cli.run(["get", "emails", &bucket])),
+        vec!["keep"],
+        "only the un-deleted email should remain"
+    );
+
+    // Deletion is idempotent: deleting an already-deleted / missing id succeeds.
+    let output = cli.run(["delete", "emails", "-b", &bucket, "delete-1", "does-not-exist"]);
+    assert!(output.is_empty(), "{}", output);
+    assert_eq!(
+        ids(&cli.run(["get", "emails", &bucket])),
+        vec!["keep"],
+        "idempotent delete of missing ids should not affect remaining emails"
+    );
+
+    cli.run(["delete", "bucket", &bucket]);
+}
+
+#[test]
 fn test_create_without_org_fails() {
     let cli = TestCli::get();
 
