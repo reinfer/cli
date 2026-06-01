@@ -201,7 +201,14 @@ fn test_delete_emails() {
     );
 
     // Deletion is idempotent: deleting an already-deleted / missing id succeeds.
-    let output = cli.run(["delete", "emails", "-b", &bucket, "delete-1", "does-not-exist"]);
+    let output = cli.run([
+        "delete",
+        "emails",
+        "-b",
+        &bucket,
+        "delete-1",
+        "does-not-exist",
+    ]);
     assert!(output.is_empty(), "{}", output);
     assert_eq!(
         ids(&cli.run(["get", "emails", &bucket])),
