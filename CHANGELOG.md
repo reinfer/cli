@@ -1,5 +1,6 @@
 # Unreleased
 - Add `re delete emails` to delete emails by id from a bucket
+- Add `re delete bulk-emails` to bulk-delete emails from a bucket in a given time range
 
 # v0.40.0
 - Allow `re get emails` to filter by `--mailbox`, `--from-timestamp`, and `--to-timestamp`

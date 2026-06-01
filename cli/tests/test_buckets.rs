@@ -220,6 +220,145 @@ fn test_delete_emails() {
 }
 
 #[test]
+fn test_bulk_delete_emails() {
+    let cli = TestCli::get();
+    let owner = TestCli::project();
+
+    let bucket = format!("{}/test-bulk-delete-emails-{}", owner, Uuid::new_v4());
+    cli.run(["create", "bucket", &bucket]);
+
+    // Four emails across two mailboxes and a spread of timestamps.
+    let emails = [
+        ("alice-1", "alice@reinfer.io", "2020-01-01T00:00:00Z"),
+        ("alice-2", "alice@reinfer.io", "2020-02-01T00:00:00Z"),
+        ("bob-1", "bob@reinfer.io", "2020-01-15T00:00:00Z"),
+        ("bob-2", "bob@reinfer.io", "2020-03-01T00:00:00Z"),
+    ];
+    let jsonl = emails
+        .iter()
+        .map(|(id, mailbox, timestamp)| {
+            serde_json::json!({
+                "id": id,
+                "mailbox": mailbox,
+                "timestamp": timestamp,
+                "mime_content": format!(
+                    "Date: {timestamp}\r\nFrom: {mailbox}\r\nTo: support@reinfer.io\r\n\
+                     Subject: {id}\r\nContent-Type: text/plain\r\n\r\nHello from {id}\r\n"
+                ),
+            })
+            .to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    cli.run_with_stdin(["create", "emails", "-y", "-b", &bucket], jsonl.as_bytes());
+
+    // Sorted list of email ids currently in the bucket.
+    let ids = |output: &str| -> Vec<String> {
+        let mut values: Vec<String> = output
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .map(|line| {
+                serde_json::from_str::<serde_json::Value>(line).unwrap()["id"]
+                    .as_str()
+                    .unwrap()
+                    .to_owned()
+            })
+            .collect();
+        values.sort();
+        values
+    };
+
+    // Bulk delete by time range [from inclusive, to exclusive): removes alice-2 and bob-1.
+    cli.run([
+        "delete",
+        "bulk-emails",
+        "-b",
+        &bucket,
+        "--from-timestamp",
+        "2020-01-10T00:00:00Z",
+        "--to-timestamp",
+        "2020-02-15T00:00:00Z",
+    ]);
+    assert_eq!(
+        ids(&cli.run(["get", "emails", &bucket])),
+        vec!["alice-1", "bob-2"],
+        "time-range bulk delete should remove only emails in [from, to)"
+    );
+
+    // Bulk delete with no time range: removes everything remaining.
+    cli.run(["delete", "bulk-emails", "-b", &bucket]);
+    assert!(
+        ids(&cli.run(["get", "emails", &bucket])).is_empty(),
+        "unfiltered bulk delete should remove all emails"
+    );
+
+    cli.run(["delete", "bucket", &bucket]);
+}
+
+#[test]
+fn test_bulk_delete_emails_across_batches() {
+    let cli = TestCli::get();
+    let owner = TestCli::project();
+
+    let bucket = format!("{}/test-bulk-delete-batches-{}", owner, Uuid::new_v4());
+    cli.run(["create", "bucket", &bucket]);
+
+    // More emails than both the deletion batch size (32) and the iterator page
+    // size (64), so the bulk delete must drain several full batches across more
+    // than one fetched page plus a final partial batch.
+    const COUNT: usize = 70;
+    let jsonl = (0..COUNT)
+        .map(|i| {
+            serde_json::json!({
+                "id": format!("email-{i:03}"),
+                "mailbox": "alice@reinfer.io",
+                "timestamp": "2020-01-01T00:00:00Z",
+                "mime_content": format!(
+                    "Date: 2020-01-01T00:00:00Z\r\nFrom: alice@reinfer.io\r\nTo: support@reinfer.io\r\n\
+                     Subject: email-{i:03}\r\nContent-Type: text/plain\r\n\r\nHello {i}\r\n"
+                ),
+            })
+            .to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    cli.run_with_stdin(["create", "emails", "-y", "-b", &bucket], jsonl.as_bytes());
+
+    let count = |output: &str| {
+        output
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .count()
+    };
+
+    assert_eq!(
+        count(&cli.run(["get", "emails", &bucket])),
+        COUNT,
+        "all emails should be present before deletion"
+    );
+
+    // Time-range bulk delete covering every email: exercises the query iterator
+    // across multiple pages and multiple deletion batches.
+    cli.run([
+        "delete",
+        "bulk-emails",
+        "-b",
+        &bucket,
+        "--from-timestamp",
+        "2020-01-01T00:00:00Z",
+        "--to-timestamp",
+        "2020-01-02T00:00:00Z",
+    ]);
+    assert_eq!(
+        count(&cli.run(["get", "emails", &bucket])),
+        0,
+        "bulk delete should remove every email across all batches"
+    );
+
+    cli.run(["delete", "bucket", &bucket]);
+}
+
+#[test]
 fn test_create_without_org_fails() {
     let cli = TestCli::get();
 
