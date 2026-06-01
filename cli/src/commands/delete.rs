@@ -9,9 +9,10 @@ use std::sync::{
 use structopt::StructOpt;
 
 use reinfer_client::{
-    resources::{bucket::GetKeyedSyncStateIdsRequest, project::ForceDeleteProject},
-    BucketIdentifier, Client, CommentId, CommentsIter, CommentsIterTimerange, DatasetIdentifier,
-    EmailId, ProjectName, Source, SourceIdentifier, UserIdentifier,
+    resources::{bucket::GetKeyedSyncStateIdsRequest, email::Email, project::ForceDeleteProject},
+    Bucket, BucketIdentifier, Client, CommentId, CommentsIter, CommentsIterTimerange,
+    DatasetIdentifier, EmailId, EmailsQueryFilter, ProjectName, Source, SourceIdentifier,
+    UserIdentifier,
 };
 
 use crate::progress::{Options as ProgressOptions, Progress};
@@ -72,6 +73,29 @@ pub enum DeleteArgs {
         #[structopt(long)]
         /// Ending timestamp for comments to delete (inclusive). Should be in
         /// RFC 3339 format, e.g. 1970-01-02T03:04:05Z
+        to_timestamp: Option<DateTime<Utc>>,
+
+        #[structopt(long)]
+        /// Don't display a progress bar
+        no_progress: bool,
+    },
+
+    #[structopt(name = "bulk-emails")]
+    /// Delete all emails in a bucket in a given time range. With no time range,
+    /// deletes every email in the bucket.
+    BulkEmails {
+        #[structopt(short = "b", long = "bucket")]
+        /// Name or id of the bucket to delete emails from
+        bucket: BucketIdentifier,
+
+        #[structopt(long = "from-timestamp")]
+        /// Starting timestamp for emails to delete (inclusive). Should be in
+        /// RFC 3339 format, e.g. 2024-01-01T00:00:00Z
+        from_timestamp: Option<DateTime<Utc>>,
+
+        #[structopt(long = "to-timestamp")]
+        /// Ending timestamp for emails to delete (exclusive). Should be in
+        /// RFC 3339 format, e.g. 2024-02-01T00:00:00Z
         to_timestamp: Option<DateTime<Utc>>,
 
         #[structopt(long)]
@@ -172,6 +196,22 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
                 show_progress,
             )
             .context("Operation to delete comments has failed.")?;
+        }
+        DeleteArgs::BulkEmails {
+            bucket,
+            from_timestamp,
+            to_timestamp,
+            no_progress,
+        } => {
+            let bucket = client.get_bucket(bucket.clone())?;
+            delete_emails_in_period(
+                &client,
+                bucket,
+                *from_timestamp,
+                *to_timestamp,
+                !no_progress,
+            )
+            .context("Operation to delete emails has failed.")?;
         }
         DeleteArgs::Dataset { dataset } => {
             client
@@ -306,6 +346,78 @@ fn delete_comments_in_period(
     Ok(())
 }
 
+fn delete_emails_in_period(
+    client: &Client,
+    bucket: Bucket,
+    from_timestamp: Option<DateTime<Utc>>,
+    to_timestamp: Option<DateTime<Utc>>,
+    show_progress: bool,
+) -> Result<()> {
+    log::info!(
+        "Deleting emails in bucket `{}`{}",
+        bucket.full_name().0,
+        match (from_timestamp, to_timestamp) {
+            (None, None) => "".into(),
+            (Some(start), None) => format!(" after {start}"),
+            (None, Some(end)) => format!(" before {end}"),
+            (Some(start), Some(end)) => format!(" in range {start} -> {end}"),
+        },
+    );
+    let filter = EmailsQueryFilter {
+        from_timestamp,
+        to_timestamp,
+        mailbox_name: None,
+    };
+    let statistics = Arc::new(Statistics::new());
+    let bucket_name = bucket.full_name();
+    {
+        let _progress = if show_progress {
+            Some(delete_emails_progress_bar(&statistics))
+        } else {
+            None
+        };
+
+        // The maximum number of emails the API permits deleting in a single call.
+        const DELETION_BATCH_SIZE: usize = 32;
+        let mut emails_to_delete = Vec::with_capacity(DELETION_BATCH_SIZE);
+
+        let delete_batch = |email_ids: Vec<EmailId>| -> Result<()> {
+            client
+                .delete_emails(bucket_name.clone(), &email_ids)
+                .context("Operation to delete emails failed")?;
+            statistics.increment_deleted(email_ids.len());
+            Ok(())
+        };
+
+        // An empty filter deletes every email in the bucket via the listing
+        // endpoint; any filter narrows the set via the query endpoint.
+        let mut pages: Box<dyn Iterator<Item = reinfer_client::Result<Vec<Email>>> + '_> =
+            if filter.is_empty() {
+                Box::new(client.get_emails_iter(&bucket_name, None))
+            } else {
+                Box::new(client.query_emails_iter(&bucket_name, filter, None))
+            };
+
+        pages.try_for_each(|page| -> Result<()> {
+            let page = page.context("Operation to get emails failed")?;
+            emails_to_delete.extend(page.into_iter().map(|email| email.id));
+            while emails_to_delete.len() >= DELETION_BATCH_SIZE {
+                let batch: Vec<EmailId> = emails_to_delete.drain(..DELETION_BATCH_SIZE).collect();
+                delete_batch(batch)?;
+            }
+            Ok(())
+        })?;
+
+        // Delete any emails left over in the final partial batch.
+        if !emails_to_delete.is_empty() {
+            assert!(emails_to_delete.len() < DELETION_BATCH_SIZE);
+            delete_batch(emails_to_delete)?;
+        }
+    }
+    log::info!("Deleted {} emails.", statistics.deleted());
+    Ok(())
+}
+
 #[derive(Debug)]
 pub struct Statistics {
     deleted: AtomicUsize,
@@ -355,6 +467,21 @@ fn delete_comments_progress_bar(statistics: &Arc<Statistics>) -> Progress {
                     num_skipped,
                     "skipped".dimmed()
                 ),
+            )
+        },
+        statistics,
+        None,
+        ProgressOptions { bytes_units: false },
+    )
+}
+
+fn delete_emails_progress_bar(statistics: &Arc<Statistics>) -> Progress {
+    Progress::new(
+        move |statistics| {
+            let num_deleted = statistics.deleted() as u64;
+            (
+                num_deleted,
+                format!("{} {}", num_deleted.to_string().bold(), "deleted".dimmed()),
             )
         },
         statistics,
