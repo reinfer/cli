@@ -14,11 +14,14 @@ enum LibPffConfigureMode {
 
 fn download_libpff(libpff_dir: &Path) {
     let libpff_repo = "https://github.com/libyal/libpff";
-    let archive_url = format!("{libpff_repo}/archive/refs/tags/{LIB_PFF_TAG}.zip");
-    let zip_file_path = format!("libpff-{LIB_PFF_TAG}.zip");
+    // The release tarball vendors the libyal dependencies at pinned versions and
+    // ships a generated `configure`, so the build never fetches sources at build time.
+    let archive_url =
+        format!("{libpff_repo}/releases/download/{LIB_PFF_TAG}/libpff-alpha-{LIB_PFF_TAG}.tar.gz");
+    let tarball_path = format!("libpff-{LIB_PFF_TAG}.tar.gz");
 
     let status = Command::new("curl")
-        .args(["-L", &archive_url, "-o", &zip_file_path])
+        .args(["--fail", "-L", &archive_url, "-o", &tarball_path])
         .status()
         .expect("Could not get curl status");
 
@@ -27,38 +30,22 @@ fn download_libpff(libpff_dir: &Path) {
         exit(1);
     }
 
-    let status = Command::new("unzip")
-        .args(["-o", &zip_file_path])
+    let status = Command::new("tar")
+        .args(["-xzf", &tarball_path])
         .status()
-        .expect("Could not get unzip status");
+        .expect("Could not get tar status");
 
     if !status.success() {
-        println!("cargo:error=Failed to unzip libpff");
-        exit(1)
+        println!("cargo:error=Failed to extract libpff");
+        exit(1);
     }
 
     fs::rename(format!("libpff-{LIB_PFF_TAG}"), libpff_dir).expect("Could not move lib pff dir");
-    fs::remove_file(zip_file_path).expect("Could not delete zip path");
+    fs::remove_file(tarball_path).expect("Could not delete tarball path");
 }
 
 fn build_libpff(libpff_dir: &Path, configure_mode: LibPffConfigureMode) {
     env::set_current_dir(libpff_dir).expect("Could not cd into libpff dir");
-
-    let sync_libs_status = Command::new("./synclibs.sh")
-        .status()
-        .expect("Could not get synclibs status");
-    if !sync_libs_status.success() {
-        println!("cargo:error=Could not run synclibs");
-        exit(1);
-    }
-
-    let autogen_status = Command::new("./autogen.sh")
-        .status()
-        .expect("Could not get autogen status");
-    if !autogen_status.success() {
-        println!("cargo:error=Could not run autogen");
-        exit(1);
-    }
 
     let configure_status = match configure_mode {
         LibPffConfigureMode::Native => Command::new("./configure")
