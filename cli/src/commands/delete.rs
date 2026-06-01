@@ -11,7 +11,7 @@ use structopt::StructOpt;
 use reinfer_client::{
     resources::{bucket::GetKeyedSyncStateIdsRequest, project::ForceDeleteProject},
     BucketIdentifier, Client, CommentId, CommentsIter, CommentsIterTimerange, DatasetIdentifier,
-    ProjectName, Source, SourceIdentifier, UserIdentifier,
+    EmailId, ProjectName, Source, SourceIdentifier, UserIdentifier,
 };
 
 use crate::progress::{Options as ProgressOptions, Progress};
@@ -36,6 +36,18 @@ pub enum DeleteArgs {
         #[structopt(name = "comment id")]
         /// Ids of the comments to delete
         comments: Vec<CommentId>,
+    },
+
+    #[structopt(name = "emails")]
+    /// Delete emails by id in a bucket.
+    Emails {
+        #[structopt(short = "b", long = "bucket")]
+        /// Name or id of the bucket to delete emails from
+        bucket: BucketIdentifier,
+
+        #[structopt(name = "email id")]
+        /// Ids of the emails to delete
+        emails: Vec<EmailId>,
     },
 
     #[structopt(name = "bulk")]
@@ -133,6 +145,12 @@ pub fn run(delete_args: &DeleteArgs, client: Client) -> Result<()> {
                 .delete_comments(source.clone(), comments)
                 .context("Operation to delete comments has failed.")?;
             log::info!("Deleted comments.");
+        }
+        DeleteArgs::Emails { bucket, emails } => {
+            client
+                .delete_emails(bucket.clone(), emails)
+                .context("Operation to delete emails has failed.")?;
+            log::info!("Deleted emails.");
         }
         DeleteArgs::BulkComments {
             source: source_identifier,

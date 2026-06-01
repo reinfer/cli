@@ -418,6 +418,22 @@ impl Client {
         )
     }
 
+    /// Delete emails by id in a bucket.
+    pub fn delete_emails(
+        &self,
+        bucket: impl Into<BucketIdentifier>,
+        emails: &[EmailId],
+    ) -> Result<()> {
+        let bucket_full_name = match bucket.into() {
+            bucket @ BucketIdentifier::Id(_) => self.get_bucket(bucket)?.full_name(),
+            BucketIdentifier::FullName(bucket_full_name) => bucket_full_name,
+        };
+        self.delete_query(
+            self.endpoints.delete_emails(&bucket_full_name)?,
+            Some(&id_list_query(emails.iter().map(|id| &id.0))),
+        )
+    }
+
     /// Get a page of comments from a source.
     pub fn get_comments_iter_page(
         &self,
@@ -2453,6 +2469,13 @@ impl Endpoints {
     }
 
     fn put_emails(&self, bucket_name: &BucketFullName) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &["api", "_private", "buckets", &bucket_name.0, "emails"],
+        )
+    }
+
+    fn delete_emails(&self, bucket_name: &BucketFullName) -> Result<Url> {
         construct_endpoint(
             &self.base,
             &["api", "_private", "buckets", &bucket_name.0, "emails"],
