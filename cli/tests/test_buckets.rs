@@ -24,6 +24,119 @@ fn test_bucket_lifecycle() {
 }
 
 #[test]
+fn test_get_emails_filter_by_mailbox_and_timerange() {
+    let cli = TestCli::get();
+    let owner = TestCli::project();
+
+    let bucket = format!("{}/test-emails-{}", owner, Uuid::new_v4());
+    cli.run(["create", "bucket", &bucket]);
+
+    // Four emails across two mailboxes and a spread of timestamps.
+    let emails = [
+        ("alice-1", "alice@reinfer.io", "2020-01-01T00:00:00Z"),
+        ("alice-2", "alice@reinfer.io", "2020-02-01T00:00:00Z"),
+        ("bob-1", "bob@reinfer.io", "2020-01-15T00:00:00Z"),
+        ("bob-2", "bob@reinfer.io", "2020-03-01T00:00:00Z"),
+    ];
+    let jsonl = emails
+        .iter()
+        .map(|(id, mailbox, timestamp)| {
+            serde_json::json!({
+                "id": id,
+                "mailbox": mailbox,
+                "timestamp": timestamp,
+                "mime_content": format!(
+                    "Date: {timestamp}\r\nFrom: {mailbox}\r\nTo: support@reinfer.io\r\n\
+                     Subject: {id}\r\nContent-Type: text/plain\r\n\r\nHello from {id}\r\n"
+                ),
+            })
+            .to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    cli.run_with_stdin(["create", "emails", "-y", "-b", &bucket], jsonl.as_bytes());
+
+    // Extract a sorted list of the given field across the returned JSONL.
+    let field = |output: &str, key: &str| -> Vec<String> {
+        let mut values: Vec<String> = output
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .map(|line| {
+                serde_json::from_str::<serde_json::Value>(line).unwrap()[key]
+                    .as_str()
+                    .unwrap()
+                    .to_owned()
+            })
+            .collect();
+        values.sort();
+        values
+    };
+
+    // No filter returns every email via the listing endpoint (the `None`
+    // branch of `download_emails`).
+    let all = field(&cli.run(["get", "emails", &bucket]), "id");
+    assert_eq!(
+        all,
+        vec!["alice-1", "alice-2", "bob-1", "bob-2"],
+        "unfiltered get should return all emails"
+    );
+
+    // Filter by mailbox name (exact match).
+    let alice = field(
+        &cli.run(["get", "emails", &bucket, "--mailbox", "alice@reinfer.io"]),
+        "id",
+    );
+    assert_eq!(alice, vec!["alice-1", "alice-2"], "alice mailbox filter");
+
+    // Filter by timerange [from inclusive, to exclusive): catches alice-2 and bob-1.
+    let in_range = field(
+        &cli.run([
+            "get",
+            "emails",
+            &bucket,
+            "--from-timestamp",
+            "2020-01-10T00:00:00Z",
+            "--to-timestamp",
+            "2020-02-15T00:00:00Z",
+        ]),
+        "id",
+    );
+    assert_eq!(in_range, vec!["alice-2", "bob-1"], "timerange filter");
+
+    // Combined mailbox + timerange narrows to only alice-2.
+    let combined = field(
+        &cli.run([
+            "get",
+            "emails",
+            &bucket,
+            "--mailbox",
+            "alice@reinfer.io",
+            "--from-timestamp",
+            "2020-01-10T00:00:00Z",
+            "--to-timestamp",
+            "2020-02-15T00:00:00Z",
+        ]),
+        "id",
+    );
+    assert_eq!(combined, vec!["alice-2"], "mailbox + timerange filter");
+
+    // `from` after `to` is rejected client-side before hitting the API.
+    let error = cli.run_and_error([
+        "get",
+        "emails",
+        &bucket,
+        "--from-timestamp",
+        "2020-02-01T00:00:00Z",
+        "--to-timestamp",
+        "2020-01-01T00:00:00Z",
+    ]);
+    assert!(error.contains("must be less than or equal to"), "{}", error);
+
+    cli.run(["delete", "bucket", &bucket]);
+}
+
+#[test]
 fn test_create_without_org_fails() {
     let cli = TestCli::get();
 

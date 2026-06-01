@@ -125,8 +125,8 @@ pub use crate::{
             ModelVersion, Name as DatasetName, NewDataset, UpdateDataset,
         },
         email::{
-            Continuation as EmailContinuation, EmailsIterPage, Id as EmailId, Mailbox, MimeContent,
-            NewEmail,
+            Continuation as EmailContinuation, EmailsIterPage, EmailsQueryPage, Id as EmailId,
+            Mailbox, MimeContent, NewEmail,
         },
         entity_def::{EntityDef, Id as EntityDefId, Name as EntityName, NewEntityDef},
         integration::FullName as IntegrationFullName,
@@ -248,6 +248,19 @@ pub struct GetEmailsIterPageQuery<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub continuation: Option<&'a EmailContinuation>,
     pub limit: usize,
+}
+
+#[derive(Serialize)]
+pub struct QueryEmailsPageRequest<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub continuation: Option<&'a EmailContinuation>,
+    pub limit: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from_timestamp: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub to_timestamp: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mailbox_name: Option<&'a str>,
 }
 
 #[derive(Serialize)]
@@ -519,6 +532,38 @@ impl Client {
         page_size: Option<usize>,
     ) -> EmailsIter<'a> {
         EmailsIter::new(self, bucket_name, page_size)
+    }
+
+    /// Get a page of emails from a bucket filtered by mailbox name and/or timerange.
+    pub fn query_emails_iter_page(
+        &self,
+        bucket_name: &BucketFullName,
+        filter: &EmailsQueryFilter,
+        continuation: Option<&EmailContinuation>,
+        limit: usize,
+    ) -> Result<EmailsQueryPage> {
+        let request = QueryEmailsPageRequest {
+            continuation,
+            limit,
+            from_timestamp: filter.from_timestamp,
+            to_timestamp: filter.to_timestamp,
+            mailbox_name: filter.mailbox_name.as_deref(),
+        };
+        self.post(
+            self.endpoints.query_emails(bucket_name)?,
+            Some(&request),
+            Retry::Yes,
+        )
+    }
+
+    /// Iterate through emails in a bucket filtered by mailbox name and/or timerange.
+    pub fn query_emails_iter<'a>(
+        &'a self,
+        bucket_name: &'a BucketFullName,
+        filter: EmailsQueryFilter,
+        page_size: Option<usize>,
+    ) -> EmailsQueryIter<'a> {
+        EmailsQueryIter::new(self, bucket_name, filter, page_size)
     }
 
     /// Get a single comment by id.
@@ -1743,6 +1788,73 @@ impl Iterator for EmailsIter<'_> {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct EmailsQueryFilter {
+    pub from_timestamp: Option<DateTime<Utc>>,
+    pub to_timestamp: Option<DateTime<Utc>>,
+    pub mailbox_name: Option<String>,
+}
+
+impl EmailsQueryFilter {
+    pub fn is_empty(&self) -> bool {
+        self.from_timestamp.is_none() && self.to_timestamp.is_none() && self.mailbox_name.is_none()
+    }
+}
+
+pub struct EmailsQueryIter<'a> {
+    client: &'a Client,
+    bucket_name: &'a BucketFullName,
+    filter: EmailsQueryFilter,
+    continuation: Option<EmailContinuation>,
+    done: bool,
+    page_size: usize,
+}
+
+impl<'a> EmailsQueryIter<'a> {
+    // Default number of emails per page to request from API.
+    pub const DEFAULT_PAGE_SIZE: usize = 64;
+
+    fn new(
+        client: &'a Client,
+        bucket_name: &'a BucketFullName,
+        filter: EmailsQueryFilter,
+        page_size: Option<usize>,
+    ) -> Self {
+        Self {
+            client,
+            bucket_name,
+            filter,
+            continuation: None,
+            done: false,
+            page_size: page_size.unwrap_or(Self::DEFAULT_PAGE_SIZE),
+        }
+    }
+}
+
+impl Iterator for EmailsQueryIter<'_> {
+    type Item = Result<Vec<Email>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+        let response = self.client.query_emails_iter_page(
+            self.bucket_name,
+            &self.filter,
+            self.continuation.as_ref(),
+            self.page_size,
+        );
+        Some(response.map(|page| {
+            self.continuation = page.continuation;
+            // Terminate on `more_results`, not page size: under outline-mode
+            // mailbox filtering a page can be shorter than `limit` while more
+            // matches remain further in the bucket.
+            self.done = !page.more_results;
+            page.emails
+        }))
+    }
+}
+
 pub struct CommentsIter<'a> {
     client: &'a Client,
     source_name: &'a SourceFullName,
@@ -2323,6 +2435,20 @@ impl Endpoints {
         construct_endpoint(
             &self.base,
             &["api", "_private", "buckets", &bucket_name.0, "emails"],
+        )
+    }
+
+    fn query_emails(&self, bucket_name: &BucketFullName) -> Result<Url> {
+        construct_endpoint(
+            &self.base,
+            &[
+                "api",
+                "_private",
+                "buckets",
+                &bucket_name.0,
+                "emails",
+                "query",
+            ],
         )
     }
 
