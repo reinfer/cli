@@ -109,6 +109,14 @@ pub struct EmailsIterPage {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct EmailsQueryPage {
+    pub emails: Vec<Email>,
+    #[serde(default)]
+    pub more_results: bool,
+    pub continuation: Option<Continuation>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct GetEmailResponse {
     pub emails: Vec<Email>,
 }
