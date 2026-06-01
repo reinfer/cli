@@ -1,4 +1,4 @@
-# Unreleased
+# v0.40.0
 - Allow `re get emails` to filter by `--mailbox`, `--from-timestamp`, and `--to-timestamp`
 
 # v0.39.1
