@@ -1580,6 +1580,7 @@ dependencies = [
  "cfb",
  "chrono",
  "colored",
+ "crc32fast",
  "csv",
  "dialoguer",
  "diff",

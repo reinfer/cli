@@ -1,7 +1,7 @@
 use crate::{
     commands::{
         auth::AuthArgs, config::ConfigArgs, create::CreateArgs, delete::DeleteArgs, get::GetArgs,
-        package::PackageArgs, parse::ParseArgs, update::UpdateArgs,
+        package::PackageArgs, parse::ParseArgs, prune::PruneArgs, update::UpdateArgs,
     },
     printer::OutputFormat,
 };
@@ -96,6 +96,13 @@ pub enum Command {
     Delete {
         #[structopt(subcommand)]
         delete_args: DeleteArgs,
+    },
+
+    #[structopt(name = "prune")]
+    /// Back up and delete old data across in-scope datasets
+    Prune {
+        #[structopt(flatten)]
+        prune_args: PruneArgs,
     },
 
     #[structopt(name = "get")]

@@ -718,6 +718,41 @@ impl CommentDownloadOptions {
     }
 }
 
+/// Download all reviewed (annotated) comments for `source` within `dataset` as
+/// JSONL, including their labels. Used by `re prune` to back up annotations.
+pub(crate) fn download_reviewed_comments(
+    client: &Client,
+    source: SourceIdentifier,
+    dataset: DatasetIdentifier,
+    show_progress: bool,
+    writer: impl Write,
+) -> Result<()> {
+    download_comments(
+        client,
+        source,
+        writer,
+        CommentDownloadOptions {
+            dataset_identifier: Some(dataset),
+            include_predictions: false,
+            model_version: None,
+            reviewed_only: true,
+            timerange: CommentsIterTimerange {
+                from: None,
+                to: None,
+            },
+            show_progress,
+            label_attribute_filter: None,
+            attachment_property_types_filter: None,
+            user_properties_filter: None,
+            messages_filter: None,
+            attachments_dir: None,
+            only_with_attachments_filter: None,
+            shuffle: false,
+            stop_after: None,
+        },
+    )
+}
+
 fn download_comments(
     client: &Client,
     source_identifier: SourceIdentifier,
