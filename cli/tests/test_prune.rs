@@ -955,8 +955,14 @@ fn test_prune_multiple_datasets_and_buckets() {
         email_jsonl("e-recent", "alice@reinfer.io", "2030-01-01T00:00:00Z"),
     ]
     .join("\n");
-    cli.run_with_stdin(["create", "emails", "-y", "-b", &bucket_a], emails.as_bytes());
-    cli.run_with_stdin(["create", "emails", "-y", "-b", &bucket_b], emails.as_bytes());
+    cli.run_with_stdin(
+        ["create", "emails", "-y", "-b", &bucket_a],
+        emails.as_bytes(),
+    );
+    cli.run_with_stdin(
+        ["create", "emails", "-y", "-b", &bucket_b],
+        emails.as_bytes(),
+    );
 
     cli.run([
         "prune",
@@ -996,7 +1002,11 @@ fn test_prune_multiple_datasets_and_buckets() {
         "one annotation file per (dataset, source)"
     );
     let comment_backups = all_backup_files(&dir.join("deleted-comments"));
-    assert_eq!(jsonl_count(&comment_backups), 2, "one old comment per source");
+    assert_eq!(
+        jsonl_count(&comment_backups),
+        2,
+        "one old comment per source"
+    );
 
     // The manifest sums counts across all resources.
     let manifest: serde_json::Value =
@@ -1060,7 +1070,11 @@ fn test_prune_dedups_source_shared_between_in_scope_datasets() {
     // The annotated comment is kept even though it is annotated in the second
     // listed dataset; only the plain comment is pruned.
     let remaining = cli.run(["get", "comments", source.identifier()]);
-    assert_eq!(jsonl_count(&remaining), 1, "annotated comment kept: {remaining}");
+    assert_eq!(
+        jsonl_count(&remaining),
+        1,
+        "annotated comment kept: {remaining}"
+    );
     assert!(remaining.contains("shared-labelled"), "{remaining}");
     assert!(!remaining.contains("shared-plain"), "{remaining}");
 
@@ -1150,7 +1164,11 @@ fn test_prune_multi_source_dataset_backs_up_annotations_per_source() {
     // comments — each is restorable to exactly one source.
     let dir = run_dir(&backup_parent);
     let files = annotation_files(&dir);
-    assert_eq!(files.len(), 2, "one annotation file per source in the dataset");
+    assert_eq!(
+        files.len(),
+        2,
+        "one annotation file per source in the dataset"
+    );
     for path in &files {
         let contents = fs::read_to_string(path).unwrap();
         assert!(
@@ -1234,7 +1252,11 @@ fn test_prune_out_of_scope_source_comments_kept_but_bucket_emails_deleted() {
         "in-scope source comment pruned"
     );
     let kept = cli.run(["get", "comments", source_out.identifier()]);
-    assert_eq!(jsonl_count(&kept), 1, "out-of-scope source comment kept: {kept}");
+    assert_eq!(
+        jsonl_count(&kept),
+        1,
+        "out-of-scope source comment kept: {kept}"
+    );
     assert!(kept.contains("out-old"));
 
     // But the shared bucket's old email is deleted regardless of the out-of-scope source.
@@ -1254,7 +1276,10 @@ fn test_prune_out_of_scope_source_comments_kept_but_bucket_emails_deleted() {
     );
     let comment_backup = only_backup_file(&dir.join("deleted-comments"));
     assert!(comment_backup.contains("in-old"));
-    assert!(!comment_backup.contains("out-old"), "out-of-scope comment never deleted");
+    assert!(
+        !comment_backup.contains("out-old"),
+        "out-of-scope comment never deleted"
+    );
 
     // Tear down sources + dataset before the bucket.
     drop(dataset);
@@ -1374,12 +1399,19 @@ fn test_prune_mailbox_keeps_annotated_in_target_mailbox() {
     ]);
 
     let remaining = cli.run(["get", "comments", source.identifier()]);
-    assert_eq!(jsonl_count(&remaining), 1, "only the plain comment pruned: {remaining}");
+    assert_eq!(
+        jsonl_count(&remaining),
+        1,
+        "only the plain comment pruned: {remaining}"
+    );
     assert!(
         remaining.contains("mb-keep"),
         "annotated comment in the target mailbox kept: {remaining}"
     );
-    assert!(!remaining.contains("mb-plain"), "plain comment in the mailbox pruned");
+    assert!(
+        !remaining.contains("mb-plain"),
+        "plain comment in the mailbox pruned"
+    );
 
     fs::remove_dir_all(&backup_parent).ok();
 }
@@ -1394,8 +1426,11 @@ fn test_prune_keeps_dismissed_only_reviewed_comment() {
     let dataset = TestDataset::new_args(&[&format!("--source={}", source.identifier())]);
     let backup_parent = temp_backup_dir();
 
-    let comments = [dismissed_comment("dismissed-only"), mailbox_comment("plain", None, false)]
-        .join("\n");
+    let comments = [
+        dismissed_comment("dismissed-only"),
+        mailbox_comment("plain", None, false),
+    ]
+    .join("\n");
     cli.run_with_stdin(
         [
             "create",
@@ -1422,7 +1457,11 @@ fn test_prune_keeps_dismissed_only_reviewed_comment() {
 
     // The dismissed-only comment is reviewed, so it is kept; the plain one is pruned.
     let remaining = cli.run(["get", "comments", source.identifier()]);
-    assert_eq!(jsonl_count(&remaining), 1, "only the plain comment pruned: {remaining}");
+    assert_eq!(
+        jsonl_count(&remaining),
+        1,
+        "only the plain comment pruned: {remaining}"
+    );
     assert!(
         remaining.contains("dismissed-only"),
         "dismissed-only reviewed comment kept: {remaining}"
