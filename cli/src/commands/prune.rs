@@ -768,12 +768,10 @@ fn verify_all_backups(backup_dir: &Path, manifest: &Manifest) -> Result<()> {
         verify_backup(&backup_dir.join(&backup.file), backup)?;
     }
     for backup in &manifest.comment_backups {
-        for_each_verified_batch(&backup_dir.join(&backup.file), backup, comment_id, |_| {
-            Ok(())
-        })?;
+        verify_backup_records::<CommentLine>(&backup_dir.join(&backup.file), backup)?;
     }
     for backup in &manifest.email_backups {
-        for_each_verified_batch(&backup_dir.join(&backup.file), backup, email_id, |_| Ok(()))?;
+        verify_backup_records::<IdField<EmailId>>(&backup_dir.join(&backup.file), backup)?;
     }
     Ok(())
 }
@@ -795,14 +793,14 @@ where
     let deleted = Arc::new(AtomicUsize::new(0));
     let _progress = show_progress.then(|| count_progress_bar(&deleted, "deleted"));
     for backup in &manifest.comment_backups {
-        for_each_verified_batch(&backup_dir.join(&backup.file), backup, comment_id, |ids| {
+        for_each_backup_batch(&backup_dir.join(&backup.file), comment_id, |ids| {
             delete_comments(&backup.resource, ids)?;
             deleted.fetch_add(ids.len(), Ordering::SeqCst);
             Ok(())
         })?;
     }
     for backup in &manifest.email_backups {
-        for_each_verified_batch(&backup_dir.join(&backup.file), backup, email_id, |ids| {
+        for_each_backup_batch(&backup_dir.join(&backup.file), email_id, |ids| {
             delete_emails(&backup.resource, ids)?;
             deleted.fetch_add(ids.len(), Ordering::SeqCst);
             Ok(())
@@ -843,22 +841,35 @@ fn email_id(line: IdField<EmailId>) -> EmailId {
     line.id
 }
 
+/// Verify a deletion-set backup without invoking any delete callbacks. Kept
+/// separate from `for_each_backup_batch` so integrity checking is always read-only.
+fn verify_backup_records<Line>(path: &Path, expected: &BackupFile) -> Result<()>
+where
+    Line: DeserializeOwned,
+{
+    let (count, crc32) = stream_backup_lines(path, |line| {
+        let _: Line = serde_json::from_slice(line)
+            .with_context(|| format!("Corrupt backup line in `{}`", path.display()))?;
+        Ok(())
+    })?;
+    check_integrity(path, expected, count, crc32)
+}
+
 /// Stream a backup file in batches of ids — `extract_id` pulls the id out of each
-/// parsed line — invoke `on_batch` for each batch, and verify the file's CRC32 and
-/// count against the manifest. Called first with a no-op `on_batch` to verify, then
-/// with the deleter to act on the verified ids.
-fn for_each_verified_batch<Line, Id, OnBatch>(
+/// parsed line — and invoke `on_batch` for each batch. Call only after
+/// `verify_backup_records` has verified the file.
+fn for_each_backup_batch<Line, Id, ExtractId, OnBatch>(
     path: &Path,
-    expected: &BackupFile,
-    extract_id: impl Fn(Line) -> Id,
+    extract_id: ExtractId,
     mut on_batch: OnBatch,
 ) -> Result<()>
 where
     Line: DeserializeOwned,
+    ExtractId: Fn(Line) -> Id,
     OnBatch: FnMut(&[Id]) -> Result<()>,
 {
     let mut batch: Vec<Id> = Vec::with_capacity(DELETION_BATCH_SIZE);
-    let (count, crc32) = stream_backup_lines(path, |line| {
+    stream_backup_lines(path, |line| {
         let parsed: Line = serde_json::from_slice(line)
             .with_context(|| format!("Corrupt backup line in `{}`", path.display()))?;
         batch.push(extract_id(parsed));
@@ -872,7 +883,7 @@ where
         on_batch(&batch)?;
     }
 
-    check_integrity(path, expected, count, crc32)
+    Ok(())
 }
 
 /// Stream a backup file line by line, updating a CRC32 over the raw bytes (newlines
@@ -1108,7 +1119,7 @@ mod tests {
     }
 
     #[test]
-    fn for_each_verified_batch_round_trips_in_bounded_batches() {
+    fn for_each_backup_batch_round_trips_in_bounded_batches() {
         let path = temp_path("rt");
         let ids: Vec<String> = (0..70).map(|i| format!("e{i}")).collect();
         let id_refs: Vec<&str> = ids.iter().map(String::as_str).collect();
@@ -1116,9 +1127,10 @@ mod tests {
         assert_eq!(count, 70);
 
         let expected = backup_file(count, crc32);
+        verify_backup_records::<IdField<EmailId>>(&path, &expected).unwrap();
         let mut seen = Vec::new();
         let mut batch_sizes = Vec::new();
-        for_each_verified_batch(&path, &expected, email_id, |batch: &[EmailId]| {
+        for_each_backup_batch(&path, email_id, |batch: &[EmailId]| {
             batch_sizes.push(batch.len());
             seen.extend(batch.iter().map(|id| id.0.clone()));
             Ok(())
@@ -1135,7 +1147,7 @@ mod tests {
     }
 
     #[test]
-    fn for_each_verified_batch_extracts_nested_comment_id() {
+    fn for_each_backup_batch_extracts_nested_comment_id() {
         let path = temp_path("cid");
         let mut writer = BackupWriter::create(&path).unwrap();
         writer
@@ -1147,8 +1159,9 @@ mod tests {
         let (count, crc32) = writer.finish().unwrap();
 
         let expected = backup_file(count, crc32);
+        verify_backup_records::<CommentLine>(&path, &expected).unwrap();
         let mut seen = Vec::new();
-        for_each_verified_batch(&path, &expected, comment_id, |batch: &[CommentId]| {
+        for_each_backup_batch(&path, comment_id, |batch: &[CommentId]| {
             seen.extend(batch.iter().map(|id| id.0.clone()));
             Ok(())
         })
@@ -1158,29 +1171,25 @@ mod tests {
     }
 
     #[test]
-    fn for_each_verified_batch_rejects_crc_mismatch() {
+    fn verify_backup_records_rejects_crc_mismatch() {
         let path = temp_path("crc");
         let (count, crc32) = write_id_backup(&path, &["a", "b"]);
         let tampered = backup_file(count, crc32.wrapping_add(1));
-        assert!(
-            for_each_verified_batch(&path, &tampered, email_id, |_: &[EmailId]| Ok(())).is_err()
-        );
+        assert!(verify_backup_records::<IdField<EmailId>>(&path, &tampered).is_err());
         fs::remove_file(&path).ok();
     }
 
     #[test]
-    fn for_each_verified_batch_rejects_count_mismatch() {
+    fn verify_backup_records_rejects_count_mismatch() {
         let path = temp_path("count");
         let (count, crc32) = write_id_backup(&path, &["a", "b"]);
         let tampered = backup_file(count + 1, crc32);
-        assert!(
-            for_each_verified_batch(&path, &tampered, email_id, |_: &[EmailId]| Ok(())).is_err()
-        );
+        assert!(verify_backup_records::<IdField<EmailId>>(&path, &tampered).is_err());
         fs::remove_file(&path).ok();
     }
 
     #[test]
-    fn for_each_verified_batch_rejects_corrupt_line() {
+    fn verify_backup_records_rejects_corrupt_line() {
         let path = temp_path("corrupt");
         {
             let mut file = File::create(&path).unwrap();
@@ -1189,9 +1198,7 @@ mod tests {
         // CRC/count match the file; the corrupt line must still abort the read.
         let (count, crc32) = crc_and_count(&path).unwrap();
         let expected = backup_file(count, crc32);
-        assert!(
-            for_each_verified_batch(&path, &expected, email_id, |_: &[EmailId]| Ok(())).is_err()
-        );
+        assert!(verify_backup_records::<IdField<EmailId>>(&path, &expected).is_err());
         fs::remove_file(&path).ok();
     }
 
@@ -1325,15 +1332,16 @@ mod tests {
     }
 
     #[test]
-    fn for_each_verified_batch_never_invokes_on_batch_for_empty_backup() {
+    fn for_each_backup_batch_never_invokes_on_batch_for_empty_backup() {
         // An empty deletion set must issue ZERO delete batches — an empty id list to a
         // DELETE endpoint is the classic "delete everything" footgun.
         let path = temp_path("empty");
         let (count, crc32) = write_id_backup(&path, &[]);
         assert_eq!(count, 0);
         let expected = backup_file(count, crc32);
+        verify_backup_records::<IdField<EmailId>>(&path, &expected).unwrap();
         let mut calls = 0;
-        for_each_verified_batch(&path, &expected, email_id, |_: &[EmailId]| {
+        for_each_backup_batch(&path, email_id, |_: &[EmailId]| {
             calls += 1;
             Ok(())
         })
