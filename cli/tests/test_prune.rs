@@ -54,16 +54,20 @@ fn mailbox_comment(id: &str, mailbox: Option<&str>, labelled: bool) -> String {
     record.to_string()
 }
 
-/// An old comment whose only annotation is a *dismissed* label (no assigned label).
-/// It is still reviewed, so prune must keep it in default mode.
-fn dismissed_comment(id: &str) -> String {
+/// An old reviewed comment that includes a dismissed label. The backend requires
+/// dismissed labels to be accompanied by a non-empty assigned set.
+fn reviewed_comment_with_dismissed_label(id: &str) -> String {
     serde_json::json!({
         "comment": {
             "id": id,
             "timestamp": "2020-01-01T00:00:00Z",
             "messages": [{"body": {"text": id}}],
         },
-        "labelling": [{"group": "default", "dismissed": [{"name": "A", "sentiment": "positive"}]}],
+        "labelling": [{
+            "group": "default",
+            "assigned": [{"name": "B", "sentiment": "positive"}],
+            "dismissed": [{"name": "A", "sentiment": "positive"}],
+        }],
     })
     .to_string()
 }
@@ -1417,17 +1421,16 @@ fn test_prune_mailbox_keeps_annotated_in_target_mailbox() {
 }
 
 #[test]
-fn test_prune_keeps_dismissed_only_reviewed_comment() {
-    // "Reviewed" is not the same as "positively labelled": a comment whose only
-    // annotation is a dismissed label is still reviewed, so its uid joins the keep-set
-    // and it is kept in default mode. Every other annotation fixture uses `assigned`.
+fn test_prune_keeps_reviewed_comment_with_dismissed_label() {
+    // A comment with dismissed label annotations is reviewed, so its uid joins the
+    // keep-set and it is kept in default mode.
     let cli = TestCli::get();
     let source = TestSource::new();
     let dataset = TestDataset::new_args(&[&format!("--source={}", source.identifier())]);
     let backup_parent = temp_backup_dir();
 
     let comments = [
-        dismissed_comment("dismissed-only"),
+        reviewed_comment_with_dismissed_label("dismissed-reviewed"),
         mailbox_comment("plain", None, false),
     ]
     .join("\n");
@@ -1455,7 +1458,7 @@ fn test_prune_keeps_dismissed_only_reviewed_comment() {
         "--no-progress",
     ]);
 
-    // The dismissed-only comment is reviewed, so it is kept; the plain one is pruned.
+    // The comment with a dismissed label is reviewed, so it is kept; the plain one is pruned.
     let remaining = cli.run(["get", "comments", source.identifier()]);
     assert_eq!(
         jsonl_count(&remaining),
@@ -1463,14 +1466,14 @@ fn test_prune_keeps_dismissed_only_reviewed_comment() {
         "only the plain comment pruned: {remaining}"
     );
     assert!(
-        remaining.contains("dismissed-only"),
-        "dismissed-only reviewed comment kept: {remaining}"
+        remaining.contains("dismissed-reviewed"),
+        "reviewed comment with dismissed label kept: {remaining}"
     );
 
     // ...and it is preserved under annotations/, never the deletion set.
     let dir = run_dir(&backup_parent);
-    assert!(all_annotations(&dir).contains("dismissed-only"));
-    assert!(!only_backup_file(&dir.join("deleted-comments")).contains("dismissed-only"));
+    assert!(all_annotations(&dir).contains("dismissed-reviewed"));
+    assert!(!only_backup_file(&dir.join("deleted-comments")).contains("dismissed-reviewed"));
 
     fs::remove_dir_all(&backup_parent).ok();
 }
