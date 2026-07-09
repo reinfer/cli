@@ -23,6 +23,7 @@ impl TestDataset {
 
         let output = cli.run(["create", "dataset", &full_name]);
         assert!(output.contains(&full_name));
+        Self::wait_until_sources_resolve(cli, &full_name);
 
         Self {
             full_name,
@@ -38,6 +39,7 @@ impl TestDataset {
 
         let output = cli.run(["create", "dataset", &full_name].iter().chain(args));
         assert!(output.contains(&full_name));
+        Self::wait_until_sources_resolve(cli, &full_name);
 
         Self {
             full_name,
@@ -55,6 +57,25 @@ impl TestDataset {
 
     pub fn name(&self) -> &str {
         &self.full_name[self.sep_index + 1..]
+    }
+
+    fn wait_until_sources_resolve(cli: &TestCli, identifier: &str) {
+        let get_dataset_with_sources = || -> Result<(), backoff::Error<anyhow::Error>> {
+            let output = cli
+                .run_and_result(["--output=json", "get", "datasets", identifier])
+                .map_err(backoff::Error::transient)?;
+            let dataset: Dataset = serde_json::from_str(output.trim())
+                .map_err(|err| backoff::Error::transient(anyhow::anyhow!(err)))?;
+
+            for source_id in &dataset.source_ids {
+                cli.run_and_result(["--output=json", "get", "sources", &source_id.0])
+                    .map_err(backoff::Error::transient)?;
+            }
+
+            Ok(())
+        };
+
+        retry(ExponentialBackoff::default(), get_dataset_with_sources).unwrap();
     }
 }
 

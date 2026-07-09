@@ -17,6 +17,7 @@ pub mod delete;
 pub mod get;
 pub mod package;
 pub mod parse;
+pub mod prune;
 pub mod update;
 
 pub fn ensure_uip_user_consents_to_ai_unit_charge(base_url: &Url) -> Result<()> {

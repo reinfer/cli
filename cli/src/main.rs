@@ -24,7 +24,7 @@ use structopt::{clap::Shell as ClapShell, StructOpt};
 
 use crate::{
     args::{Args, Command, Shell},
-    commands::{config as config_command, create, delete, get, parse, update},
+    commands::{config as config_command, create, delete, get, parse, prune, update},
     config::ReinferConfig,
     printer::Printer,
 };
@@ -73,6 +73,7 @@ fn run(args: Args) -> Result<()> {
         Command::Delete { delete_args } => {
             delete::run(delete_args, client_from_args(&args, &config)?)
         }
+        Command::Prune { prune_args } => prune::run(prune_args, client_from_args(&args, &config)?),
         Command::Create { create_args } => create::run(
             create_args,
             get_client_and_refresh_permission(&args, &config)?,
