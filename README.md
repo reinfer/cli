@@ -120,13 +120,15 @@ Make sure you have the following build dependencies installed:
 ##### Debian/Ubuntu
 
 ```
-sudo apt install autoconf automake autopoint libtool pkg-config
+sudo apt install build-essential pkg-config curl zlib1g-dev
 ```
 
 ##### macOS
 
+Install the Xcode Command Line Tools, which provide the C compiler and `make`:
+
 ```
-sudo port install autoconf automake gettext libtool pkgconfig
+xcode-select --install
 ```
 
 Build it the usual way using cargo

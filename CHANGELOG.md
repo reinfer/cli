@@ -1,3 +1,8 @@
+# Unreleased
+- Drop the autotools build dependency: libpff now builds from a release tarball that ships a
+  pre-generated `configure`, so `autoconf`/`automake`/`libtool` (and the macOS MacPorts bootstrap)
+  are no longer required to build from source
+
 # v0.41.0
 - Add `re prune` to delete comments and emails older than a cutoff, backing them up to disk first
   (optionally scoped to a single mailbox via `--mailbox`)
