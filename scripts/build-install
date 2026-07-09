@@ -5,23 +5,15 @@ set -ex
 case $BUILD_PLATFORM in
   "ubuntu-24.04")
     sudo apt-get install          \
-      autoconf                    \
-      automake                    \
-      autopoint                   \
-      libtool                     \
       pkg-config                  \
       musl-tools
     ;;
   "macos-15")
-    wget https://github.com/macports/macports-base/releases/download/v2.10.5/MacPorts-2.10.5-15-Sequoia.pkg
-    sudo installer -pkg MacPorts-2.10.5-15-Sequoia.pkg -target /
-    export PATH=/opt/local/bin:/opt/local/sbin:$PATH
-    sudo port install             \
-      autoconf                    \
-      automake                    \
-      gettext                     \
-      libtool                     \
-      pkgconfig
+    # libpff now builds from a release tarball that ships a pre-generated
+    # `configure`, so autotools are no longer required. The remaining build
+    # dependencies (C compiler, make) come from the Xcode Command Line Tools,
+    # which are preinstalled on the macOS runner -- nothing to install here.
+    :
     ;;
   *)
     >&2 echo "fatal: unknown BUILD_PLATFORM '$BUILD_PLATFORM'"
