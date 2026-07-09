@@ -1,4 +1,4 @@
-# Unreleased
+# v0.41.0
 - Add `re prune` to delete comments and emails older than a cutoff, backing them up to disk first
   (optionally scoped to a single mailbox via `--mailbox`)
 - Add `re delete emails` to delete emails by id from a bucket
