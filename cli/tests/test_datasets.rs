@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use backoff::{retry, ExponentialBackoff};
 use pretty_assertions::assert_eq;
 use reinfer_client::{
@@ -87,7 +89,25 @@ impl Drop for TestDataset {
                 .map_err(backoff::Error::transient)
         };
 
-        retry(ExponentialBackoff::default(), delete_dataset_command).unwrap();
+        // Best-effort cleanup: deleting the dataset can fail transiently (e.g. a dataset
+        // that is the source of an in-progress `--copy-annotations-from` is locked
+        // server-side and returns 403 until the copy finishes). We retry briefly, but if it
+        // still fails we orphan the dataset rather than panic — a failed teardown must not
+        // fail the test, and panicking in `drop` risks aborting the whole test process.
+        //
+        // The retry window is deliberately short: a copy can hold the lock for well over
+        // the default 15-minute window, and we orphan in that case anyway, so a long retry
+        // would just make the drop (and the whole test suite) hang for no benefit.
+        let backoff = ExponentialBackoff {
+            max_elapsed_time: Some(Duration::from_secs(60)),
+            ..Default::default()
+        };
+        if let Err(err) = retry(backoff, delete_dataset_command) {
+            eprintln!(
+                "warning: failed to delete test dataset `{}`, orphaning it: {err}",
+                self.identifier()
+            );
+        }
     }
 }
 
