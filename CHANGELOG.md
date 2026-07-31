@@ -1,4 +1,4 @@
-# Unreleased
+# v0.42.0
 - Fix `re get datasets`, `re prune`, `re get custom-label-trend-report` and `re package upload`
   failing for a whole tenant when any one of its datasets used an attribution method, model version,
   extraction flag or dataset flag this CLI didn't recognise — even when the dataset being operated on
