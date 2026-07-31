@@ -21,13 +21,20 @@ use std::{
 use super::validation::ValidationResponse;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-#[serde(rename_all(serialize = "snake_case", deserialize = "snake_case"))]
+#[serde(rename_all = "snake_case")]
 pub enum DatasetFlag {
     Gpt4,
     ExternalMoonLlm,
     Qos,
     ZeroShotLabels,
     Ixp,
+    ConversationalFilters,
+    GenerativeExtraction,
+    GenerativePrelabelling,
+    LlmAssistedLabelling,
+    /// A dataset flag added to the platform after this release, kept as-is.
+    #[serde(untagged)]
+    Unknown(Box<str>),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -133,14 +140,16 @@ pub struct GptIxpModelConfig {
     pub attribution_method: AttributionMethod,
 }
 
-#[derive(
-    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Default,
-)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum AttributionMethod {
     #[default]
     TableHeuristic,
     WordIds,
+    TableFormattedWordIds,
+    /// An attribution method added to the platform after this release, kept as-is.
+    #[serde(untagged)]
+    Unknown(Box<str>),
 }
 
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, Eq)]
@@ -161,7 +170,7 @@ pub struct IterativeConfig {
     pub chunk_size: Option<Option<NotNan<f64>>>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum GptModelVersion {
     #[serde(rename = "gpt_4o_2024_05_13")]
     Gpt4o20240513,
@@ -175,6 +184,11 @@ pub enum GptModelVersion {
     GeminiPro25,
     #[serde(rename = "gemini_3_1_pro_preview")]
     Gemini31ProPreview,
+    #[serde(rename = "gemini_3_1_flash_lite_preview")]
+    Gemini31FlashLitePreview,
+    /// A model version added to the platform after this release, kept as-is.
+    #[serde(untagged)]
+    Unknown(Box<str>),
 }
 
 #[derive(Eq, Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -212,16 +226,16 @@ pub enum TextImageInputConfigMode {
     #[serde(rename = "text_plus_image")]
     TextPlusImage,
 }
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum GptIxpFlag {
-    #[serde(rename = "append_taxonomy_descriptions")]
     AppendTaxonomyDescriptions,
-    #[serde(rename = "append_type_descriptions")]
     AppendTypeDescriptions,
-    #[serde(rename = "append_group_descriptions")]
     AppendGroupDescriptions,
-    #[serde(rename = "append_field_descriptions")]
     AppendFieldDescriptions,
+    /// An extraction flag added to the platform after this release, kept as-is.
+    #[serde(untagged)]
+    Unknown(Box<str>),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -726,6 +740,162 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&params).unwrap(),
             r#"{"filter":{"user_properties":{"string:Generation Tag":{"one_of":["72b01fe7-ef2e-481e-934d-bc2fe0ca9b06"]}}},"limit":20,"order":{"kind":"recent"}}"#
+        );
+    }
+
+    // Each table lists every value the platform currently sends, so that known
+    // values get a real variant instead of falling into `Unknown`.
+
+    /// Asserts each value deserializes to the expected variant and serializes
+    /// back unchanged.
+    fn assert_round_trips<T>(cases: &[(&str, T)])
+    where
+        T: serde::de::DeserializeOwned + Serialize + PartialEq + std::fmt::Debug,
+    {
+        for (wire, expected) in cases {
+            let json = format!("\"{wire}\"");
+            let parsed: T = serde_json::from_str(&json)
+                .unwrap_or_else(|error| panic!("`{wire}` should deserialize: {error}"));
+            assert_eq!(
+                &parsed, expected,
+                "`{wire}` deserialized to the wrong variant"
+            );
+            assert_eq!(serde_json::to_string(&parsed).unwrap(), json);
+        }
+    }
+
+    #[test]
+    fn test_every_dataset_flag_round_trips() {
+        assert_round_trips(&[
+            ("gpt4", DatasetFlag::Gpt4),
+            ("external_moon_llm", DatasetFlag::ExternalMoonLlm),
+            ("qos", DatasetFlag::Qos),
+            ("zero_shot_labels", DatasetFlag::ZeroShotLabels),
+            ("ixp", DatasetFlag::Ixp),
+            ("conversational_filters", DatasetFlag::ConversationalFilters),
+            ("generative_extraction", DatasetFlag::GenerativeExtraction),
+            (
+                "generative_prelabelling",
+                DatasetFlag::GenerativePrelabelling,
+            ),
+            ("llm_assisted_labelling", DatasetFlag::LlmAssistedLabelling),
+            (
+                "some_future_flag",
+                DatasetFlag::Unknown("some_future_flag".into()),
+            ),
+        ]);
+    }
+
+    #[test]
+    fn test_every_attribution_method_round_trips() {
+        assert_round_trips(&[
+            ("table_heuristic", AttributionMethod::TableHeuristic),
+            ("word_ids", AttributionMethod::WordIds),
+            (
+                "table_formatted_word_ids",
+                AttributionMethod::TableFormattedWordIds,
+            ),
+            (
+                "some_future_attribution",
+                AttributionMethod::Unknown("some_future_attribution".into()),
+            ),
+        ]);
+    }
+
+    #[test]
+    fn test_every_model_version_round_trips() {
+        assert_round_trips(&[
+            ("gpt_4o_2024_05_13", GptModelVersion::Gpt4o20240513),
+            ("gpt_5_1_2025_11_13", GptModelVersion::Gpt5120251113),
+            ("gpt_5_4_2026_03_05", GptModelVersion::Gpt5420260305),
+            ("gemini_2_5_flash", GptModelVersion::GeminiFlash25),
+            ("gemini_2_5_pro", GptModelVersion::GeminiPro25),
+            (
+                "gemini_3_1_pro_preview",
+                GptModelVersion::Gemini31ProPreview,
+            ),
+            (
+                "gemini_3_1_flash_lite_preview",
+                GptModelVersion::Gemini31FlashLitePreview,
+            ),
+            ("gpt_9", GptModelVersion::Unknown("gpt_9".into())),
+        ]);
+    }
+
+    #[test]
+    fn test_every_gpt_ixp_flag_round_trips() {
+        assert_round_trips(&[
+            (
+                "append_taxonomy_descriptions",
+                GptIxpFlag::AppendTaxonomyDescriptions,
+            ),
+            (
+                "append_type_descriptions",
+                GptIxpFlag::AppendTypeDescriptions,
+            ),
+            (
+                "append_group_descriptions",
+                GptIxpFlag::AppendGroupDescriptions,
+            ),
+            (
+                "append_field_descriptions",
+                GptIxpFlag::AppendFieldDescriptions,
+            ),
+            (
+                "append_something_new",
+                GptIxpFlag::Unknown("append_something_new".into()),
+            ),
+        ]);
+    }
+
+    /// Listing commands parse every dataset on the tenant at once, so one
+    /// dataset using newer values must not fail the whole response.
+    #[test]
+    fn test_deserialize_tenant_listing_with_newer_model_config_values() {
+        let response: GetAvailableResponse = serde_json::from_str(
+            r#"{"datasets":[
+              {"id":"aaaaaaaaaaaaaaaa","name":"unrelated","owner":"proj","title":"Unrelated",
+               "description":"","created":"2026-01-01T00:00:00Z",
+               "last_modified":"2026-01-01T00:00:00Z","model_family":"english","source_ids":[],
+               "has_sentiment":false,"entity_defs":[],"general_fields":[],"label_defs":[],
+               "label_groups":[],
+               "_dataset_flags":["generative_extraction","a_flag_from_the_future"],
+               "_model_config":{"kind":"cm"}},
+              {"id":"bbbbbbbbbbbbbbbb","name":"ixp-one","owner":"proj","title":"IXP",
+               "description":"","created":"2026-01-01T00:00:00Z",
+               "last_modified":"2026-01-01T00:00:00Z","model_family":"english","source_ids":[],
+               "has_sentiment":false,"entity_defs":[],"general_fields":[],"label_defs":[],
+               "label_groups":[],"_dataset_flags":["ixp"],
+               "_model_config":{"kind":"gpt_ixp","flags":["a_flag_from_the_future"],
+                                "model_version":"a_model_from_the_future",
+                                "attribution_method":"table_formatted_word_ids"}}
+            ]}"#,
+        )
+        .expect("a tenant listing must parse even when a dataset uses newer values");
+
+        assert_eq!(response.datasets.len(), 2);
+        assert!(response.datasets[0].has_flag(DatasetFlag::GenerativeExtraction));
+        assert!(
+            response.datasets[0].has_flag(DatasetFlag::Unknown("a_flag_from_the_future".into()))
+        );
+
+        let ModelConfig::GptIxp(config) = &response.datasets[1].model_config else {
+            panic!("expected a gpt_ixp config");
+        };
+        assert_eq!(
+            config.attribution_method,
+            AttributionMethod::TableFormattedWordIds
+        );
+        assert_eq!(
+            config.model_version,
+            Some(GptModelVersion::Unknown("a_model_from_the_future".into()))
+        );
+
+        // `re package upload` sends the config straight back, so unrecognised
+        // values also have to re-serialize exactly as they arrived.
+        assert_eq!(
+            serde_json::to_string(&response.datasets[1].model_config).unwrap(),
+            r#"{"kind":"gpt_ixp","model_version":"a_model_from_the_future","flags":["a_flag_from_the_future"],"attribution_method":"table_formatted_word_ids"}"#
         );
     }
 }
