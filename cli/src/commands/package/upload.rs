@@ -91,25 +91,41 @@ pub struct UploadPackageArgs {
 }
 
 fn wait_for_dataset_to_exist(dataset: &Dataset, client: &Client, timeout_s: u64) -> Result<()> {
-    let start_time = Instant::now();
+    let full_name = dataset.full_name();
 
-    while (start_time - Instant::now()).as_secs() <= timeout_s {
+    wait_until("dataset to be created", timeout_s, || {
         refresh_user_permissions(client, false)?;
-        let datasets = client.get_datasets()?;
 
-        let dataset_exists = datasets
+        Ok(client
+            .get_datasets()?
             .iter()
-            .map(|dataset| dataset.full_name())
-            .contains(&dataset.full_name());
+            .any(|dataset| dataset.full_name() == full_name))
+    })
+}
 
-        if dataset_exists {
+/// Polls `is_ready` every 500ms until it reports `true`, giving up with a
+/// timeout error naming `what` once `timeout_s` has elapsed. Note the deadline
+/// is only checked between polls, so a slow `is_ready` can overrun it by one
+/// call.
+///
+/// Kept separate from its only caller so the deadline handling can be tested
+/// without a `Client`.
+fn wait_until(
+    what: &str,
+    timeout_s: u64,
+    mut is_ready: impl FnMut() -> Result<bool>,
+) -> Result<()> {
+    let start_time = Instant::now();
+    let timeout = Duration::from_secs(timeout_s);
+
+    while start_time.elapsed() <= timeout {
+        if is_ready()? {
             return Ok(());
-        } else {
-            sleep(Duration::from_millis(500));
         }
+        sleep(Duration::from_millis(500));
     }
 
-    Err(anyhow!("Timeout waiting for dataset to be created"))
+    Err(anyhow!("Timeout waiting for {what}"))
 }
 
 fn create_ixp_dataset(
@@ -1213,4 +1229,51 @@ fn get_ixp_progress_bar(total_comments: u64, statistics: &Arc<IxpStatistics>) ->
         Some(total_comments),
         crate::progress::Options { bytes_units: false },
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wait_until_keeps_polling_until_ready() {
+        let mut polls = 0;
+
+        wait_until("dataset", 30, || {
+            polls += 1;
+            Ok(polls == 3)
+        })
+        .expect("should succeed");
+
+        assert_eq!(polls, 3, "should keep polling while not yet ready");
+    }
+
+    #[test]
+    fn wait_until_gives_up_once_the_timeout_elapses() {
+        // The deadline used to be computed the wrong way round, which made the
+        // loop condition permanently true, so this looped forever instead of
+        // returning an error. Run it on its own thread so that reintroducing
+        // the bug fails the test instead of hanging the suite.
+        let (sender, receiver) = channel();
+
+        std::thread::spawn(move || {
+            let _ = sender.send(wait_until("dataset", 0, || Ok(false)).is_err());
+        });
+
+        match receiver.recv_timeout(Duration::from_secs(10)) {
+            Ok(timed_out) => assert!(timed_out, "should report a timeout"),
+            Err(_) => panic!("wait_until did not return -- the deadline is never reached"),
+        }
+    }
+
+    #[test]
+    fn wait_until_propagates_errors() {
+        let result = wait_until("dataset", 30, || Err(anyhow!("could not list datasets")));
+
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "could not list datasets",
+            "should surface the underlying error, not a timeout"
+        );
+    }
 }

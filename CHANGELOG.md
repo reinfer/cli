@@ -1,4 +1,15 @@
 # Unreleased
+- Fix `re get datasets`, `re prune`, `re get custom-label-trend-report` and `re package upload`
+  failing for a whole tenant when any one of its datasets used an attribution method, model version,
+  extraction flag or dataset flag this CLI didn't recognise — even when the dataset being operated on
+  did not. Adds the missing values, and keeps any added in future as-is rather than rejecting them,
+  so `re package upload` still sends a dataset's attribution method, model version and extraction
+  flags back unchanged
+- Fix `re package upload` ignoring `--dataset-creation-timeout` and waiting forever when a dataset
+  never finished being created
+- Breaking (`reinfer-client` API): `DatasetFlag`, `AttributionMethod`, `GptModelVersion` and
+  `GptIxpFlag` each gain an `Unknown` variant, so exhaustive matches on them need an extra arm, and
+  `AttributionMethod`, `GptModelVersion` and `GptIxpFlag` are no longer `Copy`
 - Drop the autotools build dependency: libpff now builds from a release tarball that ships a
   pre-generated `configure`, so `autoconf`/`automake`/`libtool` (and the macOS MacPorts bootstrap)
   are no longer required to build from source
