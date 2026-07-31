@@ -180,10 +180,7 @@ pub fn upload_batch_of_annotations(
                     )
                 })
                 .with_context(|| {
-                    format!(
-                        "Could not update labelling for comment `{}`",
-                        &comment_uid.0
-                    )
+                    format!("Could not update labelling for comment `{}`", comment_uid.0)
                 });
 
                 if let Err(error) = result {

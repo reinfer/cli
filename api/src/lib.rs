@@ -2592,7 +2592,7 @@ fn build_headers(config: &Config) -> Result<HeaderMap> {
     let mut headers = HeaderMap::new();
     headers.insert(
         header::AUTHORIZATION,
-        HeaderValue::from_str(&format!("Bearer {}", &config.token.0)).map_err(|_| {
+        HeaderValue::from_str(&format!("Bearer {}", config.token.0)).map_err(|_| {
             Error::BadToken {
                 token: config.token.0.clone(),
             }
