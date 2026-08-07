@@ -15,7 +15,7 @@ pub enum RetryStrategy {
     Always,
 }
 
-/// Configuration for the Reinfer client if retrying timeouts.
+/// Configuration for the IXP client if retrying timeouts.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RetryConfig {
     /// Strategy for when to retry after a timeout

@@ -1,6 +1,6 @@
 <p align="center">
     <a href="https://docs.uipath.com/communications-mining/automation-cloud/latest/developer-guide/overview-cli">
-    <img alt="reinfer-cli" src="https://avatars.githubusercontent.com/u/375663?s=200&v=4" width="128">
+    <img alt="UiPath IXP CLI" src="https://avatars.githubusercontent.com/u/375663?s=200&v=4" width="128">
   </a>
 </p>
 

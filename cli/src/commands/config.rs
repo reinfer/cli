@@ -16,18 +16,18 @@ use anyhow::{anyhow, Result};
 #[derive(Debug, StructOpt)]
 pub enum ConfigArgs {
     #[structopt(name = "add")]
-    /// Add a new context to the reinfer config file
+    /// Add a new context to the config file
     AddContext {
         #[structopt(long = "name", short = "n")]
         /// The name of the context that will be created or updated
         name: Option<String>,
 
         #[structopt(long = "endpoint", short = "e")]
-        /// The reinfer cluster endpoint that will be used for this context
+        /// The IXP cluster endpoint that will be used for this context
         endpoint: Option<Url>,
 
         #[structopt(long = "token", short = "t")]
-        /// The reinfer API token that will be used for this context
+        /// The IXP API token that will be used for this context
         token: Option<String>,
 
         #[structopt(long = "accept-invalid-certificates", short = "k")]
@@ -48,14 +48,14 @@ pub enum ConfigArgs {
     CurrentContext,
 
     #[structopt(name = "delete")]
-    /// Delete the specified context from the reinfer config file
+    /// Delete the specified context from the config file
     DeleteContext {
         /// The name(s) of the context(s) which will be deleted
         names: Vec<String>,
     },
 
     #[structopt(name = "ls")]
-    /// List available contexts in a reinfer config file
+    /// List available contexts in the config file
     ListContexts {
         #[structopt(long = "tokens")]
         /// Show API tokens (by default tokens are hidden).
@@ -63,7 +63,7 @@ pub enum ConfigArgs {
     },
 
     #[structopt(name = "use")]
-    /// Set the current context in the reinfer config file
+    /// Set the current context in the config file
     UseContext {
         /// The name of the context.
         name: String,
@@ -83,7 +83,7 @@ pub enum ConfigArgs {
         /// The URL to be parsed
         #[structopt(long = "url", short = "u")]
         url: Option<Url>,
-        /// The reinfer API token that will be used for this context
+        /// The IXP API token that will be used for this context
         #[structopt(long = "token", short = "t")]
         token: Option<String>,
     },

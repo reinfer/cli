@@ -10,9 +10,10 @@ use reqwest::Url;
 use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 
-/// re is the command line interface to reinfer clusters.
+/// re is the command line interface for UiPath IXP.
 #[derive(Debug, StructOpt)]
 #[structopt(
+    name = "re",
     global_settings = &[
         structopt::clap::AppSettings::ColoredHelp,
         structopt::clap::AppSettings::InferSubcommands,
@@ -71,7 +72,7 @@ pub enum Command {
     Completion { shell: Shell },
 
     #[structopt(name = "config")]
-    /// Manage reinfer authentication and endpoint contexts
+    /// Manage IXP authentication and endpoint contexts
     Config {
         #[structopt(subcommand)]
         config_args: ConfigArgs,
