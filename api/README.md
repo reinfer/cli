@@ -1,3 +1,3 @@
-# API Library for reinfer
+# API Library for UiPath IXP
 
-A Rust library for the reinfer API.
+A Rust library for the UiPath IXP API.

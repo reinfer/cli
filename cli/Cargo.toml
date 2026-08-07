@@ -1,7 +1,7 @@
 [package]
 name = "reinfer-cli"
 version = "0.42.0"
-description = "Command line interface for Re:infer, the conversational data intelligence platform"
+description = "Command line interface for UiPath IXP"
 homepage = "https://github.com/reinfer/cli"
 readme = "README.md"
 authors = ["reinfer Ltd. <eng@reinfer.io>"]

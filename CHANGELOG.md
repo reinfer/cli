@@ -1,3 +1,9 @@
+# Unreleased
+- Update `--help` text, the READMEs and the crate descriptions to refer to UiPath IXP rather than
+  Re:infer, and print `re` rather than `reinfer-cli` in `re --help` and `re --version`. The config
+  file location (`~/.config/reinfer`), the `REINFER_CLI_NUM_THREADS` environment variable, the
+  `--reinfer-tenant-id` flag and the `reinfer-cli`/`reinfer-client` crate names are unchanged
+
 # v0.42.0
 - Fix `re get datasets`, `re prune`, `re get custom-label-trend-report` and `re package upload`
   failing for a whole tenant when any one of its datasets used an attribution method, model version,
