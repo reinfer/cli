@@ -128,6 +128,20 @@ fn wait_until(
     Err(anyhow!("Timeout waiting for {what}"))
 }
 
+/// The packaged dataset's "overall extraction instruction", or `None` when it
+/// is unset so that we leave the new dataset's own default in place.
+///
+/// The instruction lives on the `default` label group rather than on the
+/// dataset, so it is not covered by the label defs the group is created with.
+fn default_label_group_instructions(dataset: &Dataset) -> Option<String> {
+    dataset
+        .label_groups
+        .iter()
+        .find(|label_group| label_group.name == *DEFAULT_LABEL_GROUP_NAME)
+        .map(|label_group| label_group.instructions.clone())
+        .filter(|instructions| !instructions.is_empty())
+}
+
 fn create_ixp_dataset(
     name: DatasetName,
     label_defs: Vec<LabelDef>,
@@ -135,6 +149,7 @@ fn create_ixp_dataset(
     timeout_s: u64,
     model_config: ModelConfig,
     entity_defs: Vec<NewEntityDef>,
+    default_label_group_instructions: Option<String>,
 ) -> Result<Dataset> {
     let mut new_label_defs = Vec::new();
 
@@ -154,6 +169,7 @@ fn create_ixp_dataset(
             source_ids: None,
             title: None,
             description: None,
+            default_label_group_instructions,
             entity_defs,
         },
     )?;
@@ -841,6 +857,8 @@ fn unpack_ixp(
     let packaged_sources = get_ixp_source(&dataset, SourceProvider::Packaged(package))
         .context("Could not get ixp source from package")?;
 
+    let default_label_group_instructions = default_label_group_instructions(&dataset);
+
     // We use title here as the name will already have a hex appended, the api will normalize
     // the title into an api name
     let new_dataset = create_ixp_dataset(
@@ -876,6 +894,7 @@ fn unpack_ixp(
                 instructions: def.instructions,
             })
             .collect(),
+        default_label_group_instructions,
     )
     .context("Could not create dataset")?;
 

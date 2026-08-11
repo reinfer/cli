@@ -13,6 +13,14 @@ pub static DEFAULT_LABEL_GROUP_NAME: Lazy<Name> = Lazy::new(|| Name("default".to
 pub struct LabelGroup {
     pub name: Name,
 
+    /// For the `default` group of an IXP project this is the "overall
+    /// extraction instruction", which is fed to the model as part of its
+    /// prompt. Set it with [`UpdateDataset::default_label_group_instructions`].
+    ///
+    /// [`UpdateDataset::default_label_group_instructions`]: crate::UpdateDataset::default_label_group_instructions
+    #[serde(default)]
+    pub instructions: String,
+
     #[serde(default)]
     pub label_defs: Vec<LabelDef>,
 }
