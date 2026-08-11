@@ -289,6 +289,7 @@ fn test_create_update_dataset_custom() {
         ],
         label_groups: vec![LabelGroup {
             name: LabelGroupName("default".to_owned()),
+            instructions: String::new(),
             label_defs: vec![
                 LabelDef {
                     name: LabelName("bar".to_owned()),
