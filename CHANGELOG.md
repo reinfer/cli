@@ -1,4 +1,4 @@
-# Unreleased
+# v0.43.0
 - Fix `re package download`/`re package upload` dropping an IXP project's overall extraction
   instruction. The instruction is part of the model's prompt, so a project uploaded from a package
   ran a different prompt from the one it was downloaded from, and scored differently in Measure
