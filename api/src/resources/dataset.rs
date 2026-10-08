@@ -570,6 +570,15 @@ pub struct UpdateDataset<'request> {
     #[serde(rename = "_model_config", skip_serializing_if = "Option::is_none")]
     pub model_config: Option<ModelConfig>,
 
+    /// Instructions for the dataset's `default` label group — the "overall
+    /// extraction instruction" in IXP projects. Every dataset has a `default`
+    /// group from creation, so this can go in with the rest of the update.
+    #[serde(
+        rename = "_default_label_group_instructions",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub default_label_group_instructions: Option<String>,
+
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub entity_defs: Vec<NewEntityDef>,
 }
@@ -897,5 +906,52 @@ mod tests {
             serde_json::to_string(&response.datasets[1].model_config).unwrap(),
             r#"{"kind":"gpt_ixp","model_version":"a_model_from_the_future","flags":["a_flag_from_the_future"],"attribution_method":"table_formatted_word_ids"}"#
         );
+    }
+
+    /// Download has to capture the instruction, or upload cannot reproduce the
+    /// project's scores.
+    #[test]
+    fn test_deserialize_default_label_group_instructions() {
+        let dataset: Dataset = serde_json::from_str(
+            r#"{"id":"aaaaaaaaaaaaaaaa","name":"ixp-one","owner":"proj","title":"IXP",
+                "description":"","created":"2026-01-01T00:00:00Z",
+                "last_modified":"2026-01-01T00:00:00Z","model_family":"english",
+                "source_ids":[],"has_sentiment":false,"entity_defs":[],"general_fields":[],
+                "label_defs":[],
+                "label_groups":[{"name":"default","instructions":"Extract from invoices only.",
+                                 "label_defs":[]}],
+                "_dataset_flags":["ixp"],"_model_config":{"kind":"gpt_ixp","flags":[]}}"#,
+        )
+        .expect("an ixp dataset must parse");
+
+        assert_eq!(
+            dataset.label_groups[0].instructions,
+            "Extract from invoices only."
+        );
+    }
+
+    /// Other groups carry their instructions on their label defs, so only the
+    /// default group's are sent here — and only when set, so that an older
+    /// package leaves the new dataset's own default alone.
+    #[test]
+    fn test_serialize_update_dataset_default_label_group_instructions() {
+        let with_instructions = UpdateDataset {
+            source_ids: None,
+            title: None,
+            description: None,
+            model_config: None,
+            default_label_group_instructions: Some("Extract from invoices only.".to_owned()),
+            entity_defs: Vec::new(),
+        };
+        assert_eq!(
+            serde_json::to_string(&with_instructions).unwrap(),
+            r#"{"_default_label_group_instructions":"Extract from invoices only."}"#
+        );
+
+        let without_instructions = UpdateDataset {
+            default_label_group_instructions: None,
+            ..with_instructions
+        };
+        assert_eq!(serde_json::to_string(&without_instructions).unwrap(), "{}");
     }
 }

@@ -1,4 +1,9 @@
 # Unreleased
+- Fix `re package download`/`re package upload` dropping an IXP project's overall extraction
+  instruction. The instruction is part of the model's prompt, so a project uploaded from a package
+  ran a different prompt from the one it was downloaded from, and scored differently in Measure
+- Breaking (`reinfer-client` API): `LabelGroup` gains `instructions` and `UpdateDataset` gains
+  `default_label_group_instructions`, so struct literals of them need an extra initializer
 - Update `--help` text, the READMEs and the crate descriptions to refer to UiPath IXP rather than
   Re:infer, and print `re` rather than `reinfer-cli` in `re --help` and `re --version`. The config
   file location (`~/.config/reinfer`), the `REINFER_CLI_NUM_THREADS` environment variable, the
