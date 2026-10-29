@@ -8,16 +8,26 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+permissions:
+  contents: read
+
 jobs:
   publish:
     runs-on: ${{ matrix.os }}
+    # Only v* tags may deploy to this environment, and only admins and
+    # maintainers may create those tags. GCP trusts OIDC tokens from this
+    # environment alone.
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       matrix:
         os: [ubuntu-24.04, macos-15]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup python for gsutil
+      - name: Setup python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -51,11 +61,12 @@ jobs:
           BUILD_PLATFORM: ${{ matrix.os }}
 
       - name: GCP Auth
-        uses: google-github-actions/auth@v1
+        uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+          workload_identity_provider: projects/926089055780/locations/global/workloadIdentityPools/github-actions/providers/reinfer-cli-release
+          service_account: publish-reinfer-cli-github-act@reinfer-prod.iam.gserviceaccount.com
 
-      - uses: google-github-actions/setup-gcloud@v1
+      - uses: google-github-actions/setup-gcloud@v2
         name: Set up Cloud SDK
 
       - name: Publish Binaries

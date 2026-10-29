@@ -19,13 +19,13 @@ build_and_upload() {
   export VERSIONED_GS_PATH="gs://reinfer-public/cli/bin/${target}/${CLI_VERSION}/$artefact"
   export LATEST_GS_PATH="gs://reinfer-public/cli/bin/${target}/latest/$artefact"
 
-  if ! gsutil -q stat "$VERSIONED_GS_PATH"; then
-    gsutil cp "../target/${target}/release/$artefact" "$VERSIONED_GS_PATH"
+  if ! gcloud storage objects describe "$VERSIONED_GS_PATH" >/dev/null 2>&1; then
+    gcloud storage cp "../target/${target}/release/$artefact" "$VERSIONED_GS_PATH"
   fi
 
   # TODO (tommmiligan) Disable until we can overwrite files from CI
-  # if ! gsutil -q stat "$LATEST_GS_PATH"; then
-  #   gsutil cp "../target/${target}/release/$artefact" "$LATEST_GS_PATH"
+  # if ! gcloud storage objects describe "$LATEST_GS_PATH" >/dev/null 2>&1; then
+  #   gcloud storage cp "../target/${target}/release/$artefact" "$LATEST_GS_PATH"
   # fi
 }
 
@@ -42,13 +42,13 @@ case $BUILD_PLATFORM in
     export VERSIONED_DEB_PATH="gs://reinfer-public/cli/debian/reinfer-cli_${CLI_VERSION}_amd64.deb"
     export LATEST_DEB_PATH="gs://reinfer-public/cli/debian/reinfer-cli_latest_amd64.deb"
 
-    if ! gsutil -q stat "$VERSIONED_DEB_PATH"; then
-            gsutil cp "$LOCAL_DEB_PATH" "$VERSIONED_DEB_PATH"
+    if ! gcloud storage objects describe "$VERSIONED_DEB_PATH" >/dev/null 2>&1; then
+            gcloud storage cp "$LOCAL_DEB_PATH" "$VERSIONED_DEB_PATH"
     fi
 
     # TODO (tommmiligan) Disable until we can overwrite files from CI
-    # if ! gsutil -q stat "$LATEST_DEB_PATH"; then
-    #         gsutil cp "../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb" "$LATEST_DEB_PATH"
+    # if ! gcloud storage objects describe "$LATEST_DEB_PATH" >/dev/null 2>&1; then
+    #         gcloud storage cp "../target/debian/reinfer-cli_${CLI_VERSION}_amd64.deb" "$LATEST_DEB_PATH"
     # fi
     ;;
   "macos-15")
