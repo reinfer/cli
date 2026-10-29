@@ -37,6 +37,13 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-24.04, macos-15]
+    # The integration tests share one test tenant with every other run, so the
+    # leg that runs them takes a repository-wide lock, held by the Publish
+    # workflow too. The other legs get a group of their own so they are never
+    # queued behind it.
+    concurrency:
+      group: ${{ matrix.os == 'ubuntu-24.04' && 'integration-test-tenant' || format('build-{0}-{1}', matrix.os, github.run_id) }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 
@@ -59,6 +66,7 @@ jobs:
       - name: Run tests
         run: ./scripts/check
         env:
+          SKIP_INTEGRATION_TESTS: ${{ matrix.os != 'ubuntu-24.04' && '1' || '0' }}
           REINFER_CLI_TEST_PROJECT: ${{ secrets.REINFER_CLI_TEST_PROJECT }}
           REINFER_CLI_TEST_TOKEN: ${{ secrets.REINFER_CLI_TEST_TOKEN }}
           REINFER_CLI_TEST_ENDPOINT: ${{ secrets.REINFER_CLI_TEST_ENDPOINT }}
