@@ -319,8 +319,9 @@ fn package_cm_project(
     let mut package_writer =
         PackageWriter::new(file.into()).context("Failed to create new package writer")?;
 
+    // Write dataset
     package_writer
-        .write_dataset_with_sources(dataset, source_ids)
+        .write_dataset(dataset, source_ids)
         .context("Failed to write dataset")?;
 
     // Get buckets
@@ -388,8 +389,8 @@ fn package_ixp_project(
     max_attachment_memory_mb: &u64,
     pool: &mut Pool,
 ) -> Result<()> {
-    let total_comments = get_comment_count(dataset, &dataset.source_ids, client, None)
-        .context("Failed to get comment count")?;
+    let total_comments =
+        get_comment_count(dataset, &[], client, None).context("Failed to get comment count")?;
 
     let statistics = Arc::new(Statistics::new());
     let _progress_bar = get_ixp_progress_bar(total_comments, &statistics);
@@ -398,7 +399,7 @@ fn package_ixp_project(
     let mut package_writer =
         PackageWriter::new(file.into()).context("Failed to create new package writer")?;
     package_writer
-        .write_dataset(dataset)
+        .write_dataset(dataset, &dataset.source_ids)
         .context("Failed to write dataset")?;
 
     // Package each source

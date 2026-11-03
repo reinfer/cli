@@ -121,11 +121,14 @@ fn assert_package(
     let mut expected_ids: Vec<_> = sources.iter().map(|source| source.id.clone()).collect();
     expected_ids.sort_by(|left, right| left.0.cmp(&right.0));
     assert_eq!(actual_ids, expected_ids);
+    // Ingestion can advance the timestamp between the fixture read and the download.
+    let updated_at: chrono::DateTime<chrono::Utc> =
+        serde_json::from_value(metadata.remove("last_modified").unwrap()).unwrap();
+    assert!(updated_at >= original.updated_at);
     let mut expected_metadata = serde_json::to_value(original).unwrap();
-    expected_metadata
-        .as_object_mut()
-        .unwrap()
-        .remove("source_ids");
+    let expected_fields = expected_metadata.as_object_mut().unwrap();
+    expected_fields.remove("source_ids");
+    expected_fields.remove("last_modified");
     assert_eq!(serde_json::Value::Object(metadata), expected_metadata);
 
     let filenames: Vec<_> = archive.file_names().map(str::to_owned).collect();
