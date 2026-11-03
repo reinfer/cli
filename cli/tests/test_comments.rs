@@ -315,7 +315,11 @@ fn test_get_reviewed_comments_with_label_filter() {
     assert_eq!(ids, vec!["2".to_owned(), "3".to_owned(), "7".to_owned()]);
 }
 
-fn get_comments_with_delay(cli: &TestCli, command: &[&str], expected_count: usize) -> String {
+pub(super) fn get_comments_with_delay(
+    cli: &TestCli,
+    command: &[&str],
+    expected_count: usize,
+) -> String {
     let run_command = || {
         let result = cli.run(command);
         let actual_count = result.lines().count();

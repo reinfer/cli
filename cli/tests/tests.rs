@@ -3,6 +3,7 @@ mod common;
 mod test_buckets;
 mod test_comments;
 mod test_datasets;
+mod test_packages;
 mod test_projects;
 mod test_prune;
 mod test_sources;

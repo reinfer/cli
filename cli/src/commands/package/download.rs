@@ -19,7 +19,7 @@ use reinfer_client::{
         dataset::{DatasetFlag, QueryRequestParams, StatisticsRequestParams},
     },
     AnnotatedComment, Bucket, Client, CommentFilter, CommentId, Dataset, DatasetFullName,
-    DatasetName, HasAnnotations, SourceId,
+    DatasetName, HasAnnotations, SourceId, SourceIdentifier,
 };
 use scoped_threadpool::Pool;
 use structopt::StructOpt;
@@ -81,6 +81,10 @@ pub struct DownloadPackageArgs {
     #[structopt(long)]
     /// Whether to skip downloading raw email for CM projects
     skip_emails: bool,
+
+    #[structopt(long)]
+    /// Only download this source (project/source or source ID) from a CM dataset
+    source: Option<SourceIdentifier>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -272,6 +276,7 @@ fn package_batch_of_documents(
 
 fn get_comment_count(
     dataset: &Dataset,
+    source_ids: &[SourceId],
     client: &Client,
     reviewed_only: Option<bool>,
 ) -> Result<u64> {
@@ -280,6 +285,7 @@ fn get_comment_count(
             &dataset.full_name(),
             &StatisticsRequestParams {
                 comment_filter: CommentFilter {
+                    sources: source_ids.to_vec(),
                     reviewed: if reviewed_only == Some(true) {
                         Some(ReviewedFilterEnum::OnlyReviewed)
                     } else {
@@ -299,6 +305,7 @@ fn get_comment_count(
 fn package_cm_project(
     client: &Client,
     dataset: &Dataset,
+    source_ids: &[SourceId],
     file: &PathBuf,
     batch_size: &usize,
     max_attachment_memory_mb: &u64,
@@ -306,20 +313,18 @@ fn package_cm_project(
     skip_raw_emails: bool,
     reviewed_only: bool,
 ) -> Result<()> {
-    let total_comments = get_comment_count(dataset, client, Some(reviewed_only))
+    let total_comments = get_comment_count(dataset, source_ids, client, Some(reviewed_only))
         .context("Failed to get comment count")?;
 
     let mut package_writer =
         PackageWriter::new(file.into()).context("Failed to create new package writer")?;
 
-    // Write dataset
     package_writer
-        .write_dataset(dataset)
+        .write_dataset_with_sources(dataset, source_ids)
         .context("Failed to write dataset")?;
 
     // Get buckets
-    let buckets: Vec<Bucket> = dataset
-        .source_ids
+    let buckets: Vec<Bucket> = source_ids
         .iter()
         .map(|source_id| -> Result<Option<BucketId>> {
             let source = client.get_source(source_id.clone())?;
@@ -350,7 +355,7 @@ fn package_cm_project(
     }
 
     // Write sources and comments
-    for source_id in &dataset.source_ids {
+    for source_id in source_ids {
         let source = client
             .get_source(source_id.clone())
             .context("Failed to get source")?;
@@ -383,8 +388,8 @@ fn package_ixp_project(
     max_attachment_memory_mb: &u64,
     pool: &mut Pool,
 ) -> Result<()> {
-    let total_comments =
-        get_comment_count(dataset, client, None).context("Failed to get comment count")?;
+    let total_comments = get_comment_count(dataset, &dataset.source_ids, client, None)
+        .context("Failed to get comment count")?;
 
     let statistics = Arc::new(Statistics::new());
     let _progress_bar = get_ixp_progress_bar(total_comments, &statistics);
@@ -437,11 +442,8 @@ pub fn run(args: &DownloadPackageArgs, client: &Client, pool: &mut Pool) -> Resu
         max_attachment_memory_mb,
         reviewed_only,
         skip_emails,
+        source,
     } = args;
-    // Delete output file if overwriting
-    if *overwrite && file.is_file() {
-        remove_file(file).context("Failed to remove existing file")?;
-    }
 
     // Get dataset, statistics and progres bar
     let dataset = client.get_dataset(project.0.clone()).context(format!(
@@ -461,6 +463,31 @@ pub fn run(args: &DownloadPackageArgs, client: &Client, pool: &mut Pool) -> Resu
         bail!("`--skip-emails` can only be used with Communications Mining datasets")
     }
 
+    if dataset.has_flag(DatasetFlag::Ixp) && source.is_some() {
+        bail!("`--source` can only be used with Communications Mining datasets")
+    }
+
+    let source_ids = if let Some(source) = source {
+        let selected_source = client
+            .get_source(source.clone())
+            .with_context(|| format!("Failed to get source {source}"))?;
+
+        if !dataset.source_ids.contains(&selected_source.id) {
+            bail!(
+                "Source {source} is not linked to dataset {}",
+                dataset.full_name()
+            )
+        }
+
+        vec![selected_source.id]
+    } else {
+        dataset.source_ids.clone()
+    };
+
+    if *overwrite && file.is_file() {
+        remove_file(file).context("Failed to remove existing file")?;
+    }
+
     if dataset.has_flag(DatasetFlag::Ixp) {
         package_ixp_project(
             client,
@@ -474,6 +501,7 @@ pub fn run(args: &DownloadPackageArgs, client: &Client, pool: &mut Pool) -> Resu
         package_cm_project(
             client,
             &dataset,
+            &source_ids,
             file,
             batch_size,
             max_attachment_memory_mb,
