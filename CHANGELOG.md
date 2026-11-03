@@ -1,4 +1,4 @@
-# Unreleased
+# v0.44.0
 - Add `re package download --source` to export a single CM source by API name or ID,
   including reviewed messages with `--reviewed-only --skip-emails`. Invalid source
   selections leave existing packages untouched.
