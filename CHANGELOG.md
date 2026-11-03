@@ -1,3 +1,8 @@
+# Unreleased
+- Add `re package download --source` to export a single CM source by API name or ID,
+  including reviewed messages with `--reviewed-only --skip-emails`. Invalid source
+  selections leave existing packages untouched.
+
 # v0.43.0
 - Fix `re package download`/`re package upload` dropping an IXP project's overall extraction
   instruction. The instruction is part of the model's prompt, so a project uploaded from a package

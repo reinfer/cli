@@ -393,10 +393,13 @@ impl PackageWriter {
         Ok(Self { writer })
     }
 
-    pub fn write_dataset(&mut self, dataset: &Dataset) -> Result<()> {
+    pub fn write_dataset(&mut self, dataset: &Dataset, source_ids: &[SourceId]) -> Result<()> {
         let dataset_id = &dataset.id;
+        let mut metadata = serde_json::to_value(dataset)?;
+        // The uploader requires metadata for every source listed here.
+        metadata["source_ids"] = serde_json::to_value(source_ids)?;
 
-        self.write_json(PackageContentId::Dataset { dataset_id }, dataset)
+        self.write_json(PackageContentId::Dataset { dataset_id }, &metadata)
     }
 
     pub fn write_source(&mut self, source: &Source) -> Result<()> {
