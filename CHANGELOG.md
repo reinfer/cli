@@ -1,3 +1,7 @@
+# Unreleased
+- Fix building from source failing with `Failed to download libpff release`: libpff's `20231205`
+  release, which the build downloads, was removed upstream. Build against libpff `20261030` instead
+
 # v0.44.0
 - Add `re package download --source` to export a single CM source by API name or ID,
   including reviewed messages with `--reviewed-only --skip-emails`. Invalid source
