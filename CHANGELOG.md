@@ -1,4 +1,4 @@
-# Unreleased
+# v0.44.1
 - Fix building from source failing with `Failed to download libpff release`: libpff's `20231205`
   release, which the build downloads, was removed upstream. Build against libpff `20261030` instead
 - Fix `re create comments`, `re create annotations` and `re package upload` failing with
