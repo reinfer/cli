@@ -872,11 +872,29 @@ fn should_skip_serializing_entities(maybe_entities: &Option<Entities>) -> bool {
     }
 }
 
+/// Always sent as `spans`: the API can reject a single `span` when it retries a conflicting write.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
-#[serde(untagged)]
+#[serde(untagged, into = "NewEntityWithSpans")]
 pub enum NewEntity {
     WithSpan(NewEntityWithSpan),
     WithSpans(NewEntityWithSpans),
+}
+
+impl From<NewEntity> for NewEntityWithSpans {
+    fn from(entity: NewEntity) -> Self {
+        match entity {
+            NewEntity::WithSpan(NewEntityWithSpan {
+                name,
+                formatted_value,
+                span,
+            }) => Self {
+                name,
+                formatted_value,
+                spans: vec![span],
+            },
+            NewEntity::WithSpans(entity) => entity,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq)]
@@ -1112,5 +1130,47 @@ mod tests {
         .expect("");
 
         assert_eq!(actual, expected);
+    }
+
+    fn entity_span(content_part: &str, start: usize, end: usize) -> JsonValue {
+        json!({
+            "content_part": content_part,
+            "message_index": 0,
+            "utf16_byte_start": start,
+            "utf16_byte_end": end,
+        })
+    }
+
+    #[test]
+    fn new_entity_with_single_span_is_sent_as_spans() {
+        let entity: NewEntity = serde_json::from_value(json!({
+            "name": "organisation",
+            "formatted_value": "UiPath",
+            "span": entity_span("subject", 4, 10),
+        }))
+        .expect("de");
+        assert!(matches!(entity, NewEntity::WithSpan(_)));
+
+        assert_eq!(
+            serde_json::to_value(&entity).expect("ser"),
+            json!({
+                "name": "organisation",
+                "formatted_value": "UiPath",
+                "spans": [entity_span("subject", 4, 10)],
+            })
+        );
+    }
+
+    #[test]
+    fn new_entity_with_spans_is_sent_unchanged() {
+        let value = json!({
+            "name": "organisation",
+            "formatted_value": "UiPath",
+            "spans": [entity_span("subject", 4, 6), entity_span("body", 8, 10)],
+        });
+        let entity: NewEntity = serde_json::from_value(value.clone()).expect("de");
+        assert!(matches!(entity, NewEntity::WithSpans(_)));
+
+        assert_eq!(serde_json::to_value(&entity).expect("ser"), value);
     }
 }

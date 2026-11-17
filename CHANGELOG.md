@@ -1,6 +1,11 @@
 # Unreleased
 - Fix building from source failing with `Failed to download libpff release`: libpff's `20231205`
   release, which the build downloads, was removed upstream. Build against libpff `20261030` instead
+- Fix `re create comments`, `re create annotations` and `re package upload` failing with
+  `Cannot specify both 'span' and 'spans'` on entity annotations that use a single `span`. The API
+  rejected them whenever it retried a conflicting write, which it often does straight after the
+  comments are uploaded. Entity annotations are now always sent as `spans`; files using either form
+  still load
 
 # v0.44.0
 - Add `re package download --source` to export a single CM source by API name or ID,
