@@ -4,7 +4,7 @@ use std::{
     process::{exit, Command},
 };
 
-const LIB_PFF_TAG: &str = "20231205";
+const LIB_PFF_TAG: &str = "20261030";
 
 enum LibPffConfigureMode {
     Native,
