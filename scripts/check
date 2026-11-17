@@ -7,5 +7,11 @@ cd "$(dirname "$0")/.."
 scripts/check-versions
 cargo fmt -- --check
 cargo clippy --offline --locked --all-targets -- -D warnings
-cargo test --offline --locked --all-targets
+# The integration targets under cli/tests/ drive a real tenant, so a caller that
+# does not hold the tenant lock asks for unit and doc tests only.
+if [ "${SKIP_INTEGRATION_TESTS:-}" = "1" ]; then
+    cargo test --offline --locked --lib --bins
+else
+    cargo test --offline --locked --all-targets
+fi
 cargo test --offline --locked --doc
